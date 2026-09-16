@@ -241,3 +241,62 @@ h1.page-title {
   margin-top: 8px;
   color: var(--ink);
 }
+
+.trip-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.trip-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 20px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--surface);
+  text-align: left;
+  font-family: inherit;
+}
+
+.trip-card:hover {
+  border-color: var(--route);
+}
+
+.trip-card-name {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.trip-card-dates {
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.trip-card-add {
+  align-items: center;
+  justify-content: center;
+  color: var(--route);
+  border-style: dashed;
+}
+
+.empty-landing {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.back-link {
+  display: inline-block;
+  color: var(--ink-soft);
+  text-decoration: none;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.back-link:hover {
+  color: var(--route);
+}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { api, type TripDetail as TripDetailType, type Expense } from '../api';
 import { ItineraryTab } from '../components/ItineraryTab';
 import { ExpensesTab } from '../components/ExpensesTab';
@@ -35,6 +35,7 @@ export function TripDetailPage() {
 
   return (
     <div className="main">
+      <Link to="/" className="back-link">&larr; Back to trips</Link>
       <h1 className="page-title">{trip.name}</h1>
       {(trip.startDate || trip.endDate) && (
         <p className="trip-dates">
