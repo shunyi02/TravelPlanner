@@ -1,7 +1,8 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTripDto } from './dto/create-trip.dto';
 import { CreatePlaceDto } from './dto/create-place.dto';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { UpdateTripDto } from './dto/update-trip.dto';
 
 @Injectable()
 export class TripsService {
@@ -95,5 +96,21 @@ export class TripsService {
       where: { tripId_userId: { tripId, userId } },
     });
     if (!membership) throw new ForbiddenException('Not a member of this trip');
+  }
+
+  async updateDates(tripId: string, userId: string, dto: UpdateTripDto) {
+    await this.assertMember(tripId, userId);
+
+    if (dto.startDate && dto.endDate && new Date(dto.endDate) < new Date(dto.startDate)) {
+      throw new BadRequestException('endDate must be on or after startDate');
+    }
+
+    return this.prisma.trip.update({
+      where: { id: tripId },
+      data: {
+        startDate: dto.startDate ? new Date(dto.startDate) : undefined,
+        endDate: dto.endDate ? new Date(dto.endDate) : undefined,
+      },
+    });
   }
 }

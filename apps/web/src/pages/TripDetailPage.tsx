@@ -54,7 +54,7 @@ export function TripDetailPage() {
         </button>
       </div>
 
-      {tab === 'itinerary' && <ItineraryTab tripId={tripId} places={trip.places} onChange={load} />}
+      {tab === 'itinerary' && <ItineraryTab tripId={tripId} trip={trip} places={trip.places} onChange={load} />}
       {tab === 'expenses' && (
         <ExpensesTab tripId={tripId} expenses={expenses} memberNames={memberNames} onChange={load} />
       )}

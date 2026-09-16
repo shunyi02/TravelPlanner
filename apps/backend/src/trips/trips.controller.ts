@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { UpdateTripDto } from './dto/update-trip.dto';
 import { TripsService } from './trips.service';
 import { CreateTripDto } from './dto/create-trip.dto';
 import { CreatePlaceDto } from './dto/create-place.dto';
@@ -51,4 +52,13 @@ export class TripsController {
   ) {
     return this.tripsService.reorderPlaces(tripId, userId, orderedPlaceIds);
   }
+
+    @Patch(':tripId')
+    updateDates(
+      @CurrentUser() userId: string,
+      @Param('tripId') tripId: string,
+      @Body() dto: UpdateTripDto,
+    ) {
+      return this.tripsService.updateDates(tripId, userId, dto);
+    }
 }

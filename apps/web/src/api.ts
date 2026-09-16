@@ -163,6 +163,8 @@ export const api = {
   listTrips: () => request<Trip[]>('/trips'),
   createTrip: (data: { name: string; startDate?: string; endDate?: string }) =>
     request<TripDetail>('/trips', { method: 'POST', body: JSON.stringify(data) }),
+  updateTripDates: (tripId: string, data: { startDate?: string; endDate?: string }) =>
+  request<Trip>(`/trips/${tripId}`, { method: 'PATCH', body: JSON.stringify(data) }),
   getTrip: (tripId: string) => request<TripDetail>(`/trips/${tripId}`),
   addPlace: (tripId: string, data: { name: string; lat?: number; lng?: number; notes?: string }) =>
     request<Place>(`/trips/${tripId}/places`, { method: 'POST', body: JSON.stringify(data) }),
