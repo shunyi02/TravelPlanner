@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String              @id @default(uuid())
+  email         String              @unique
+  name          String
+  passwordHash  String
+  trips         TripMember[]
+  expensesPaid  Expense[]           @relation("PaidBy")
+  splits        ExpenseSplit[]
+  refreshTokens RefreshToken[]
+  resetTokens   PasswordResetToken[]
+  createdAt     DateTime            @default(now())
+}
+
+model Trip {
+  id        String       @id @default(uuid())
+  name      String
+  startDate DateTime?
+  endDate   DateTime?
+  members   TripMember[]
+  places    Place[]
+  expenses  Expense[]
+  createdAt DateTime     @default(now())
+}
+
+model TripMember {
+  id     String @id @default(uuid())
+  trip   Trip   @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  tripId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  role   String @default("member") // owner | member
+
+  @@unique([tripId, userId])
+}
+
+model Place {
+  id        String    @id @default(uuid())
+  trip      Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  tripId    String
+  name      String
+  lat       Float?
+  lng       Float?
+  visitDate DateTime?
+  order     Int? // sequence in itinerary; nullable until user orders it
+  notes     String?
+}
+
+model Expense {
+  id          String         @id @default(uuid())
+  trip        Trip           @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  tripId      String
+  description String
+  amount      Decimal        @db.Decimal(12, 2)
+  currency    String         @default("USD")
+  paidBy      User           @relation("PaidBy", fields: [paidById], references: [id])
+  paidById    String
+  splits      ExpenseSplit[]
+  createdAt   DateTime       @default(now())
+}
+
+model ExpenseSplit {
+  id         String  @id @default(uuid())
+  expense    Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  expenseId  String
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  amountOwed Decimal @db.Decimal(12, 2)
+  settled    Boolean @default(false)
+
+  @@unique([expenseId, userId])
+}
+
+// Refresh tokens are stored as a SHA-256 hash, never the raw token, same
+// principle as passwords. Rotated on every use (see AuthService.refresh).
+model RefreshToken {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// Single-use, short-lived tokens for the forgot-password flow.
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+}

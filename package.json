@@ -1,0 +1,20 @@
+{
+  "name": "travel-planner",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/backend",
+    "apps/web",
+    "apps/mobile"
+  ],
+  "scripts": {
+    "dev:backend": "npm run start:dev --workspace=apps/backend",
+    "dev:web": "npm run dev --workspace=apps/web",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
+}

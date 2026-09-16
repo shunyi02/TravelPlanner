@@ -1,0 +1,1 @@
+{"root":["./src/App.tsx","./src/api.ts","./src/main.tsx","./src/components/BalancesTab.tsx","./src/components/ExpensesTab.tsx","./src/components/ItineraryTab.tsx","./src/components/Sidebar.tsx","./src/pages/AuthPage.tsx","./src/pages/TripDetailPage.tsx"],"version":"5.9.3"}
