@@ -50,3 +50,12 @@ export interface Settlement {
   toUserId: string;
   amount: number;
 }
+
+export interface AccommodationDto {
+  id: string;
+  tripId: string;
+  name: string;
+  checkInDate: string;
+  checkOutDate: string;
+  notes: string | null;
+}

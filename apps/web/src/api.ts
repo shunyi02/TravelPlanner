@@ -118,6 +118,15 @@ export interface Place {
   notes: string | null;
 }
 
+export interface Accommodation {
+  id: string;
+  tripId: string;
+  name: string;
+  checkInDate: string;
+  checkOutDate: string;
+  notes: string | null;
+}
+
 export interface TripDetail extends Trip {
   members: Array<{ userId: string; role: string; coverPhoto: string | null; user: { name: string; email: string } }>;
   places: Place[];
@@ -189,4 +198,8 @@ export const api = {
   request<Place>(`/trips/${tripId}/places`, { method: 'POST', body: JSON.stringify(data) }),
   deleteTrip: (tripId: string) =>
   request<void>(`/trips/${tripId}`, { method: 'DELETE' }),
+  addAccommodation: (tripId: string, data: { name: string; checkInDate: string; checkOutDate: string; notes?: string }) =>
+    request<Accommodation>(`/trips/${tripId}/accommodations`, { method: 'POST', body: JSON.stringify(data) }),
+  deleteAccommodation: (tripId: string, accommodationId: string) =>
+    request<void>(`/trips/${tripId}/accommodations/${accommodationId}`, { method: 'DELETE' }),
 };

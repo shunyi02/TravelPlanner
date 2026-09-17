@@ -1,6 +1,7 @@
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTripDto } from './dto/create-trip.dto';
 import { CreatePlaceDto } from './dto/create-place.dto';
+import { CreateAccommodationDto } from './dto/create-accommodation.dto';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { UpdateTripDto } from './dto/update-trip.dto';
 
@@ -34,7 +35,11 @@ export class TripsService {
   async getOneOrThrow(tripId: string, userId: string) {
     const trip = await this.prisma.trip.findUnique({
       where: { id: tripId },
-      include: { members: { include: { user: true } }, places: { orderBy: { order: 'asc' } } },
+      include: {
+        members: { include: { user: true } },
+        places: { orderBy: { order: 'asc' } },
+        accommodations: { orderBy: { checkInDate: 'asc' } },
+      },
     });
     if (!trip) throw new NotFoundException('Trip not found');
     if (!trip.members.some((m) => m.userId === userId)) {
@@ -127,4 +132,44 @@ export class TripsService {
     }
     await this.prisma.trip.delete({ where: { id: tripId } });
   }
+
+  async addAccommodation(
+    tripId: string,
+    userId: string,
+    dto: CreateAccommodationDto,
+  ) {
+    await this.assertMember(tripId, userId);
+
+    if (new Date(dto.checkOutDate) < new Date(dto.checkInDate)) {
+      throw new BadRequestException(
+        'checkOutDate must be on or after checkInDate',
+      );
+    }
+
+    return this.prisma.accommodation.create({
+      data: {
+        tripId,
+        name: dto.name,
+        checkInDate: new Date(dto.checkInDate),
+        checkOutDate: new Date(dto.checkOutDate),
+        notes: dto.notes,
+      },
+    });
+  }
+
+  async deleteAccommodation(
+    tripId: string,
+    userId: string,
+    accommodationId: string,
+  ) {
+    await this.assertMember(tripId, userId);
+
+    await this.prisma.accommodation.deleteMany({
+      where: {
+        id: accommodationId,
+        tripId,
+      },
+    });
+  }
+
 }

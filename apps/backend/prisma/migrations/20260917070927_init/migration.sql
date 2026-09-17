@@ -15,6 +15,7 @@ CREATE TABLE "Trip" (
     "name" TEXT NOT NULL,
     "startDate" TIMESTAMP(3),
     "endDate" TIMESTAMP(3),
+    "coverPhoto" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Trip_pkey" PRIMARY KEY ("id")
@@ -42,6 +43,18 @@ CREATE TABLE "Place" (
     "notes" TEXT,
 
     CONSTRAINT "Place_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Accommodation" (
+    "id" TEXT NOT NULL,
+    "tripId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "checkInDate" TIMESTAMP(3) NOT NULL,
+    "checkOutDate" TIMESTAMP(3) NOT NULL,
+    "notes" TEXT,
+
+    CONSTRAINT "Accommodation_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -115,6 +128,9 @@ ALTER TABLE "TripMember" ADD CONSTRAINT "TripMember_userId_fkey" FOREIGN KEY ("u
 
 -- AddForeignKey
 ALTER TABLE "Place" ADD CONSTRAINT "Place_tripId_fkey" FOREIGN KEY ("tripId") REFERENCES "Trip"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Accommodation" ADD CONSTRAINT "Accommodation_tripId_fkey" FOREIGN KEY ("tripId") REFERENCES "Trip"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Expense" ADD CONSTRAINT "Expense_tripId_fkey" FOREIGN KEY ("tripId") REFERENCES "Trip"("id") ON DELETE CASCADE ON UPDATE CASCADE;

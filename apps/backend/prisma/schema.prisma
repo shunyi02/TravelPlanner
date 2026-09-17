@@ -28,6 +28,7 @@ model Trip {
   coverPhoto String?
   members   TripMember[]
   places    Place[]
+  accommodations Accommodation[]
   expenses  Expense[]
   createdAt DateTime     @default(now())
 }
@@ -53,6 +54,16 @@ model Place {
   visitDate DateTime?
   order     Int? // sequence in itinerary; nullable until user orders it
   notes     String?
+}
+
+model Accommodation {
+  id           String   @id @default(uuid())
+  trip         Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  tripId       String
+  name         String
+  checkInDate  DateTime // day guest may occupy room
+  checkOutDate DateTime // day guest must leave; next stay's checkInDate may equal this same day
+  notes        String?
 }
 
 model Expense {

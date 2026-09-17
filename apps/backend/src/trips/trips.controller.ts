@@ -3,6 +3,7 @@ import { UpdateTripDto } from './dto/update-trip.dto';
 import { TripsService } from './trips.service';
 import { CreateTripDto } from './dto/create-trip.dto';
 import { CreatePlaceDto } from './dto/create-place.dto';
+import { CreateAccommodationDto } from './dto/create-accommodation.dto';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -66,5 +67,24 @@ export class TripsController {
   @HttpCode(204)
   delete(@CurrentUser() userId: string, @Param('tripId') tripId: string) {
     return this.tripsService.delete(tripId, userId);
+  }
+
+  @Post(':tripId/accommodations')
+  addAccommodation(
+    @CurrentUser() userId: string,
+    @Param('tripId') tripId: string,
+    @Body() dto: CreateAccommodationDto,
+  ) {
+    return this.tripsService.addAccommodation(tripId, userId, dto);
+  }
+
+  @Delete(':tripId/accommodations/:accommodationId')
+  @HttpCode(204)
+  deleteAccommodation(
+    @CurrentUser() userId: string,
+    @Param('tripId') tripId: string,
+    @Param('accommodationId') accommodationId: string,
+  ) {
+    return this.tripsService.deleteAccommodation(tripId, userId, accommodationId);
   }
 }

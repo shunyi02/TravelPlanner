@@ -1,1 +1,0 @@
-ALTER TABLE "Trip" ADD COLUMN "coverPhoto" TEXT;
