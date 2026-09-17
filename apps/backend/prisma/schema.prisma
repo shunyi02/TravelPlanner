@@ -25,6 +25,7 @@ model Trip {
   name      String
   startDate DateTime?
   endDate   DateTime?
+  coverPhoto String?
   members   TripMember[]
   places    Place[]
   expenses  Expense[]

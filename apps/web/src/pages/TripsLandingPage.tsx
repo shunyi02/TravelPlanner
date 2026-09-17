@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, type Trip } from '../api';
+import { AddTripModal } from '../components/AddTripModal';
 
 export function TripsLandingPage() {
   const navigate = useNavigate();
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showForm, setShowForm] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const [newTripName, setNewTripName] = useState('');
 
   const load = useCallback(() => {
@@ -21,14 +22,21 @@ export function TripsLandingPage() {
 
   useEffect(load, [load]);
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTripName.trim()) return;
-    const trip = await api.createTrip({ name: newTripName.trim() });
-    setNewTripName('');
-    setShowForm(false);
+  const handleCreated = (tripId: string) => {
+    setShowModal(false);
     load();
-    navigate(`/trips/${trip.id}`);
+    navigate(`/trips/${tripId}`);
+  };
+
+  const handleCreate = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const name = newTripName.trim();
+    if (!name) return;
+
+    api.createTrip({ name }).then((trip) => {
+      setNewTripName('');
+      handleCreated(trip.id);
+    }).catch((err) => setError(err.message));
   };
 
   if (loading) return <div className="main"><p className="empty-state">Loading trips…</p></div>;
@@ -41,7 +49,7 @@ export function TripsLandingPage() {
       {trips.length === 0 ? (
         <div className="empty-landing">
           <p className="empty-state">No trips yet.</p>
-          {showForm ? (
+          {showModal ? (
             <form className="form-inline" onSubmit={handleCreate}>
               <input
                 placeholder="Trip name"
@@ -52,7 +60,7 @@ export function TripsLandingPage() {
               <button className="btn" type="submit">Create</button>
             </form>
           ) : (
-            <button className="btn" onClick={() => setShowForm(true)}>+ Add a trip</button>
+            <button className="btn" onClick={() => setShowModal(true)}>+ Add a trip</button>
           )}
         </div>
       ) : (
@@ -72,11 +80,11 @@ export function TripsLandingPage() {
               )}
             </button>
           ))}
-          <button className="trip-card trip-card-add" onClick={() => setShowForm(true)}>+ Add a trip</button>
+          <button className="trip-card trip-card-add" onClick={() => setShowModal(true)}>+ Add a trip</button>
         </div>
       )}
 
-      {showForm && trips.length > 0 && (
+      {showModal && trips.length > 0 && (
         <form className="form-inline" onSubmit={handleCreate} style={{ marginTop: 16 }}>
           <input
             placeholder="Trip name"

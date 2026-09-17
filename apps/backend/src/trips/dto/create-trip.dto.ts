@@ -12,4 +12,8 @@ export class CreateTripDto {
   @IsOptional()
   @IsISO8601()
   endDate?: string;
+
+  @IsOptional()
+  @IsString()
+  coverPhoto?: string;
 }

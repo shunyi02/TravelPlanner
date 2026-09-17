@@ -15,6 +15,7 @@ export class TripsService {
         name: dto.name,
         startDate: dto.startDate ? new Date(dto.startDate) : undefined,
         endDate: dto.endDate ? new Date(dto.endDate) : undefined,
+        coverPhoto: dto.coverPhoto,
         members: {
           create: { userId, role: 'owner' },
         },

@@ -104,6 +104,7 @@ export interface Trip {
   name: string;
   startDate: string | null;
   endDate: string | null;
+  coverPhoto: string | null;
 }
 
 export interface Place {
@@ -118,7 +119,7 @@ export interface Place {
 }
 
 export interface TripDetail extends Trip {
-  members: Array<{ userId: string; role: string; user: { name: string; email: string } }>;
+  members: Array<{ userId: string; role: string; coverPhoto: string | null; user: { name: string; email: string } }>;
   places: Place[];
 }
 
@@ -161,8 +162,8 @@ export const api = {
       body: JSON.stringify({ token, newPassword }),
     }),
   listTrips: () => request<Trip[]>('/trips'),
-  createTrip: (data: { name: string; startDate?: string; endDate?: string }) =>
-    request<TripDetail>('/trips', { method: 'POST', body: JSON.stringify(data) }),
+  createTrip: (data: { name: string; startDate?: string; endDate?: string; coverPhoto?: string }) =>
+     request<TripDetail>('/trips', { method: 'POST', body: JSON.stringify(data) }),
   updateTripDates: (tripId: string, data: { startDate?: string; endDate?: string }) =>
   request<Trip>(`/trips/${tripId}`, { method: 'PATCH', body: JSON.stringify(data) }),
   getTrip: (tripId: string) => request<TripDetail>(`/trips/${tripId}`),
