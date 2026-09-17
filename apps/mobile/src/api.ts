@@ -116,6 +116,7 @@ export interface Trip {
   name: string;
   startDate: string | null;
   endDate: string | null;
+  coverPhoto: string | null;
 }
 
 export interface Place {
@@ -183,7 +184,7 @@ export const api = {
       body: JSON.stringify({ token, newPassword }),
     }),
   listTrips: () => request<Trip[]>('/trips'),
-  createTrip: (data: { name: string; startDate?: string; endDate?: string }) =>
+  createTrip: (data: { name: string; startDate?: string; endDate?: string; coverPhoto?: string }) =>
     request<TripDetail>('/trips', { method: 'POST', body: JSON.stringify(data) }),
   getTrip: (tripId: string) => request<TripDetail>(`/trips/${tripId}`),
   addPlace: (tripId: string, data: { name: string; lat?: number; lng?: number; notes?: string }) =>

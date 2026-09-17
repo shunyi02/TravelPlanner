@@ -187,4 +187,6 @@ export const api = {
   ) => request<Expense>(`/trips/${tripId}/expenses`, { method: 'POST', body: JSON.stringify(data) }),
   getBalances: (tripId: string) => request<Balance[]>(`/trips/${tripId}/splits/balances`),
   getSettlements: (tripId: string) => request<Settlement[]>(`/trips/${tripId}/splits/settlements`),
+  deleteTrip: (tripId: string) =>
+  request<void>(`/trips/${tripId}`, { method: 'DELETE' }),
 };

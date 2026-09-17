@@ -1,16 +1,16 @@
 import { useCallback, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';import { useFocusEffect, useRouter } from 'expo-router';
 import { api, type Trip } from '../src/api';
 import { colors } from '../src/theme';
 import { useAuth } from '../src/authContext';
+import { AddTripModal } from '../src/components/AddTripModal';
 
 export default function TripListScreen() {
   const router = useRouter();
   const { logout } = useAuth();
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
-  const [newTripName, setNewTripName] = useState('');
+  const [showModal, setShowModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => {
@@ -26,11 +26,10 @@ export default function TripListScreen() {
   // or coming back from a trip detail screen where data may have changed).
   useFocusEffect(load);
 
-  const handleCreate = async () => {
-    if (!newTripName.trim()) return;
-    await api.createTrip({ name: newTripName.trim() });
-    setNewTripName('');
+  const handleCreated = (tripId: string) => {
+    setShowModal(false);
     load();
+    router.push(`/trip/${tripId}`);
   };
 
   return (
@@ -53,19 +52,10 @@ export default function TripListScreen() {
         />
       )}
 
-      <View style={styles.form}>
-        <TextInput
-          style={styles.input}
-          placeholder="New trip name"
-          placeholderTextColor={colors.inkSoft}
-          value={newTripName}
-          onChangeText={setNewTripName}
-          onSubmitEditing={handleCreate}
-        />
-        <Pressable style={styles.button} onPress={handleCreate}>
-          <Text style={styles.buttonText}>Add</Text>
-        </Pressable>
-      </View>
+      <Pressable style={styles.button} onPress={() => setShowModal(true)}>
+        <Text style={styles.buttonText}>+ Add a trip</Text>
+      </Pressable>
+      <AddTripModal visible={showModal} onClose={() => setShowModal(false)} onCreated={handleCreated} />
 
       <Pressable onPress={logout} style={{ marginTop: 16 }}>
         <Text style={{ color: colors.inkSoft, textAlign: 'center' }}>Log out</Text>

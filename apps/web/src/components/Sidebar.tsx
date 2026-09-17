@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { api, type Trip } from '../api';
+import { AddTripModal } from './AddTripModal';
 
 export function Sidebar({ onLogout }: { onLogout: () => void }) {
+  const navigate = useNavigate();
   const [trips, setTrips] = useState<Trip[]>([]);
-  const [newTripName, setNewTripName] = useState('');
+  const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const load = () => {
@@ -17,12 +20,10 @@ export function Sidebar({ onLogout }: { onLogout: () => void }) {
 
   useEffect(load, []);
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTripName.trim()) return;
-    await api.createTrip({ name: newTripName.trim() });
-    setNewTripName('');
+  const handleCreated = (tripId: string) => {
+    setShowModal(false);
     load();
+    navigate(`/trips/${tripId}`);
   };
 
   return (
@@ -43,16 +44,10 @@ export function Sidebar({ onLogout }: { onLogout: () => void }) {
           ))}
         </ul>
       )}
-      <form className="form-inline" onSubmit={handleCreate}>
-        <input
-          placeholder="New trip name"
-          value={newTripName}
-          onChange={(e) => setNewTripName(e.target.value)}
-        />
-        <button className="btn" type="submit">
-          Add
-        </button>
-      </form>
+      <button className="btn" onClick={() => setShowModal(true)} style={{ marginTop: 16, width: '100%' }}>
+        + Add a trip
+      </button>
+      {showModal && <AddTripModal onClose={() => setShowModal(false)} onCreated={handleCreated} />}
       <button
         className="btn btn-outline"
         style={{ border: 'none', marginTop: 20, padding: '8px 0' }}

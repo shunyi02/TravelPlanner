@@ -6,18 +6,30 @@ import { TripDetailPage } from './pages/TripDetailPage';
 import { AuthPage } from './pages/AuthPage';
 import { isLoggedIn, setSessionExpiredHandler } from './api';
 
-function AuthedApp({ onLogout }: { onLogout: () => void }) {
-const location = useLocation();
-const showSidebar = location.pathname !== '/';
+function TopBar() {
+  return (
+    <header className="top-bar">
+      <div className="top-bar-logo" />
+      <span className="top-bar-name">Cuti</span>
+    </header>
+  );
+}
 
-return (
-  <div className="app-shell" style={!showSidebar ? { gridTemplateColumns: '1fr' } : undefined}>
-     {showSidebar && <Sidebar onLogout={onLogout} />}
-      <Routes>
-        <Route path="/" element={<TripsLandingPage />} />
-        <Route path="/trips/:tripId" element={<TripDetailPage />} />
-      </Routes>
-    </div>
+function AuthedApp({ onLogout }: { onLogout: () => void }) {
+  const location = useLocation();
+  const showSidebar = location.pathname !== '/';
+
+  return (
+    <>
+      <TopBar />
+      <div className="app-shell" style={!showSidebar ? { gridTemplateColumns: '1fr' } : undefined}>
+        {showSidebar && <Sidebar onLogout={onLogout} />}
+        <Routes>
+          <Route path="/" element={<TripsLandingPage />} />
+          <Route path="/trips/:tripId" element={<TripDetailPage />} />
+        </Routes>
+      </div>
+    </>
   );
 }
 

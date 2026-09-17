@@ -114,4 +114,17 @@ export class TripsService {
       },
     });
   }
+
+
+  /** Delete Trip */
+  async delete(tripId: string, userId: string) {
+    const membership = await this.prisma.tripMember.findUnique({
+      where: { tripId_userId: { tripId, userId } },
+    });
+    if (!membership) throw new ForbiddenException('Not a member of this trip');
+    if (membership.role !== 'owner') {
+      throw new ForbiddenException('Only the owner can delete this trip');
+    }
+    await this.prisma.trip.delete({ where: { id: tripId } });
+  }
 }

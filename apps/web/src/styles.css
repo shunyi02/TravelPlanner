@@ -257,8 +257,39 @@ h1.page-title {
   border: 1px solid var(--rule);
   border-radius: 8px;
   background: var(--surface);
+  position: relative;
+}
+
+.trip-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: none;
+  border: none;
   text-align: left;
   font-family: inherit;
+  padding: 0;
+}
+
+.trip-card-delete {
+  align-self: flex-end;
+  margin-top: 8px;
+  background: none;
+  border: none;
+  color: var(--owe);
+  font-size: 12px;
+  padding: 0;
+}
+
+.trip-card-delete:hover {
+  text-decoration: underline;
+}
+
+.trip-card-photo {
+  width: calc(100% + 40px);
+  margin: -20px -20px 8px;
+  height: 120px;
+  object-fit: cover;
 }
 
 .trip-card:hover {
@@ -319,4 +350,43 @@ h1.page-title {
   max-width: 420px;
   max-height: 90vh;
   overflow-y: auto;
+}
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--surface);
+}
+
+.top-bar-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--route);
+  flex-shrink: 0;
+}
+
+.top-bar-name {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.main-centered {
+  max-width: 900px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.page-title-centered {
+  text-align: center;
+}
+
+.main-centered .trip-card-grid {
+  justify-content: center;
+  text-align: left;
 }

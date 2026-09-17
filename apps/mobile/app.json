@@ -7,7 +7,13 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "plugins": ["expo-router"],
+    "plugins": [
+      "expo-router",
+      [
+        "expo-image-picker",
+        { "photosPermission": "Allow Travel Planner to access your photos to set a trip cover." }
+      ]
+    ],
     "ios": {
       "supportsTablet": true
     },
