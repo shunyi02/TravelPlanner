@@ -2,6 +2,25 @@ import { useState } from 'react';
 import type { Place, TripDetail } from '../api';
 import { api } from '../api';
 
+/** Inclusive list of YYYY-MM-DD strings between two dates. */
+function daysBetween(start: string, end: string): string[] {
+  const days: string[] = [];
+  const cur = new Date(start + 'T00:00:00');
+  const last = new Date(end + 'T00:00:00');
+  while (cur <= last) {
+    days.push(cur.toISOString().slice(0, 10));
+    cur.setDate(cur.getDate() + 1);
+  }
+  return days;
+}
+
+function formatDay(iso: string) {
+  return new Date(iso + 'T00:00:00').toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'short',
+  });
+}
+
 export function ItineraryTab({
   tripId,
   trip,
@@ -14,6 +33,7 @@ export function ItineraryTab({
   onChange: () => void;
 }) {
   const [name, setName] = useState('');
+  const [visitDate, setVisitDate] = useState('');
   const [startDate, setStartDate] = useState(trip.startDate?.slice(0, 10) ?? '');
   const [endDate, setEndDate] = useState(trip.endDate?.slice(0, 10) ?? '');
   const [dateError, setDateError] = useState<string | null>(null);
@@ -21,8 +41,9 @@ export function ItineraryTab({
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    await api.addPlace(tripId, { name: name.trim() });
+    await api.addPlace(tripId, { name: name.trim(), visitDate: visitDate || undefined });
     setName('');
+    setVisitDate('');
     onChange();
   };
 
@@ -40,6 +61,19 @@ export function ItineraryTab({
     }
   };
 
+  const days = startDate && endDate ? daysBetween(startDate, endDate) : [];
+  const byDay = new Map<string, Place[]>();
+  const unscheduled: Place[] = [];
+  for (const p of places) {
+    const key = p.visitDate?.slice(0, 10);
+    if (key && days.includes(key)) {
+      if (!byDay.has(key)) byDay.set(key, []);
+      byDay.get(key)!.push(p);
+    } else {
+      unscheduled.push(p);
+    }
+  }
+
   return (
     <div>
       <form className="form-inline" onSubmit={handleSaveDates} style={{ marginBottom: 24 }}>
@@ -52,26 +86,76 @@ export function ItineraryTab({
       </form>
       {dateError && <p style={{ color: 'var(--owe)', margin: '0 0 16px' }}>{dateError}</p>}
 
-      {places.length === 0 ? (
-        <p className="empty-state">No stops yet. Add the first place on your itinerary.</p>
+      {days.length === 0 ? (
+        places.length === 0 ? (
+          <p className="empty-state">No stops yet. Set trip dates above to plan day by day.</p>
+        ) : (
+          <div>
+            {places.map((place, index) => (
+              <div className="ledger-row" key={place.id}>
+                <div className="row-main">
+                  <span className="stop-index">{index + 1}</span>
+                  <span className="row-title">{place.name}</span>
+                  {place.notes && <span className="row-sub">{place.notes}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )
       ) : (
         <div>
-          {places.map((place, index) => (
-            <div className="ledger-row" key={place.id}>
-              <div className="row-main">
-                <span className="stop-index">{index + 1}</span>
-                <span className="row-title">{place.name}</span>
-                {place.notes && <span className="row-sub">{place.notes}</span>}
+          {days.map((day) => (
+            <div key={day} style={{ marginBottom: 20 }}>
+              <h3 style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 600 }}>{formatDay(day)}</h3>
+              <div style={{ borderTop: '1px solid var(--rule)', paddingTop: 4 }}>
+                {(byDay.get(day) ?? []).length === 0 ? (
+                  <p className="empty-state" style={{ padding: '8px 0' }}>No stops planned.</p>
+                ) : (
+                  byDay.get(day)!.map((place) => (
+                    <div className="ledger-row" key={place.id}>
+                      <div className="row-main">
+                        <span className="row-title">{place.name}</span>
+                        {place.notes && <span className="row-sub">{place.notes}</span>}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           ))}
+
+          {unscheduled.length > 0 && (
+            <div style={{ marginBottom: 20 }}>
+              <h3 style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 600, color: 'var(--ink-soft)' }}>
+                Unscheduled
+              </h3>
+              <div style={{ borderTop: '1px solid var(--rule)', paddingTop: 4 }}>
+                {unscheduled.map((place) => (
+                  <div className="ledger-row" key={place.id}>
+                    <div className="row-main">
+                      <span className="row-title">{place.name}</span>
+                      {place.notes && <span className="row-sub">{place.notes}</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
+
       <form className="form-inline" onSubmit={handleAdd}>
         <input
           placeholder="Add a stop (e.g. Senso-ji Temple)"
           value={name}
           onChange={(e) => setName(e.target.value)}
+        />
+        <input
+          type="date"
+          value={visitDate}
+          min={startDate || undefined}
+          max={endDate || undefined}
+          onChange={(e) => setVisitDate(e.target.value)}
         />
         <button className="btn" type="submit">
           Add stop

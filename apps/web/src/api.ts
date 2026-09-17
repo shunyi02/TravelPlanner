@@ -167,8 +167,6 @@ export const api = {
   updateTripDates: (tripId: string, data: { startDate?: string; endDate?: string }) =>
   request<Trip>(`/trips/${tripId}`, { method: 'PATCH', body: JSON.stringify(data) }),
   getTrip: (tripId: string) => request<TripDetail>(`/trips/${tripId}`),
-  addPlace: (tripId: string, data: { name: string; lat?: number; lng?: number; notes?: string }) =>
-    request<Place>(`/trips/${tripId}/places`, { method: 'POST', body: JSON.stringify(data) }),
   reorderPlaces: (tripId: string, orderedPlaceIds: string[]) =>
     request<Place[]>(`/trips/${tripId}/places/reorder`, {
       method: 'PATCH',
@@ -187,6 +185,8 @@ export const api = {
   ) => request<Expense>(`/trips/${tripId}/expenses`, { method: 'POST', body: JSON.stringify(data) }),
   getBalances: (tripId: string) => request<Balance[]>(`/trips/${tripId}/splits/balances`),
   getSettlements: (tripId: string) => request<Settlement[]>(`/trips/${tripId}/splits/settlements`),
+  addPlace: (tripId: string, data: { name: string; lat?: number; lng?: number; notes?: string; visitDate?: string }) =>
+  request<Place>(`/trips/${tripId}/places`, { method: 'POST', body: JSON.stringify(data) }),
   deleteTrip: (tripId: string) =>
   request<void>(`/trips/${tripId}`, { method: 'DELETE' }),
 };
