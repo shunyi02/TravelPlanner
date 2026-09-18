@@ -77,6 +77,17 @@ export class TripsService {
     });
   }
 
+  async deletePlace(tripId: string, userId: string, placeId: string) {
+    await this.assertMember(tripId, userId);
+
+    await this.prisma.place.deleteMany({
+      where: {
+        id: placeId,
+        tripId,
+      },
+    });
+  }
+
   /**
    * Manually reorder a trip's itinerary. Takes the full list of place IDs in the
    * desired order and writes sequential `order` values.

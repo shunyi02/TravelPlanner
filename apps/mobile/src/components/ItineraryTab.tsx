@@ -6,11 +6,11 @@ import { colors } from '../theme';
 
 function daysBetween(start: string, end: string): string[] {
   const days: string[] = [];
-  const cur = new Date(start + 'T00:00:00');
-  const last = new Date(end + 'T00:00:00');
+  const cur = new Date(start + 'T00:00:00Z');   // was 'T00:00:00'
+  const last = new Date(end + 'T00:00:00Z');    // was 'T00:00:00'
   while (cur <= last) {
     days.push(cur.toISOString().slice(0, 10));
-    cur.setDate(cur.getDate() + 1);
+    cur.setUTCDate(cur.getUTCDate() + 1);        // was setDate
   }
   return days;
 }
@@ -20,6 +20,12 @@ function formatDay(iso: string) {
     day: 'numeric',
     month: 'short',
   });
+}
+
+function dayKeyFor(place: Place): string | undefined {
+  if (place.type === 'FLIGHT') return place.departureTime?.slice(0, 10);
+  if (place.type === 'HOTEL') return place.checkIn?.slice(0, 10);
+  return place.visitDate?.slice(0, 10);
 }
 
 function placeSubtitle(place: Place): string | null {
@@ -58,7 +64,7 @@ export function ItineraryTab({
   const byDay = new Map<string, Place[]>();
   const unscheduled: Place[] = [];
   for (const p of places) {
-    const key = p.visitDate?.slice(0, 10);
+    const key = dayKeyFor(p);
     if (key && days.includes(key)) {
       if (!byDay.has(key)) byDay.set(key, []);
       byDay.get(key)!.push(p);

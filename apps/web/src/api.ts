@@ -206,4 +206,6 @@ export const api = {
   ) => request<Place>(`/trips/${tripId}/places`, { method: 'POST', body: JSON.stringify(data) }),
   deleteTrip: (tripId: string) =>
   request<void>(`/trips/${tripId}`, { method: 'DELETE' }),
+  deletePlace: (tripId: string, placeId: string) =>
+  request<void>(`/trips/${tripId}/places/${placeId}`, { method: 'DELETE' }),
 };

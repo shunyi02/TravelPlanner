@@ -87,4 +87,14 @@ export class TripsController {
   ) {
     return this.tripsService.deleteAccommodation(tripId, userId, accommodationId);
   }
+
+  @Delete(':tripId/places/:placeId')
+  @HttpCode(204)
+  deletePlace(
+    @CurrentUser() userId: string,
+    @Param('tripId') tripId: string,
+    @Param('placeId') placeId: string,
+  ) {
+    return this.tripsService.deletePlace(tripId, userId, placeId);
+  }
 }
