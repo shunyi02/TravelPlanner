@@ -6,8 +6,6 @@ const REFRESH_TOKEN_KEY = 'refreshToken';
 
 let sessionExpiredHandler: (() => void) | null = null;
 
-/** App root registers this so it can drop back to the login screen when a
- * refresh attempt fails (e.g. refresh token expired or revoked elsewhere). */
 export function setSessionExpiredHandler(handler: () => void) {
   sessionExpiredHandler = handler;
 }
@@ -63,11 +61,6 @@ async function refreshTokens(currentRefreshToken: string) {
   return parseOrThrow<{ accessToken: string; refreshToken: string }>(res);
 }
 
-/**
- * On a 401, tries once to exchange the stored refresh token for a new pair
- * and retries the original request. Only gives up (and signals the app to
- * log out) if that also fails.
- */
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   let res = await rawRequest(path, options, getAccessToken());
 
@@ -107,24 +100,24 @@ export interface Trip {
   coverPhoto: string | null;
 }
 
+export type PlaceType = 'STOP' | 'HOTEL' | 'FLIGHT';
+
 export interface Place {
   id: string;
   tripId: string;
+  type: PlaceType;
   name: string;
   lat: number | null;
   lng: number | null;
   visitDate: string | null;
   order: number | null;
   notes: string | null;
-}
-
-export interface Accommodation {
-  id: string;
-  tripId: string;
-  name: string;
-  checkInDate: string;
-  checkOutDate: string;
-  notes: string | null;
+  departureTime: string | null;
+  arrivalTime: string | null;
+  departureAirport: string | null;
+  arrivalAirport: string | null;
+  checkIn: string | null;
+  checkOut: string | null;
 }
 
 export interface TripDetail extends Trip {
@@ -194,12 +187,23 @@ export const api = {
   ) => request<Expense>(`/trips/${tripId}/expenses`, { method: 'POST', body: JSON.stringify(data) }),
   getBalances: (tripId: string) => request<Balance[]>(`/trips/${tripId}/splits/balances`),
   getSettlements: (tripId: string) => request<Settlement[]>(`/trips/${tripId}/splits/settlements`),
-  addPlace: (tripId: string, data: { name: string; lat?: number; lng?: number; notes?: string; visitDate?: string }) =>
-  request<Place>(`/trips/${tripId}/places`, { method: 'POST', body: JSON.stringify(data) }),
+  addPlace: (
+    tripId: string,
+    data: {
+      type: PlaceType;
+      name: string;
+      lat?: number;
+      lng?: number;
+      notes?: string;
+      visitDate?: string;
+      departureTime?: string;
+      arrivalTime?: string;
+      departureAirport?: string;
+      arrivalAirport?: string;
+      checkIn?: string;
+      checkOut?: string;
+    },
+  ) => request<Place>(`/trips/${tripId}/places`, { method: 'POST', body: JSON.stringify(data) }),
   deleteTrip: (tripId: string) =>
   request<void>(`/trips/${tripId}`, { method: 'DELETE' }),
-  addAccommodation: (tripId: string, data: { name: string; checkInDate: string; checkOutDate: string; notes?: string }) =>
-    request<Accommodation>(`/trips/${tripId}/accommodations`, { method: 'POST', body: JSON.stringify(data) }),
-  deleteAccommodation: (tripId: string, accommodationId: string) =>
-    request<void>(`/trips/${tripId}/accommodations/${accommodationId}`, { method: 'DELETE' }),
 };

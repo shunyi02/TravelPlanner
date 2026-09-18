@@ -22,6 +22,22 @@ function formatDay(iso: string) {
   });
 }
 
+function placeSubtitle(place: Place): string | null {
+  if (place.type === 'FLIGHT') {
+    const from = place.departureAirport ?? '?';
+    const to = place.arrivalAirport ?? '?';
+    const dep = place.departureTime ? new Date(place.departureTime).toLocaleString() : '';
+    const arr = place.arrivalTime ? new Date(place.arrivalTime).toLocaleString() : '';
+    return `${from} → ${to}${dep ? ` · dep ${dep}` : ''}${arr ? ` · arr ${arr}` : ''}`;
+  }
+  if (place.type === 'HOTEL') {
+    const ci = place.checkIn ? place.checkIn.slice(0, 10) : '';
+    const co = place.checkOut ? place.checkOut.slice(0, 10) : '';
+    return ci || co ? `${ci}${co ? ` – ${co}` : ''}` : null;
+  }
+  return place.notes ?? null;
+}
+
 export function ItineraryTab({
   tripId,
   trip,
@@ -33,12 +49,10 @@ export function ItineraryTab({
   places: Place[];
   onChange: () => void;
 }) {
-  const [name, setName] = useState('');
-  const [visitDate, setVisitDate] = useState('');
-
   const [startDate, setStartDate] = useState(trip.startDate?.slice(0, 10) ?? '');
   const [endDate, setEndDate] = useState(trip.endDate?.slice(0, 10) ?? '');
   const [dateError, setDateError] = useState<string | null>(null);
+
   const days = startDate && endDate ? daysBetween(startDate, endDate) : [];
 
   const byDay = new Map<string, Place[]>();
@@ -66,47 +80,45 @@ export function ItineraryTab({
     }
   };
 
-  const handleAdd = async () => {
-    if (!name.trim()) return;
-    await api.addPlace(tripId, { name: name.trim(), visitDate: visitDate || undefined });
-    setName('');
-    setVisitDate('');
-    onChange();
+  const renderRow = (place: Place) => {
+    const subtitle = placeSubtitle(place);
+    return (
+      <View style={styles.row} key={place.id}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.rowTitle}>
+            {place.type === 'FLIGHT' ? '✈ ' : place.type === 'HOTEL' ? '🏨 ' : ''}
+            {place.name}
+          </Text>
+          {subtitle ? <Text style={styles.rowSub}>{subtitle}</Text> : null}
+        </View>
+      </View>
+    );
   };
 
-  const renderRow = (place: Place) => (
-    <View style={styles.row} key={place.id}>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.rowTitle}>{place.name}</Text>
-        {place.notes ? <Text style={styles.rowSub}>{place.notes}</Text> : null}
-      </View>
-    </View>
-  );
-
   return (
-  <View>
-    <View style={styles.dateForm}>
-      <TextInput
-        style={[styles.input, { flex: 1 }]}
-        placeholder="Start (YYYY-MM-DD)"
-        placeholderTextColor={colors.inkSoft}
-        value={startDate}
-        onChangeText={setStartDate}
-      />
-      <TextInput
-        style={[styles.input, { flex: 1 }]}
-        placeholder="End (YYYY-MM-DD)"
-        placeholderTextColor={colors.inkSoft}
-        value={endDate}
-        onChangeText={setEndDate}
-      />
-      <Pressable style={styles.button} onPress={handleSaveDates}>
-        <Text style={styles.buttonText}>Save</Text>
-      </Pressable>
-    </View>
-    {dateError ? <Text style={{ color: colors.owe, marginBottom: 16 }}>{dateError}</Text> : null}
+    <View>
+      <View style={styles.dateForm}>
+        <TextInput
+          style={[styles.input, { flex: 1 }]}
+          placeholder="Start (YYYY-MM-DD)"
+          placeholderTextColor={colors.inkSoft}
+          value={startDate}
+          onChangeText={setStartDate}
+        />
+        <TextInput
+          style={[styles.input, { flex: 1 }]}
+          placeholder="End (YYYY-MM-DD)"
+          placeholderTextColor={colors.inkSoft}
+          value={endDate}
+          onChangeText={setEndDate}
+        />
+        <Pressable style={styles.button} onPress={handleSaveDates}>
+          <Text style={styles.buttonText}>Save</Text>
+        </Pressable>
+      </View>
+      {dateError ? <Text style={{ color: colors.owe, marginBottom: 16 }}>{dateError}</Text> : null}
 
-    {days.length === 0 ? (
+      {days.length === 0 ? (
         places.length === 0 ? (
           <Text style={styles.empty}>No stops yet. Set trip dates to plan day by day.</Text>
         ) : (
@@ -134,26 +146,6 @@ export function ItineraryTab({
         </View>
       )}
 
-      <View style={styles.form}>
-        <TextInput
-          style={styles.input}
-          placeholder="Add a stop (e.g. Senso-ji Temple)"
-          placeholderTextColor={colors.inkSoft}
-          value={name}
-          onChangeText={setName}
-        />
-        <TextInput
-          style={[styles.input, { flex: 0.7 }]}
-          placeholder="YYYY-MM-DD"
-          placeholderTextColor={colors.inkSoft}
-          value={visitDate}
-          onChangeText={setVisitDate}
-          onSubmitEditing={handleAdd}
-        />
-        <Pressable style={styles.button} onPress={handleAdd}>
-          <Text style={styles.buttonText}>Add stop</Text>
-        </Pressable>
-      </View>
     </View>
   );
 }
@@ -171,7 +163,6 @@ const styles = StyleSheet.create({
   },
   rowTitle: { fontSize: 15, fontWeight: '500', color: colors.ink },
   rowSub: { fontSize: 12, color: colors.inkSoft, marginTop: 2 },
-  form: { flexDirection: 'row', gap: 8, marginTop: 16 },
   input: {
     flex: 1,
     borderWidth: 1,
@@ -186,7 +177,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.route,
     borderRadius: 6,
     paddingHorizontal: 14,
+    paddingVertical: 10,
     justifyContent: 'center',
+    alignItems: 'center',
   },
   buttonText: { color: '#fff', fontWeight: '600' },
 });

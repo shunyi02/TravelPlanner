@@ -44,16 +44,31 @@ model TripMember {
   @@unique([tripId, userId])
 }
 
+enum PlaceType {
+  STOP
+  HOTEL
+  FLIGHT
+}
+
 model Place {
   id        String    @id @default(uuid())
   trip      Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
   tripId    String
+  type      PlaceType @default(STOP)
   name      String
   lat       Float?
   lng       Float?
   visitDate DateTime?
-  order     Int? // sequence in itinerary; nullable until user orders it
+  order     Int?
   notes     String?
+  // flight-only
+  departureTime DateTime?
+  arrivalTime   DateTime?
+  departureAirport String?
+  arrivalAirport   String?
+  // hotel-only
+  checkIn   DateTime?
+  checkOut  DateTime?
 }
 
 model Accommodation {

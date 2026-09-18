@@ -1,18 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import type { Balance, Settlement } from '@travel-planner/shared';
 
-/**
- * Expo inlines any env var prefixed EXPO_PUBLIC_ at build time.
- * Set this in apps/mobile/.env (see .env.example) to point at your backend.
- *
- * NOTE: "localhost" means different things depending on where the app runs:
- * - iOS simulator: localhost works (shares the host's network).
- * - Android emulator: use 10.0.2.2 instead of localhost.
- * - Physical device: use your computer's LAN IP (e.g. 192.168.x.x), and
- *   make sure the device and computer are on the same network.
- * This scaffold does not auto-detect which case you're in — set the right
- * value for your environment.
- */
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 const ACCESS_TOKEN_KEY = 'accessToken';
@@ -22,13 +10,10 @@ let accessToken: string | null = null;
 let refreshToken: string | null = null;
 let sessionExpiredHandler: (() => void) | null = null;
 
-/** Root layout registers this so the app can drop back to the login screen
- * when a refresh attempt fails (e.g. refresh token expired or revoked). */
 export function setSessionExpiredHandler(handler: () => void) {
   sessionExpiredHandler = handler;
 }
 
-/** Call once at app startup, before rendering, to restore a persisted session. */
 export async function initAuth(): Promise<boolean> {
   accessToken = await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
   refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
@@ -73,11 +58,6 @@ async function parseOrThrow<T>(res: Response): Promise<T> {
   return res.json();
 }
 
-/**
- * Wraps fetch with automatic access-token refresh: on a 401, tries once to
- * exchange the stored refresh token for a new pair and retries the original
- * request. Only gives up (and signals the app to log out) if that also fails.
- */
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   let res = await rawRequest<T>(path, options, accessToken);
 
@@ -119,15 +99,24 @@ export interface Trip {
   coverPhoto: string | null;
 }
 
+export type PlaceType = 'STOP' | 'HOTEL' | 'FLIGHT';
+
 export interface Place {
   id: string;
   tripId: string;
+  type: PlaceType;
   name: string;
   lat: number | null;
   lng: number | null;
   visitDate: string | null;
   order: number | null;
   notes: string | null;
+  departureTime: string | null;
+  arrivalTime: string | null;
+  departureAirport: string | null;
+  arrivalAirport: string | null;
+  checkIn: string | null;
+  checkOut: string | null;
 }
 
 export interface TripDetail extends Trip {
@@ -187,8 +176,23 @@ export const api = {
   createTrip: (data: { name: string; startDate?: string; endDate?: string; coverPhoto?: string }) =>
     request<TripDetail>('/trips', { method: 'POST', body: JSON.stringify(data) }),
   getTrip: (tripId: string) => request<TripDetail>(`/trips/${tripId}`),
-  addPlace: (tripId: string, data: { name: string; lat?: number; lng?: number; notes?: string; visitDate?: string }) =>
-  request<Place>(`/trips/${tripId}/places`, { method: 'POST', body: JSON.stringify(data) }),
+  addPlace: (
+    tripId: string,
+    data: {
+      type: PlaceType;
+      name: string;
+      lat?: number;
+      lng?: number;
+      notes?: string;
+      visitDate?: string;
+      departureTime?: string;
+      arrivalTime?: string;
+      departureAirport?: string;
+      arrivalAirport?: string;
+      checkIn?: string;
+      checkOut?: string;
+    },
+  ) => request<Place>(`/trips/${tripId}/places`, { method: 'POST', body: JSON.stringify(data) }),
   reorderPlaces: (tripId: string, orderedPlaceIds: string[]) =>
     request<Place[]>(`/trips/${tripId}/places/reorder`, {
       method: 'PATCH',

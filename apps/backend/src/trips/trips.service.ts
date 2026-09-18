@@ -60,12 +60,19 @@ export class TripsService {
     return this.prisma.place.create({
       data: {
         tripId,
+        type: dto.type,
         name: dto.name,
         lat: dto.lat,
         lng: dto.lng,
         visitDate: dto.visitDate ? new Date(dto.visitDate) : undefined,
         order: dto.order,
         notes: dto.notes,
+        departureTime: dto.departureTime ? new Date(dto.departureTime) : undefined,
+        arrivalTime: dto.arrivalTime ? new Date(dto.arrivalTime) : undefined,
+        departureAirport: dto.departureAirport,
+        arrivalAirport: dto.arrivalAirport,
+        checkIn: dto.checkIn ? new Date(dto.checkIn) : undefined,
+        checkOut: dto.checkOut ? new Date(dto.checkOut) : undefined,
       },
     });
   }

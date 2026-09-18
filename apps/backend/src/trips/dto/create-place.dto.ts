@@ -1,6 +1,15 @@
-import { IsISO8601, IsInt, IsNumber, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEnum, IsISO8601, IsInt, IsNumber, IsOptional, IsString, MinLength } from 'class-validator';
+
+export enum PlaceType {
+  STOP = 'STOP',
+  HOTEL = 'HOTEL',
+  FLIGHT = 'FLIGHT',
+}
 
 export class CreatePlaceDto {
+  @IsEnum(PlaceType)
+  type!: PlaceType;
+
   @IsString()
   @MinLength(1)
   name!: string;
@@ -24,4 +33,28 @@ export class CreatePlaceDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  departureTime?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  arrivalTime?: string;
+
+  @IsOptional()
+  @IsString()
+  departureAirport?: string;
+
+  @IsOptional()
+  @IsString()
+  arrivalAirport?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  checkIn?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  checkOut?: string;
 }
