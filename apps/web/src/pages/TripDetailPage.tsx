@@ -6,6 +6,7 @@ import { ItineraryTab } from '../components/ItineraryTab';
 import { ExpensesTab } from '../components/ExpensesTab';
 import { BalancesTab } from '../components/BalancesTab';
 import { MembersTab } from '../components/MembersTab';
+import { notifyTripChanged, onTripChanged } from '../tripEvents';
 
 type Tab = 'itinerary' | 'expenses' | 'balances' | 'members';
 
@@ -29,6 +30,18 @@ export function TripDetailPage() {
   }, [tripId]);
 
   useEffect(load, [load]);
+
+  // The sidebar (TripSidebarPanel) fetches this same trip independently —
+  // it's a sibling, not a parent/child — so pick up its mutations here too.
+  useEffect(() => {
+    if (!tripId) return;
+    return onTripChanged(tripId, load);
+  }, [tripId, load]);
+
+  const handleChange = useCallback(() => {
+    load();
+    if (tripId) notifyTripChanged(tripId);
+  }, [load, tripId]);
 
   if (!tripId) return null;
   if (error) return <div className="main"><p className="empty-state">Couldn't load trip: {error}</p></div>;
@@ -61,18 +74,19 @@ export function TripDetailPage() {
         </button>
       </div>
 
-      {tab === 'itinerary' && <ItineraryTab tripId={tripId} trip={trip} places={trip.places} onChange={load} />}
+      {tab === 'itinerary' && <ItineraryTab tripId={tripId} trip={trip} places={trip.places} onChange={handleChange} />}
       {tab === 'expenses' && (
         <ExpensesTab
           tripId={tripId}
           expenses={expenses}
           memberNames={memberNames}
           currency={trip.currency}
-          onChange={load}
+          currentUserId={currentUser?.id}
+          onChange={handleChange}
         />
       )}
       {tab === 'balances' && <BalancesTab tripId={tripId} memberNames={memberNames} />}
-      {tab === 'members' && <MembersTab tripId={tripId} trip={trip} isOwner={isOwner} onChange={load} />}
+      {tab === 'members' && <MembersTab tripId={tripId} trip={trip} isOwner={isOwner} onChange={handleChange} />}
     </div>
   );
 }

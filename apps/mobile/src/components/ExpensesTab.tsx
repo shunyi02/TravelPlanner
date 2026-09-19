@@ -95,40 +95,79 @@ function SplitEditor({
   );
 }
 
+function PayerPicker({
+  memberIds,
+  memberNames,
+  value,
+  onChange,
+}: {
+  memberIds: string[];
+  memberNames: Record<string, string>;
+  value: string;
+  onChange: (userId: string) => void;
+}) {
+  return (
+    <View>
+      <Text style={styles.payerLabel}>Paid by</Text>
+      <View style={styles.payerRow}>
+        {memberIds.map((id) => (
+          <Pressable
+            key={id}
+            style={[styles.payerChip, value === id && styles.payerChipActive]}
+            onPress={() => onChange(id)}
+          >
+            <Text style={[styles.payerChipText, value === id && styles.payerChipTextActive]}>
+              {memberNames[id] ?? id}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 export function ExpensesTab({
   tripId,
   expenses,
   memberNames,
   currency,
+  currentUserId,
   onChange,
 }: {
   tripId: string;
   expenses: Expense[];
   memberNames: Record<string, string>;
   currency: string;
+  currentUserId?: string;
   onChange: () => void;
 }) {
   const memberIds = Object.keys(memberNames);
 
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
+  const [paidById, setPaidById] = useState(currentUserId ?? memberIds[0] ?? '');
   const [splitMode, setSplitMode] = useState<SplitMode>('even');
   const [customAmounts, setCustomAmounts] = useState<Record<string, string>>({});
+  const [showSplitEditor, setShowSplitEditor] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDescription, setEditDescription] = useState('');
   const [editAmount, setEditAmount] = useState('');
+  const [editPaidById, setEditPaidById] = useState('');
   const [editSplitMode, setEditSplitMode] = useState<SplitMode>('even');
   const [initialEditSplitMode, setInitialEditSplitMode] = useState<SplitMode>('even');
   const [editCustomAmounts, setEditCustomAmounts] = useState<Record<string, string>>({});
+  const [showEditSplitEditor, setShowEditSplitEditor] = useState(false);
 
   const resetAddForm = () => {
     setDescription('');
     setAmount('');
+    setPaidById(currentUserId ?? memberIds[0] ?? '');
     setSplitMode('even');
     setCustomAmounts({});
+    setShowSplitEditor(false);
   };
 
   const handleAdd = async () => {
@@ -137,7 +176,7 @@ export function ExpensesTab({
     if (!description.trim() || !parsed || parsed <= 0) return;
 
     let splits: Array<{ userId: string; share: number }> | undefined;
-    if (splitMode === 'custom') {
+    if (showSplitEditor && splitMode === 'custom') {
       if (Math.abs(parsed - sumAmounts(customAmounts)) > 0.01) {
         setError('Custom amounts must add up to the total.');
         return;
@@ -146,7 +185,7 @@ export function ExpensesTab({
     }
 
     try {
-      await api.createExpense(tripId, { description: description.trim(), amount: parsed, splits });
+      await api.createExpense(tripId, { description: description.trim(), amount: parsed, paidById, splits });
       resetAddForm();
       onChange();
     } catch (err) {
@@ -166,10 +205,12 @@ export function ExpensesTab({
     setError(null);
     setEditDescription(expense.description);
     setEditAmount(expense.amount);
+    setEditPaidById(expense.paidById);
     const mode: SplitMode = looksEven(expense, memberIds) ? 'even' : 'custom';
     setEditSplitMode(mode);
     setInitialEditSplitMode(mode);
     setEditCustomAmounts(Object.fromEntries(expense.splits.map((s) => [s.userId, s.amountOwed])));
+    setShowEditSplitEditor(mode === 'custom');
   };
 
   const handleSaveEdit = async (expense: Expense) => {
@@ -180,12 +221,14 @@ export function ExpensesTab({
     const data: {
       description?: string;
       amount?: number;
+      paidById?: string;
       splits?: Array<{ userId: string; share: number }>;
     } = {};
     if (editDescription.trim() !== expense.description) data.description = editDescription.trim();
     if (parsedAmount !== Number(expense.amount)) data.amount = parsedAmount;
+    if (editPaidById !== expense.paidById) data.paidById = editPaidById;
 
-    if (editSplitMode === 'custom') {
+    if (showEditSplitEditor && editSplitMode === 'custom') {
       if (Math.abs(parsedAmount - sumAmounts(editCustomAmounts)) > 0.01) {
         setError('Custom amounts must add up to the total.');
         return;
@@ -251,19 +294,26 @@ export function ExpensesTab({
 
             {expandedId === expense.id && editingId !== expense.id && (
               <View style={styles.breakdown}>
-                {expense.splits
-                  .filter((s) => s.userId !== expense.paidById)
-                  .map((s) => (
-                    <View style={styles.splitItem} key={s.userId}>
-                      <Text style={styles.splitItemLabel}>
-                        {memberNames[s.userId] ?? s.userId} owes {expense.currency} {s.amountOwed}
-                      </Text>
-                      <Switch
-                        value={s.settled}
-                        onValueChange={(v) => handleToggleSettled(expense, s.userId, v)}
-                      />
-                    </View>
-                  ))}
+                {expense.splits.filter((s) => s.userId !== expense.paidById).length === 0 ? (
+                  <Text style={styles.splitItemLabel}>Nobody else owes anything on this one.</Text>
+                ) : (
+                  expense.splits
+                    .filter((s) => s.userId !== expense.paidById)
+                    .map((s) => (
+                      <View style={styles.splitItem} key={s.userId}>
+                        <Text style={styles.splitItemLabel}>
+                          {memberNames[s.userId] ?? s.userId} owes {expense.currency} {s.amountOwed}
+                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={styles.splitItemLabel}>{s.settled ? 'Settled' : 'Not settled'}</Text>
+                          <Switch
+                            value={s.settled}
+                            onValueChange={(v) => handleToggleSettled(expense, s.userId, v)}
+                          />
+                        </View>
+                      </View>
+                    ))
+                )}
                 <View style={styles.rowActions}>
                   <Pressable onPress={() => startEdit(expense)}>
                     <Text style={styles.textBtn}>Edit</Text>
@@ -292,15 +342,21 @@ export function ExpensesTab({
                   value={editAmount}
                   onChangeText={setEditAmount}
                 />
-                <SplitEditor
-                  memberIds={memberIds}
-                  memberNames={memberNames}
-                  total={Number(editAmount) || 0}
-                  mode={editSplitMode}
-                  onModeChange={setEditSplitMode}
-                  amounts={editCustomAmounts}
-                  onAmountsChange={setEditCustomAmounts}
-                />
+                <PayerPicker memberIds={memberIds} memberNames={memberNames} value={editPaidById} onChange={setEditPaidById} />
+                <Pressable onPress={() => setShowEditSplitEditor((v) => !v)}>
+                  <Text style={styles.textBtn}>{showEditSplitEditor ? 'Hide split options' : 'Split options'}</Text>
+                </Pressable>
+                {showEditSplitEditor && (
+                  <SplitEditor
+                    memberIds={memberIds}
+                    memberNames={memberNames}
+                    total={Number(editAmount) || 0}
+                    mode={editSplitMode}
+                    onModeChange={setEditSplitMode}
+                    amounts={editCustomAmounts}
+                    onAmountsChange={setEditCustomAmounts}
+                  />
+                )}
                 <View style={styles.rowActions}>
                   <Pressable style={styles.button} onPress={() => handleSaveEdit(expense)}>
                     <Text style={styles.buttonText}>Save</Text>
@@ -333,15 +389,23 @@ export function ExpensesTab({
             onChangeText={setAmount}
           />
         </View>
-        <SplitEditor
-          memberIds={memberIds}
-          memberNames={memberNames}
-          total={Number(amount) || 0}
-          mode={splitMode}
-          onModeChange={setSplitMode}
-          amounts={customAmounts}
-          onAmountsChange={setCustomAmounts}
-        />
+        <PayerPicker memberIds={memberIds} memberNames={memberNames} value={paidById} onChange={setPaidById} />
+        <Pressable onPress={() => setShowSplitEditor((v) => !v)} style={{ marginTop: 8 }}>
+          <Text style={styles.textBtn}>
+            {showSplitEditor ? 'Hide split options' : 'Split options (defaults to evenly)'}
+          </Text>
+        </Pressable>
+        {showSplitEditor && (
+          <SplitEditor
+            memberIds={memberIds}
+            memberNames={memberNames}
+            total={Number(amount) || 0}
+            mode={splitMode}
+            onModeChange={setSplitMode}
+            amounts={customAmounts}
+            onAmountsChange={setCustomAmounts}
+          />
+        )}
         {error && <Text style={{ color: colors.owe, marginTop: 8 }}>{error}</Text>}
         <Pressable style={styles.button} onPress={handleAdd}>
           <Text style={styles.buttonText}>Log expense</Text>
@@ -376,6 +440,18 @@ const styles = StyleSheet.create({
   rowActions: { flexDirection: 'row', gap: 16, marginTop: 4 },
   textBtn: { color: colors.route, fontSize: 13, fontWeight: '500' },
   form: { flexDirection: 'row', gap: 8 },
+  payerLabel: { fontSize: 12, color: colors.inkSoft, marginTop: 10, marginBottom: 6 },
+  payerRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  payerChip: {
+    borderWidth: 1,
+    borderColor: colors.rule,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  payerChipActive: { backgroundColor: colors.route, borderColor: colors.route },
+  payerChipText: { fontSize: 13, color: colors.ink },
+  payerChipTextActive: { color: '#fff' },
   input: {
     borderWidth: 1,
     borderColor: colors.rule,

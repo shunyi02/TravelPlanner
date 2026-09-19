@@ -99,35 +99,43 @@ export function ExpensesTab({
   expenses,
   memberNames,
   currency,
+  currentUserId,
   onChange,
 }: {
   tripId: string;
   expenses: Expense[];
   memberNames: Record<string, string>;
   currency: string;
+  currentUserId?: string;
   onChange: () => void;
 }) {
   const memberIds = Object.keys(memberNames);
 
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
+  const [paidById, setPaidById] = useState(currentUserId ?? memberIds[0] ?? '');
   const [splitMode, setSplitMode] = useState<SplitMode>('even');
   const [customAmounts, setCustomAmounts] = useState<Record<string, string>>({});
+  const [showSplitEditor, setShowSplitEditor] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDescription, setEditDescription] = useState('');
   const [editAmount, setEditAmount] = useState('');
+  const [editPaidById, setEditPaidById] = useState('');
   const [editSplitMode, setEditSplitMode] = useState<SplitMode>('even');
   const [initialEditSplitMode, setInitialEditSplitMode] = useState<SplitMode>('even');
   const [editCustomAmounts, setEditCustomAmounts] = useState<Record<string, string>>({});
+  const [showEditSplitEditor, setShowEditSplitEditor] = useState(false);
 
   const resetAddForm = () => {
     setDescription('');
     setAmount('');
+    setPaidById(currentUserId ?? memberIds[0] ?? '');
     setSplitMode('even');
     setCustomAmounts({});
+    setShowSplitEditor(false);
   };
 
   const handleAdd = async (e: React.FormEvent) => {
@@ -137,7 +145,7 @@ export function ExpensesTab({
     if (!description.trim() || !parsed || parsed <= 0) return;
 
     let splits: Array<{ userId: string; share: number }> | undefined;
-    if (splitMode === 'custom') {
+    if (showSplitEditor && splitMode === 'custom') {
       if (Math.abs(parsed - sumAmounts(customAmounts)) > 0.01) {
         setError('Custom amounts must add up to the total.');
         return;
@@ -146,7 +154,7 @@ export function ExpensesTab({
     }
 
     try {
-      await api.createExpense(tripId, { description: description.trim(), amount: parsed, splits });
+      await api.createExpense(tripId, { description: description.trim(), amount: parsed, paidById, splits });
       resetAddForm();
       onChange();
     } catch (err) {
@@ -166,10 +174,12 @@ export function ExpensesTab({
     setError(null);
     setEditDescription(expense.description);
     setEditAmount(expense.amount);
+    setEditPaidById(expense.paidById);
     const mode: SplitMode = looksEven(expense, memberIds) ? 'even' : 'custom';
     setEditSplitMode(mode);
     setInitialEditSplitMode(mode);
     setEditCustomAmounts(Object.fromEntries(expense.splits.map((s) => [s.userId, s.amountOwed])));
+    setShowEditSplitEditor(mode === 'custom');
   };
 
   const handleSaveEdit = async (expense: Expense) => {
@@ -180,12 +190,14 @@ export function ExpensesTab({
     const data: {
       description?: string;
       amount?: number;
+      paidById?: string;
       splits?: Array<{ userId: string; share: number }>;
     } = {};
     if (editDescription.trim() !== expense.description) data.description = editDescription.trim();
     if (parsedAmount !== Number(expense.amount)) data.amount = parsedAmount;
+    if (editPaidById !== expense.paidById) data.paidById = editPaidById;
 
-    if (editSplitMode === 'custom') {
+    if (showEditSplitEditor && editSplitMode === 'custom') {
       if (Math.abs(parsedAmount - sumAmounts(editCustomAmounts)) > 0.01) {
         setError('Custom amounts must add up to the total.');
         return;
@@ -238,39 +250,58 @@ export function ExpensesTab({
                   <span className="row-title">{expense.description}</span>
                   <span className="row-sub">paid by {memberNames[expense.paidById] ?? 'someone'}</span>
                 </div>
-                <span className="amount">
-                  {expense.currency} {expense.amount}
-                </span>
-              </div>
-
-              {expandedId === expense.id && editingId !== expense.id && (
-                <div className="split-breakdown">
-                  {expense.splits
-                    .filter((s) => s.userId !== expense.paidById)
-                    .map((s) => (
-                      <label className="split-item" key={s.userId}>
-                        <span>
-                          {memberNames[s.userId] ?? s.userId} owes {expense.currency} {s.amountOwed}
-                        </span>
-                        <input
-                          type="checkbox"
-                          checked={s.settled}
-                          onChange={(e) => handleToggleSettled(expense, s.userId, e.target.checked)}
-                        />
-                      </label>
-                    ))}
-                  <div className="row-actions">
-                    <button type="button" className="text-btn" onClick={() => startEdit(expense)}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span className="amount">
+                    {expense.currency} {expense.amount}
+                  </span>
+                  <div className="ledger-row-actions">
+                    <button
+                      type="button"
+                      className="text-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startEdit(expense);
+                      }}
+                    >
                       Edit
                     </button>
                     <button
                       type="button"
                       className="text-btn text-btn-danger"
-                      onClick={() => handleDelete(expense)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(expense);
+                      }}
                     >
                       Delete
                     </button>
                   </div>
+                </div>
+              </div>
+
+              {expandedId === expense.id && editingId !== expense.id && (
+                <div className="split-breakdown">
+                  {expense.splits.filter((s) => s.userId !== expense.paidById).length === 0 ? (
+                    <p className="split-item">Nobody else owes anything on this one.</p>
+                  ) : (
+                    expense.splits
+                      .filter((s) => s.userId !== expense.paidById)
+                      .map((s) => (
+                        <label className="split-item" key={s.userId}>
+                          <span>
+                            {memberNames[s.userId] ?? s.userId} owes {expense.currency} {s.amountOwed}
+                          </span>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            {s.settled ? 'Settled' : 'Not settled'}
+                            <input
+                              type="checkbox"
+                              checked={s.settled}
+                              onChange={(e) => handleToggleSettled(expense, s.userId, e.target.checked)}
+                            />
+                          </span>
+                        </label>
+                      ))
+                  )}
                 </div>
               )}
 
@@ -281,22 +312,42 @@ export function ExpensesTab({
                     onChange={(e) => setEditDescription(e.target.value)}
                     placeholder="What was it for?"
                   />
-                  <input
-                    inputMode="decimal"
-                    value={editAmount}
-                    onChange={(e) => setEditAmount(e.target.value)}
-                    placeholder={`Amount (${currency})`}
-                    style={{ maxWidth: 140 }}
-                  />
-                  <SplitEditor
-                    memberIds={memberIds}
-                    memberNames={memberNames}
-                    total={Number(editAmount) || 0}
-                    mode={editSplitMode}
-                    onModeChange={setEditSplitMode}
-                    amounts={editCustomAmounts}
-                    onAmountsChange={setEditCustomAmounts}
-                  />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      inputMode="decimal"
+                      value={editAmount}
+                      onChange={(e) => setEditAmount(e.target.value)}
+                      placeholder={`Amount (${currency})`}
+                      style={{ maxWidth: 140 }}
+                    />
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
+                      Paid by
+                      <select value={editPaidById} onChange={(e) => setEditPaidById(e.target.value)}>
+                        {memberIds.map((id) => (
+                          <option key={id} value={id}>{memberNames[id] ?? id}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <button
+                    type="button"
+                    className="text-btn"
+                    onClick={() => setShowEditSplitEditor((v) => !v)}
+                    style={{ alignSelf: 'flex-start' }}
+                  >
+                    {showEditSplitEditor ? 'Hide split options' : 'Split options'}
+                  </button>
+                  {showEditSplitEditor && (
+                    <SplitEditor
+                      memberIds={memberIds}
+                      memberNames={memberNames}
+                      total={Number(editAmount) || 0}
+                      mode={editSplitMode}
+                      onModeChange={setEditSplitMode}
+                      amounts={editCustomAmounts}
+                      onAmountsChange={setEditCustomAmounts}
+                    />
+                  )}
                   <div className="row-actions">
                     <button type="button" className="btn" onClick={() => handleSaveEdit(expense)}>
                       Save
@@ -330,15 +381,33 @@ export function ExpensesTab({
             Log expense
           </button>
         </div>
-        <SplitEditor
-          memberIds={memberIds}
-          memberNames={memberNames}
-          total={Number(amount) || 0}
-          mode={splitMode}
-          onModeChange={setSplitMode}
-          amounts={customAmounts}
-          onAmountsChange={setCustomAmounts}
-        />
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)', marginTop: 8 }}>
+          Paid by
+          <select value={paidById} onChange={(e) => setPaidById(e.target.value)}>
+            {memberIds.map((id) => (
+              <option key={id} value={id}>{memberNames[id] ?? id}</option>
+            ))}
+          </select>
+        </label>
+        <button
+          type="button"
+          className="text-btn"
+          onClick={() => setShowSplitEditor((v) => !v)}
+          style={{ display: 'block', marginTop: 8 }}
+        >
+          {showSplitEditor ? 'Hide split options' : 'Split options (defaults to evenly)'}
+        </button>
+        {showSplitEditor && (
+          <SplitEditor
+            memberIds={memberIds}
+            memberNames={memberNames}
+            total={Number(amount) || 0}
+            mode={splitMode}
+            onModeChange={setSplitMode}
+            amounts={customAmounts}
+            onAmountsChange={setCustomAmounts}
+          />
+        )}
         {error && <p style={{ color: 'var(--owe)' }}>{error}</p>}
       </form>
     </div>

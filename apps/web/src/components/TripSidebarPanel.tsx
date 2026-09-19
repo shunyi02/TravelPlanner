@@ -4,6 +4,7 @@ import { COMMON_CURRENCIES, type Balance } from '@travel-planner/shared';
 import { api, type TripDetail } from '../api';
 import { useAuth } from '../authContext';
 import { initials } from '../format';
+import { notifyTripChanged, onTripChanged } from '../tripEvents';
 
 /** Sidebar content shown while viewing a single trip: who's on it, an invite
  *  shortcut, and a way back — replacing the "all trips" list/add button,
@@ -23,6 +24,15 @@ export function TripSidebarPanel({ tripId }: { tripId: string }) {
   };
 
   useEffect(load, [tripId]);
+
+  // TripDetailPage (main content) fetches this same trip independently —
+  // it's a sibling, not a parent/child — so pick up its mutations here too.
+  useEffect(() => onTripChanged(tripId, load), [tripId]);
+
+  const notifyAndReload = () => {
+    load();
+    notifyTripChanged(tripId);
+  };
 
   if (!trip) {
     return (
@@ -45,7 +55,7 @@ export function TripSidebarPanel({ tripId }: { tripId: string }) {
       await api.addManualMember(tripId, { name: name.trim(), email: email.trim() || undefined });
       setName('');
       setEmail('');
-      load();
+      notifyAndReload();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not add member');
     } finally {
@@ -57,7 +67,7 @@ export function TripSidebarPanel({ tripId }: { tripId: string }) {
     setError(null);
     try {
       await api.updateTrip(tripId, { currency });
-      load();
+      notifyAndReload();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not change currency');
     }
@@ -66,7 +76,7 @@ export function TripSidebarPanel({ tripId }: { tripId: string }) {
   const handleCancelInvite = async (inviteId: string) => {
     try {
       await api.cancelInvite(tripId, inviteId);
-      load();
+      notifyAndReload();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not cancel invite');
     }
