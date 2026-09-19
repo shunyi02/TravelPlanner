@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { api, type Trip } from '../api';
 import { AddTripModal } from './AddTripModal';
 
-export function Sidebar({ onLogout }: { onLogout: () => void }) {
+export function Sidebar() {
   const navigate = useNavigate();
   const [trips, setTrips] = useState<Trip[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -48,16 +48,6 @@ export function Sidebar({ onLogout }: { onLogout: () => void }) {
         + Add a trip
       </button>
       {showModal && <AddTripModal onClose={() => setShowModal(false)} onCreated={handleCreated} />}
-      <button
-        className="btn btn-outline"
-        style={{ border: 'none', marginTop: 20, padding: '8px 0' }}
-        onClick={() => {
-          api.logout();
-          onLogout();
-        }}
-      >
-        Log out
-      </button>
     </aside>
   );
 }
