@@ -33,6 +33,7 @@ function makeDeps(overrides: {
   const usersService = {
     findByEmail: mockFn().mockResolvedValue(null),
     create: mockFn().mockResolvedValue({ id: USER_ID, email: EMAIL, name: 'Alice' }),
+    claimPlaceholder: mockFn().mockResolvedValue({ id: USER_ID, email: EMAIL, name: 'Alice', isPlaceholder: false }),
     verifyPassword: mockFn().mockResolvedValue(true),
     ...overrides.usersService,
   };
@@ -60,13 +61,33 @@ describe('AuthService.register', () => {
 
   it('rejects an email that is already registered', async () => {
     const { service, usersService } = makeDeps({
-      usersService: { findByEmail: mockFn().mockResolvedValue({ id: USER_ID, email: EMAIL }) },
+      usersService: {
+        findByEmail: mockFn().mockResolvedValue({ id: USER_ID, email: EMAIL, isPlaceholder: false }),
+      },
     });
 
     await expect(
       service.register({ email: EMAIL, name: 'Alice', password: 'password123' } as any),
     ).rejects.toThrow(ConflictException);
     expect(usersService.create).not.toHaveBeenCalled();
+  });
+
+  it('claims a placeholder account when its email registers, keeping the same id', async () => {
+    const { service, usersService, jwtService } = makeDeps({
+      usersService: {
+        findByEmail: mockFn().mockResolvedValue({ id: USER_ID, email: EMAIL, isPlaceholder: true }),
+      },
+    });
+
+    const tokens = await service.register({ email: EMAIL, name: 'Alice Real Name', password: 'password123' } as any);
+
+    expect(usersService.create).not.toHaveBeenCalled();
+    expect(usersService.claimPlaceholder).toHaveBeenCalledWith(USER_ID, {
+      name: 'Alice Real Name',
+      password: 'password123',
+    });
+    expect(jwtService.sign).toHaveBeenCalledWith({ sub: USER_ID, email: EMAIL }, { expiresIn: '15m' });
+    expect(tokens.accessToken).toBe('signed-jwt');
   });
 
   it('does not touch trip invites when none are pending', async () => {

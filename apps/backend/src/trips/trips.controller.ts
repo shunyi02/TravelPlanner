@@ -6,6 +6,7 @@ import { CreatePlaceDto } from './dto/create-place.dto';
 import { UpdatePlaceDto } from './dto/update-place.dto';
 import { CreateAccommodationDto } from './dto/create-accommodation.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
+import { AddManualMemberDto } from './dto/add-manual-member.dto';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -36,6 +37,15 @@ export class TripsController {
     @Body('userId') newUserId: string,
   ) {
     return this.tripsService.addMember(tripId, userId, newUserId);
+  }
+
+  @Post(':tripId/members/manual')
+  addManualMember(
+    @CurrentUser() userId: string,
+    @Param('tripId') tripId: string,
+    @Body() dto: AddManualMemberDto,
+  ) {
+    return this.tripsService.addManualMember(tripId, userId, dto);
   }
 
   @Post(':tripId/invites')

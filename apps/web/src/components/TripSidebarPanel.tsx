@@ -12,6 +12,7 @@ export function TripSidebarPanel({ tripId }: { tripId: string }) {
   const { currentUser } = useAuth();
   const [trip, setTrip] = useState<TripDetail | null>(null);
   const [balances, setBalances] = useState<Balance[]>([]);
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,17 +36,18 @@ export function TripSidebarPanel({ tripId }: { tripId: string }) {
   const isOwner = trip.members.find((m) => m.userId === currentUser?.id)?.role === 'owner';
   const myBalance = balances.find((b) => b.userId === currentUser?.id)?.amount ?? 0;
 
-  const handleInvite = async (e: React.FormEvent) => {
+  const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
+    if (!name.trim()) return;
     setSaving(true);
     setError(null);
     try {
-      await api.inviteMember(tripId, email.trim());
+      await api.addManualMember(tripId, { name: name.trim(), email: email.trim() || undefined });
+      setName('');
       setEmail('');
       load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not send invite');
+      setError(err instanceof Error ? err.message : 'Could not add member');
     } finally {
       setSaving(false);
     }
@@ -88,9 +90,12 @@ export function TripSidebarPanel({ tripId }: { tripId: string }) {
       <ul className="sidebar-member-list">
         {trip.members.map((m) => (
           <li key={m.userId} className="sidebar-member-row">
-            <span className="sidebar-member-avatar">{initials(m.user.name)}</span>
+            <span className={`sidebar-member-avatar${m.user.isPlaceholder ? ' sidebar-member-avatar-pending' : ''}`}>
+              {initials(m.user.name)}
+            </span>
             <span className="sidebar-member-name">{m.user.name}</span>
             {m.role === 'owner' && <span className="pending-badge">owner</span>}
+            {m.user.isPlaceholder && <span className="pending-badge">not registered</span>}
           </li>
         ))}
         {trip.invites.map((invite) => (
@@ -115,15 +120,20 @@ export function TripSidebarPanel({ tripId }: { tripId: string }) {
       </ul>
 
       {isOwner && (
-        <form onSubmit={handleInvite}>
+        <form onSubmit={handleAddMember}>
+          <input
+            placeholder="Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
           <input
             type="email"
-            placeholder="Invite by email"
+            placeholder="Email (optional)"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
           <button className="btn" type="submit" disabled={saving} style={{ width: '100%' }}>
-            {saving ? 'Inviting…' : '+ Invite member'}
+            {saving ? 'Adding…' : '+ Add member'}
           </button>
         </form>
       )}

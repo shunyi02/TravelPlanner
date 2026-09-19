@@ -127,7 +127,12 @@ export interface TripInvite {
 }
 
 export interface TripDetail extends Trip {
-  members: Array<{ userId: string; role: string; coverPhoto: string | null; user: { name: string; email: string } }>;
+  members: Array<{
+    userId: string;
+    role: string;
+    coverPhoto: string | null;
+    user: { name: string; email: string; isPlaceholder: boolean };
+  }>;
   places: Place[];
   invites: TripInvite[];
 }
@@ -227,6 +232,16 @@ export const api = {
     request<TripInvite | { userId: string; role: string }>(`/trips/${tripId}/invites`, {
       method: 'POST',
       body: JSON.stringify({ email }),
+    }),
+  /**
+   * Adds a member by name and, optionally, a real email — no registration
+   * required. Usable in expense splits immediately; if the email later
+   * registers, that account takes over this same membership.
+   */
+  addManualMember: (tripId: string, data: { name: string; email?: string }) =>
+    request<{ userId: string; role: string }>(`/trips/${tripId}/members/manual`, {
+      method: 'POST',
+      body: JSON.stringify(data),
     }),
   cancelInvite: (tripId: string, inviteId: string) =>
     request<void>(`/trips/${tripId}/invites/${inviteId}`, { method: 'DELETE' }),

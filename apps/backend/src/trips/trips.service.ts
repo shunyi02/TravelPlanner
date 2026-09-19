@@ -4,6 +4,7 @@ import { CreateTripDto } from './dto/create-trip.dto';
 import { CreatePlaceDto } from './dto/create-place.dto';
 import { UpdatePlaceDto } from './dto/update-place.dto';
 import { CreateAccommodationDto } from './dto/create-accommodation.dto';
+import { AddManualMemberDto } from './dto/add-manual-member.dto';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { UpdateTripDto } from './dto/update-trip.dto';
 
@@ -86,6 +87,35 @@ export class TripsService {
       where: { tripId_email: { tripId, email } },
       create: { tripId, email, invitedBy: requesterId },
       update: {},
+    });
+  }
+
+  /**
+   * Adds a member by name (and optionally a real email) without requiring
+   * them to register — so they can be picked in expense splits right away.
+   * If the email already belongs to a real account, that account is added
+   * directly instead. If it belongs to a placeholder already added to some
+   * other trip, that same placeholder is reused here too. A placeholder's
+   * email (if it has one) becomes a real login the moment someone registers
+   * with it — see AuthService.register.
+   */
+  async addManualMember(tripId: string, requesterId: string, dto: AddManualMemberDto) {
+    await this.assertOwner(tripId, requesterId);
+
+    const user = dto.email
+      ? (await this.usersService.findByEmail(dto.email)) ?? (await this.usersService.createPlaceholder(dto))
+      : await this.usersService.createPlaceholder(dto);
+
+    const existingMembership = await this.prisma.tripMember.findUnique({
+      where: { tripId_userId: { tripId, userId: user.id } },
+    });
+    if (existingMembership) {
+      throw new BadRequestException('Already a member of this trip');
+    }
+
+    return this.prisma.tripMember.create({
+      data: { tripId, userId: user.id, role: 'member' },
+      include: { user: true },
     });
   }
 

@@ -13,21 +13,23 @@ export function MembersTab({
   isOwner: boolean;
   onChange: () => void;
 }) {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleInvite = async (e: React.FormEvent) => {
+  const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
+    if (!name.trim()) return;
     setSaving(true);
     setError(null);
     try {
-      await api.inviteMember(tripId, email.trim());
+      await api.addManualMember(tripId, { name: name.trim(), email: email.trim() || undefined });
+      setName('');
       setEmail('');
       onChange();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not send invite');
+      setError(err instanceof Error ? err.message : 'Could not add member');
     } finally {
       setSaving(false);
     }
@@ -49,9 +51,10 @@ export function MembersTab({
           <div className="ledger-row" key={m.userId}>
             <div className="row-main">
               <span className="row-title">{m.user.name}</span>
-              <span className="row-sub">{m.user.email}</span>
+              {!m.user.isPlaceholder && <span className="row-sub">{m.user.email}</span>}
             </div>
             {m.role === 'owner' && <span className="pending-badge">owner</span>}
+            {m.user.isPlaceholder && <span className="pending-badge">not registered</span>}
           </div>
         ))}
 
@@ -71,15 +74,16 @@ export function MembersTab({
       </div>
 
       {isOwner && (
-        <form className="form-inline" onSubmit={handleInvite}>
+        <form className="form-inline" onSubmit={handleAddMember}>
+          <input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
           <input
             type="email"
-            placeholder="Invite by email"
+            placeholder="Email (optional)"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
           <button className="btn" type="submit" disabled={saving}>
-            {saving ? 'Inviting…' : 'Invite'}
+            {saving ? 'Adding…' : 'Add member'}
           </button>
         </form>
       )}

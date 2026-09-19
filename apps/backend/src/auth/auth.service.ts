@@ -30,13 +30,18 @@ export class AuthService {
 
   async register(dto: RegisterDto) {
     const existing = await this.usersService.findByEmail(dto.email);
-    if (existing) throw new ConflictException('Email already registered');
+    if (existing && !existing.isPlaceholder) {
+      throw new ConflictException('Email already registered');
+    }
 
-    const user = await this.usersService.create({
-      email: dto.email,
-      name: dto.name,
-      password: dto.password,
-    });
+    // A placeholder with this email (added manually to a trip, see
+    // TripsService.addManualMember) becomes this person's real account —
+    // same id, so their existing trip memberships and expense splits carry
+    // over untouched.
+    const user = existing
+      ? await this.usersService.claimPlaceholder(existing.id, { name: dto.name, password: dto.password })
+      : await this.usersService.create({ email: dto.email, name: dto.name, password: dto.password });
+
     await this.consumePendingInvites(user.id, user.email);
     return this.issueTokenPair(user.id, user.email);
   }

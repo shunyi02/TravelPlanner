@@ -12,6 +12,10 @@ model User {
   email         String              @unique
   name          String
   passwordHash  String
+  /** A member added by name (optionally email) without registering. Can log
+   *  in normally once someone registers with this user's email — see
+   *  AuthService.register. */
+  isPlaceholder Boolean             @default(false)
   trips         TripMember[]
   expensesPaid  Expense[]           @relation("PaidBy")
   splits        ExpenseSplit[]

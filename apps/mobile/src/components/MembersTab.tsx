@@ -15,20 +15,22 @@ export function MembersTab({
   isOwner: boolean;
   onChange: () => void;
 }) {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleInvite = async () => {
-    if (!email.trim()) return;
+  const handleAddMember = async () => {
+    if (!name.trim()) return;
     setSaving(true);
     setError(null);
     try {
-      await api.inviteMember(tripId, email.trim());
+      await api.addManualMember(tripId, { name: name.trim(), email: email.trim() || undefined });
+      setName('');
       setEmail('');
       onChange();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not send invite');
+      setError(err instanceof Error ? err.message : 'Could not add member');
     } finally {
       setSaving(false);
     }
@@ -49,13 +51,20 @@ export function MembersTab({
         <View style={styles.row} key={m.userId}>
           <View style={{ flex: 1 }}>
             <Text style={styles.rowTitle}>{m.user.name}</Text>
-            <Text style={styles.rowSub}>{m.user.email}</Text>
+            {!m.user.isPlaceholder && <Text style={styles.rowSub}>{m.user.email}</Text>}
           </View>
-          {m.role === 'owner' && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>owner</Text>
-            </View>
-          )}
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+            {m.role === 'owner' && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>owner</Text>
+              </View>
+            )}
+            {m.user.isPlaceholder && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>not registered</Text>
+              </View>
+            )}
+          </View>
         </View>
       ))}
 
@@ -76,18 +85,27 @@ export function MembersTab({
       ))}
 
       {isOwner && (
-        <View style={styles.form}>
-          <TextInput
-            style={[styles.input, { flex: 1 }]}
-            placeholder="Invite by email"
-            placeholderTextColor={colors.inkSoft}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            value={email}
-            onChangeText={setEmail}
-          />
-          <Pressable style={styles.button} onPress={handleInvite} disabled={saving}>
-            <Text style={styles.buttonText}>{saving ? 'Inviting…' : 'Invite'}</Text>
+        <View>
+          <View style={styles.form}>
+            <TextInput
+              style={[styles.input, { flex: 1 }]}
+              placeholder="Name"
+              placeholderTextColor={colors.inkSoft}
+              value={name}
+              onChangeText={setName}
+            />
+            <TextInput
+              style={[styles.input, { flex: 1 }]}
+              placeholder="Email (optional)"
+              placeholderTextColor={colors.inkSoft}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              value={email}
+              onChangeText={setEmail}
+            />
+          </View>
+          <Pressable style={[styles.button, { marginTop: 8 }]} onPress={handleAddMember} disabled={saving}>
+            <Text style={styles.buttonText}>{saving ? 'Adding…' : 'Add member'}</Text>
           </Pressable>
         </View>
       )}
