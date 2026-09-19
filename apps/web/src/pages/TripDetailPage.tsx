@@ -63,7 +63,13 @@ export function TripDetailPage() {
 
       {tab === 'itinerary' && <ItineraryTab tripId={tripId} trip={trip} places={trip.places} onChange={load} />}
       {tab === 'expenses' && (
-        <ExpensesTab tripId={tripId} expenses={expenses} memberNames={memberNames} onChange={load} />
+        <ExpensesTab
+          tripId={tripId}
+          expenses={expenses}
+          memberNames={memberNames}
+          currency={trip.currency}
+          onChange={load}
+        />
       )}
       {tab === 'balances' && <BalancesTab tripId={tripId} memberNames={memberNames} />}
       {tab === 'members' && <MembersTab tripId={tripId} trip={trip} isOwner={isOwner} onChange={load} />}

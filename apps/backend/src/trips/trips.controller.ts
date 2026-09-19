@@ -86,12 +86,12 @@ export class TripsController {
   }
 
   @Patch(':tripId')
-  updateDates(
+  update(
     @CurrentUser() userId: string,
     @Param('tripId') tripId: string,
     @Body() dto: UpdateTripDto,
   ) {
-    return this.tripsService.updateDates(tripId, userId, dto);
+    return this.tripsService.update(tripId, userId, dto);
   }
 
   @Delete(':tripId')

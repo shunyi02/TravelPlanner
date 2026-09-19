@@ -24,10 +24,6 @@ export class UpdateExpenseDto {
 
   @IsOptional()
   @IsString()
-  currency?: string;
-
-  @IsOptional()
-  @IsString()
   paidById?: string;
 
   /**

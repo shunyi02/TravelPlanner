@@ -97,6 +97,7 @@ export interface Trip {
   startDate: string | null;
   endDate: string | null;
   coverPhoto: string | null;
+  currency: string;
 }
 
 export type PlaceType = 'STOP' | 'HOTEL' | 'FLIGHT';
@@ -187,7 +188,7 @@ export const api = {
     }),
   getMe: () => request<CurrentUser>('/auth/me'),
   listTrips: () => request<Trip[]>('/trips'),
-  createTrip: (data: { name: string; startDate?: string; endDate?: string; coverPhoto?: string }) =>
+  createTrip: (data: { name: string; startDate?: string; endDate?: string; coverPhoto?: string; currency?: string }) =>
     request<TripDetail>('/trips', { method: 'POST', body: JSON.stringify(data) }),
   getTrip: (tripId: string) => request<TripDetail>(`/trips/${tripId}`),
   addPlace: (
@@ -238,7 +239,6 @@ export const api = {
     data: {
       description: string;
       amount: number;
-      currency?: string;
       paidById?: string;
       splits?: Array<{ userId: string; share: number }>;
     },
@@ -249,7 +249,6 @@ export const api = {
     data: {
       description?: string;
       amount?: number;
-      currency?: string;
       paidById?: string;
       splits?: Array<{ userId: string; share: number }>;
     },
@@ -284,6 +283,6 @@ export const api = {
     }),
   cancelInvite: (tripId: string, inviteId: string) =>
     request<void>(`/trips/${tripId}/invites/${inviteId}`, { method: 'DELETE' }),
-  updateTripDates: (tripId: string, data: { startDate?: string; endDate?: string }) =>
+  updateTrip: (tripId: string, data: { startDate?: string; endDate?: string; currency?: string }) =>
   request<Trip>(`/trips/${tripId}`, { method: 'PATCH', body: JSON.stringify(data) }),
 };

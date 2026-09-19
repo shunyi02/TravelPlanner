@@ -17,6 +17,7 @@ export function AddTripModal({
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [coverPhoto, setCoverPhoto] = useState<string | null>(null);
+  const [currency, setCurrency] = useState('USD');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,11 +43,13 @@ export function AddTripModal({
         startDate: startDate || undefined,
         endDate: endDate || undefined,
         coverPhoto: coverPhoto || undefined,
+        currency: currency.trim() || undefined,
       });
       setName('');
       setStartDate('');
       setEndDate('');
       setCoverPhoto(null);
+      setCurrency('USD');
       onCreated(trip.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create trip');
@@ -93,6 +96,16 @@ export function AddTripModal({
               onChangeText={setEndDate}
             />
           </View>
+
+          <TextInput
+            style={styles.input}
+            placeholder="Currency (e.g. USD)"
+            placeholderTextColor={colors.inkSoft}
+            autoCapitalize="characters"
+            maxLength={3}
+            value={currency}
+            onChangeText={(v) => setCurrency(v.toUpperCase())}
+          />
 
           {error && <Text style={{ color: colors.owe }}>{error}</Text>}
 

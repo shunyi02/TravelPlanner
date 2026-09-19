@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { COMMON_CURRENCIES } from '@travel-planner/shared';
 import { api } from '../api';
 
 export function AddTripModal({
@@ -12,6 +13,7 @@ export function AddTripModal({
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [coverPhoto, setCoverPhoto] = useState<string | null>(null);
+  const [currency, setCurrency] = useState('USD');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,6 +38,7 @@ export function AddTripModal({
         startDate: startDate || undefined,
         endDate: endDate || undefined,
         coverPhoto: coverPhoto || undefined,
+        currency,
       });
       onCreated(trip.id);
     } catch (err) {
@@ -60,6 +63,18 @@ export function AddTripModal({
             <span>to</span>
             <input type="date" value={endDate} min={startDate || undefined} onChange={(e) => setEndDate(e.target.value)} />
           </div>
+          <label style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
+            Currency
+            <select
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+              style={{ display: 'block', marginTop: 4, width: '100%' }}
+            >
+              {COMMON_CURRENCIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </label>
           {error && <p style={{ color: 'var(--owe)', margin: 0 }}>{error}</p>}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
             <button type="button" className="btn btn-outline" onClick={onClose}>Cancel</button>

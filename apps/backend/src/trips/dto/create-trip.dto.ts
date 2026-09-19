@@ -16,4 +16,10 @@ export class CreateTripDto {
   @IsOptional()
   @IsString()
   coverPhoto?: string;
+
+  /** ISO 4217 code, e.g. "USD". Defaults to USD. Every expense on this trip
+   *  is logged in this currency. */
+  @IsOptional()
+  @IsString()
+  currency?: string;
 }

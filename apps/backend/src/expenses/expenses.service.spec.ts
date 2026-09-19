@@ -22,6 +22,9 @@ const USER_C = 'user-c';
 
 function makePrisma(overrides: Record<string, any> = {}) {
   return {
+    trip: {
+      findUniqueOrThrow: mockFn().mockResolvedValue({ currency: 'USD' }),
+    },
     tripMember: {
       findMany: mockFn().mockResolvedValue([{ userId: USER_A }, { userId: USER_B }, { userId: USER_C }]),
       findUnique: mockFn().mockResolvedValue({ tripId: TRIP_ID, userId: USER_A }),
@@ -54,6 +57,20 @@ describe('ExpensesService.create', () => {
       result.splits.reduce((sum: number, s: any) => sum + s.amountOwed, 0),
     ).toBeCloseTo(100, 2);
     expect(result.paidById).toBe(USER_A);
+  });
+
+  it("uses the trip's currency, ignoring any per-expense currency", async () => {
+    const prisma = makePrisma({ trip: { findUniqueOrThrow: mockFn().mockResolvedValue({ currency: 'MYR' }) } });
+    const service = new ExpensesService(prisma as any);
+
+    const result = await service.create(TRIP_ID, USER_A, {
+      description: 'Dinner',
+      amount: 100,
+      currency: 'EUR', // not a real field on CreateExpenseDto anymore; must be ignored if sent
+    } as any);
+
+    expect(prisma.trip.findUniqueOrThrow).toHaveBeenCalledWith({ where: { id: TRIP_ID }, select: { currency: true } });
+    expect(result.currency).toBe('MYR');
   });
 
   it('honors custom shares and puts the rounding remainder on the last split', async () => {

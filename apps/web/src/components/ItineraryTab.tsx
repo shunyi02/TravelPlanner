@@ -140,7 +140,7 @@ export function ItineraryTab({
     e.preventDefault();
     setDateError(null);
     try {
-      await api.updateTripDates(tripId, {
+      await api.updateTrip(tripId, {
         startDate: startDate || undefined,
         endDate: endDate || undefined,
       });

@@ -412,7 +412,7 @@ export function ItineraryTab({
   const handleSaveDates = async () => {
     setDateError(null);
     try {
-      await api.updateTripDates(tripId, {
+      await api.updateTrip(tripId, {
         startDate: startDate || undefined,
         endDate: endDate || undefined,
       });

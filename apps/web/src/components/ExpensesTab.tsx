@@ -98,11 +98,13 @@ export function ExpensesTab({
   tripId,
   expenses,
   memberNames,
+  currency,
   onChange,
 }: {
   tripId: string;
   expenses: Expense[];
   memberNames: Record<string, string>;
+  currency: string;
   onChange: () => void;
 }) {
   const memberIds = Object.keys(memberNames);
@@ -283,8 +285,8 @@ export function ExpensesTab({
                     inputMode="decimal"
                     value={editAmount}
                     onChange={(e) => setEditAmount(e.target.value)}
-                    placeholder="Amount"
-                    style={{ maxWidth: 120 }}
+                    placeholder={`Amount (${currency})`}
+                    style={{ maxWidth: 140 }}
                   />
                   <SplitEditor
                     memberIds={memberIds}
@@ -318,11 +320,11 @@ export function ExpensesTab({
             onChange={(e) => setDescription(e.target.value)}
           />
           <input
-            placeholder="Amount"
+            placeholder={`Amount (${currency})`}
             inputMode="decimal"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            style={{ maxWidth: 120 }}
+            style={{ maxWidth: 140 }}
           />
           <button className="btn" type="submit">
             Log expense

@@ -23,6 +23,7 @@ export class TripsService {
         startDate: dto.startDate ? new Date(dto.startDate) : undefined,
         endDate: dto.endDate ? new Date(dto.endDate) : undefined,
         coverPhoto: dto.coverPhoto,
+        currency: dto.currency,
         members: {
           create: { userId, role: 'owner' },
         },
@@ -227,7 +228,7 @@ export class TripsService {
     }
   }
 
-  async updateDates(tripId: string, userId: string, dto: UpdateTripDto) {
+  async update(tripId: string, userId: string, dto: UpdateTripDto) {
     await this.assertMember(tripId, userId);
 
     if (dto.startDate && dto.endDate && new Date(dto.endDate) < new Date(dto.startDate)) {
@@ -239,6 +240,7 @@ export class TripsService {
       data: {
         startDate: dto.startDate ? new Date(dto.startDate) : undefined,
         endDate: dto.endDate ? new Date(dto.endDate) : undefined,
+        currency: dto.currency,
       },
     });
   }

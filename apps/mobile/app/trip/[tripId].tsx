@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router';
 import { api, type TripDetail, type Expense } from '../../src/api';
 import { useAuth } from '../../src/authContext';
@@ -19,6 +19,8 @@ export default function TripDetailScreen() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [tab, setTab] = useState<Tab>('itinerary');
   const [error, setError] = useState<string | null>(null);
+  const [currencyInput, setCurrencyInput] = useState('');
+  const [currencyError, setCurrencyError] = useState<string | null>(null);
 
   const load = useCallback(() => {
     if (!tripId) return;
@@ -27,6 +29,7 @@ export default function TripDetailScreen() {
       .then(([t, e]) => {
         setTrip(t);
         setExpenses(e);
+        setCurrencyInput(t.currency);
         navigation.setOptions({ title: t.name });
       })
       .catch((err) => setError(err.message));
@@ -34,6 +37,17 @@ export default function TripDetailScreen() {
 
   useFocusEffect(load);
   useEffect(load, [load]);
+
+  const handleSaveCurrency = async () => {
+    if (!tripId || !currencyInput.trim()) return;
+    setCurrencyError(null);
+    try {
+      await api.updateTrip(tripId, { currency: currencyInput.trim().toUpperCase() });
+      load();
+    } catch (err) {
+      setCurrencyError(err instanceof Error ? err.message : 'Could not change currency');
+    }
+  };
 
   if (!tripId) return null;
 
@@ -58,6 +72,26 @@ export default function TripDetailScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ padding: 20 }}>
+      {isOwner ? (
+        <View style={styles.currencyRow}>
+          <TextInput
+            style={styles.currencyInput}
+            placeholder="Currency"
+            placeholderTextColor={colors.inkSoft}
+            autoCapitalize="characters"
+            maxLength={3}
+            value={currencyInput}
+            onChangeText={(v) => setCurrencyInput(v.toUpperCase())}
+          />
+          <Pressable style={styles.currencySaveButton} onPress={handleSaveCurrency}>
+            <Text style={styles.currencySaveButtonText}>Save</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <Text style={styles.currencyReadOnly}>{trip.currency}</Text>
+      )}
+      {currencyError && <Text style={{ color: colors.owe, marginBottom: 12 }}>{currencyError}</Text>}
+
       <View style={styles.tabRow}>
         {(['itinerary', 'expenses', 'balances', 'members'] as const).map((t) => (
           <Pressable key={t} style={styles.tabButton} onPress={() => setTab(t)}>
@@ -71,7 +105,13 @@ export default function TripDetailScreen() {
 
       {tab === 'itinerary' && <ItineraryTab tripId={tripId} trip={trip} places={trip.places} onChange={load} />}
       {tab === 'expenses' && (
-        <ExpensesTab tripId={tripId} expenses={expenses} memberNames={memberNames} onChange={load} />
+        <ExpensesTab
+          tripId={tripId}
+          expenses={expenses}
+          memberNames={memberNames}
+          currency={trip.currency}
+          onChange={load}
+        />
       )}
       {tab === 'balances' && <BalancesTab tripId={tripId} memberNames={memberNames} />}
       {tab === 'members' && <MembersTab tripId={tripId} trip={trip} isOwner={isOwner} onChange={load} />}
@@ -97,4 +137,24 @@ const styles = StyleSheet.create({
     backgroundColor: colors.route,
     marginTop: 8,
   },
+  currencyRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
+  currencyInput: {
+    borderWidth: 1,
+    borderColor: colors.rule,
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: colors.surface,
+    color: colors.ink,
+    width: 90,
+  },
+  currencySaveButton: {
+    backgroundColor: colors.route,
+    borderRadius: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    justifyContent: 'center',
+  },
+  currencySaveButtonText: { color: '#fff', fontWeight: '600' },
+  currencyReadOnly: { color: colors.inkSoft, marginBottom: 16 },
 });

@@ -30,6 +30,9 @@ model Trip {
   startDate DateTime?
   endDate   DateTime?
   coverPhoto String?
+  /** ISO 4217 code (e.g. "USD"). Every expense on this trip is logged in
+   *  this currency — Balances has no cross-currency conversion. */
+  currency  String       @default("USD")
   members   TripMember[]
   places    Place[]
   accommodations Accommodation[]

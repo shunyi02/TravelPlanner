@@ -21,13 +21,16 @@ export class ExpensesService {
     this.assertSharesValid(splitInputs, members.map((m) => m.userId));
 
     const amounts = this.sharesToAmounts(dto.amount, splitInputs);
+    // Every expense is logged in its trip's currency — there's no per-expense
+    // override, so Balances never has to reconcile mixed currencies.
+    const { currency } = await this.prisma.trip.findUniqueOrThrow({ where: { id: tripId }, select: { currency: true } });
 
     return this.prisma.expense.create({
       data: {
         tripId,
         description: dto.description,
         amount: dto.amount,
-        currency: dto.currency ?? 'USD',
+        currency,
         paidById,
         splits: {
           create: amounts.map(({ userId: splitUserId, amount }) => ({
@@ -77,7 +80,6 @@ export class ExpensesService {
     const scalarData = {
       description: dto.description,
       amount: dto.amount,
-      currency: dto.currency,
       paidById: dto.paidById,
     };
 

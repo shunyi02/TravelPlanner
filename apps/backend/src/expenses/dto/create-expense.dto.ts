@@ -30,10 +30,6 @@ export class CreateExpenseDto {
   @IsPositive()
   amount!: number;
 
-  @IsOptional()
-  @IsString()
-  currency?: string;
-
   /** Who actually paid. Defaults to the requesting user if omitted. */
   @IsOptional()
   @IsString()

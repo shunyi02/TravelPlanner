@@ -99,11 +99,13 @@ export function ExpensesTab({
   tripId,
   expenses,
   memberNames,
+  currency,
   onChange,
 }: {
   tripId: string;
   expenses: Expense[];
   memberNames: Record<string, string>;
+  currency: string;
   onChange: () => void;
 }) {
   const memberIds = Object.keys(memberNames);
@@ -283,8 +285,8 @@ export function ExpensesTab({
                   onChangeText={setEditDescription}
                 />
                 <TextInput
-                  style={[styles.input, { maxWidth: 120 }]}
-                  placeholder="Amount"
+                  style={[styles.input, { maxWidth: 140 }]}
+                  placeholder={`Amount (${currency})`}
                   placeholderTextColor={colors.inkSoft}
                   keyboardType="decimal-pad"
                   value={editAmount}
@@ -324,7 +326,7 @@ export function ExpensesTab({
           />
           <TextInput
             style={[styles.input, { flex: 1 }]}
-            placeholder="Amount"
+            placeholder={`Amount (${currency})`}
             placeholderTextColor={colors.inkSoft}
             keyboardType="decimal-pad"
             value={amount}
