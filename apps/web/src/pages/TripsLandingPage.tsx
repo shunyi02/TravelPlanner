@@ -3,6 +3,52 @@ import { useNavigate } from 'react-router-dom';
 import { api, type Trip } from '../api';
 import { AddTripModal } from '../components/AddTripModal';
 
+const DAY_MS = 86_400_000;
+
+/** A trip's start/end are date-only strings; treat them as plain calendar
+ *  dates (anchored to UTC midnight) rather than a moment in the viewer's
+ *  timezone, so "in 9 days" means 9 calendar days regardless of where the
+ *  trip or the viewer is. */
+function calendarDate(dateStr: string): Date {
+  return new Date(dateStr.slice(0, 10) + 'T00:00:00Z');
+}
+
+function daysFromToday(dateStr: string): number {
+  const now = new Date();
+  const todayUTC = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((calendarDate(dateStr).getTime() - todayUTC) / DAY_MS);
+}
+
+function formatDateRange(startDate: string | null, endDate: string | null): string | null {
+  if (!startDate && !endDate) return null;
+  const fmt = (d: Date, withMonth: boolean) =>
+    d.toLocaleDateString(undefined, withMonth ? { day: 'numeric', month: 'short', timeZone: 'UTC' } : { day: 'numeric', timeZone: 'UTC' });
+  if (startDate && endDate) {
+    const start = calendarDate(startDate);
+    const end = calendarDate(endDate);
+    const sameMonth = start.getUTCMonth() === end.getUTCMonth() && start.getUTCFullYear() === end.getUTCFullYear();
+    return `${fmt(start, !sameMonth)} – ${fmt(end, true)}`;
+  }
+  return fmt(calendarDate((startDate ?? endDate)!), true);
+}
+
+/** A short, real-data status for a trip card: how soon it starts, or that
+ *  it's underway. Past trips get no status. `sentence` completes "{name} __"
+ *  for the hero line; `label` is the standalone badge text on the card. */
+function tripStatus(trip: Trip): { label: string; sentence: string; active: boolean } | null {
+  if (!trip.startDate) return null;
+  const untilStart = daysFromToday(trip.startDate);
+  const untilEnd = trip.endDate ? daysFromToday(trip.endDate) : untilStart;
+
+  if (untilStart <= 0 && untilEnd >= 0) {
+    return { label: 'Happening now', sentence: 'is happening now', active: true };
+  }
+  if (untilStart < 0) return null;
+  if (untilStart === 0) return { label: 'Starts today', sentence: 'starts today', active: false };
+  if (untilStart === 1) return { label: 'Starts tomorrow', sentence: 'starts tomorrow', active: false };
+  return { label: `In ${untilStart} days`, sentence: `starts in ${untilStart} days`, active: false };
+}
+
 export function TripsLandingPage() {
   const navigate = useNavigate();
 
@@ -45,8 +91,17 @@ export function TripsLandingPage() {
 
   if (loading) {
     return (
-      <div className="main">
-        <p className="empty-state">Loading trips…</p>
+      <div className="main main-centered">
+        <h1 className="page-title">Your trips</h1>
+        <div className="trip-card-grid" aria-hidden="true">
+          {[0, 1, 2].map((i) => (
+            <div className="trip-skeleton" key={i}>
+              <div className="trip-skeleton-strip" />
+              <div className="trip-skeleton-line" />
+              <div className="trip-skeleton-line" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -61,15 +116,27 @@ export function TripsLandingPage() {
     );
   }
 
+  // Surface the soonest trip that hasn't finished yet, so the page opens
+  // with something the viewer didn't already know rather than a static label.
+  const upcoming = trips
+    .filter((t) => t.startDate && daysFromToday(t.endDate ?? t.startDate!) >= 0)
+    .sort((a, b) => calendarDate(a.startDate!).getTime() - calendarDate(b.startDate!).getTime())[0];
+  const upcomingStatus = upcoming ? tripStatus(upcoming) : null;
+
   return (
     <div className="main main-centered">
-      <h1 className="page-title page-title-centered">
-        Your trips
-      </h1>
+      <div className="trip-hero">
+        <h1 className="page-title">Your trips</h1>
+        {upcoming && upcomingStatus && (
+          <p className="trip-hero-status">
+            {upcoming.name} {upcomingStatus.sentence}.
+          </p>
+        )}
+      </div>
 
       {trips.length === 0 ? (
         <div className="empty-landing">
-          <p className="empty-state">No trips yet.</p>
+          <p className="empty-state">You haven't planned a trip yet.</p>
 
           <button
             className="btn"
@@ -80,45 +147,47 @@ export function TripsLandingPage() {
         </div>
       ) : (
         <div className="trip-card-grid">
-          {trips.map((trip) => (
-            <div key={trip.id} className="trip-card">
-              <button
-                className="trip-card-body"
-                onClick={() => navigate(`/trips/${trip.id}`)}
-              >
-                {trip.coverPhoto && (
-                  <img
-                    src={trip.coverPhoto}
-                    alt=""
-                    className="trip-card-photo"
-                  />
-                )}
+          {trips.map((trip) => {
+            const dateRange = formatDateRange(trip.startDate, trip.endDate);
+            const status = tripStatus(trip);
+            return (
+              <div key={trip.id} className="trip-card">
+                <button
+                  className="trip-card-body"
+                  onClick={() => navigate(`/trips/${trip.id}`)}
+                >
+                  {trip.coverPhoto ? (
+                    <img src={trip.coverPhoto} alt="" className="trip-card-strip" />
+                  ) : (
+                    <div className="trip-card-strip trip-card-strip-fallback" />
+                  )}
 
-                <span className="trip-card-name">
-                  {trip.name}
-                </span>
+                  <div className="trip-card-content">
+                    <span className="trip-card-name">{trip.name}</span>
 
-                {(trip.startDate || trip.endDate) && (
-                  <span className="trip-card-dates">
-                    {trip.startDate?.slice(0, 10)}
-                    {trip.endDate
-                      ? ` – ${trip.endDate.slice(0, 10)}`
-                      : ''}
-                  </span>
-                )}
-              </button>
+                    {dateRange && <span className="trip-card-dates">{dateRange}</span>}
 
-              <button
-                className="trip-card-delete"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setConfirmDelete(trip);
-                }}
-              >
-                Delete
-              </button>
-            </div>
-          ))}
+                    {status && (
+                      <span className={`trip-card-status${status.active ? ' active' : ''}`}>{status.label}</span>
+                    )}
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className="trip-card-remove"
+                  aria-label={`Delete ${trip.name}`}
+                  title={`Delete ${trip.name}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setConfirmDelete(trip);
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            );
+          })}
 
           <button
             className="trip-card trip-card-add"

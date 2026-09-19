@@ -6,42 +6,35 @@ import {
   IsOptional,
   IsPositive,
   IsString,
-  Min,
   MinLength,
   ValidateNested,
 } from 'class-validator';
+import { ExpenseSplitInputDto } from './create-expense.dto';
 
-export class ExpenseSplitInputDto {
-  @IsString()
-  userId!: string;
-
-  /** Fraction of the total this user owes, e.g. 0.5. All shares in the request must sum to 1. */
-  @IsNumber()
-  @Min(0)
-  share!: number;
-}
-
-export class CreateExpenseDto {
+export class UpdateExpenseDto {
+  @IsOptional()
   @IsString()
   @MinLength(1)
-  description!: string;
+  description?: string;
 
+  @IsOptional()
   @IsNumber()
   @IsPositive()
-  amount!: number;
+  amount?: number;
 
   @IsOptional()
   @IsString()
   currency?: string;
 
-  /** Who actually paid. Defaults to the requesting user if omitted. */
   @IsOptional()
   @IsString()
   paidById?: string;
 
   /**
-   * Who owes what share of this expense. If omitted, splits evenly across
-   * all current trip members.
+   * If provided, replaces the expense's splits entirely (same validation as
+   * create). If omitted but `amount` changes, the existing split ratios are
+   * preserved and reapplied to the new amount instead of resetting to even
+   * (see ExpensesService.update).
    */
   @IsOptional()
   @IsArray()

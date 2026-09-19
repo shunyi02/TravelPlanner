@@ -1,13 +1,18 @@
 import { PrismaService } from '../prisma/prisma.service';
+import { UsersService } from '../users/users.service';
 import { CreateTripDto } from './dto/create-trip.dto';
 import { CreatePlaceDto } from './dto/create-place.dto';
+import { UpdatePlaceDto } from './dto/update-place.dto';
 import { CreateAccommodationDto } from './dto/create-accommodation.dto';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { UpdateTripDto } from './dto/update-trip.dto';
 
 @Injectable()
 export class TripsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly usersService: UsersService,
+  ) {}
 
   /** Creates a trip and makes the creator its owner. */
   async create(userId: string, dto: CreateTripDto) {
@@ -39,6 +44,7 @@ export class TripsService {
         members: { include: { user: true } },
         places: { orderBy: { order: 'asc' } },
         accommodations: { orderBy: { checkInDate: 'asc' } },
+        invites: { orderBy: { createdAt: 'asc' } },
       },
     });
     if (!trip) throw new NotFoundException('Trip not found');
@@ -55,6 +61,39 @@ export class TripsService {
     });
   }
 
+  /**
+   * Invite a member by email. If they already have an account, they're added
+   * immediately; otherwise a pending TripInvite is stored and consumed the
+   * moment they register with that email (see AuthService.register).
+   */
+  async inviteMember(tripId: string, requesterId: string, email: string) {
+    await this.assertOwner(tripId, requesterId);
+
+    const user = await this.usersService.findByEmail(email);
+    if (user) {
+      const existingMembership = await this.prisma.tripMember.findUnique({
+        where: { tripId_userId: { tripId, userId: user.id } },
+      });
+      if (existingMembership) {
+        throw new BadRequestException('Already a member of this trip');
+      }
+      return this.prisma.tripMember.create({
+        data: { tripId, userId: user.id, role: 'member' },
+      });
+    }
+
+    return this.prisma.tripInvite.upsert({
+      where: { tripId_email: { tripId, email } },
+      create: { tripId, email, invitedBy: requesterId },
+      update: {},
+    });
+  }
+
+  async cancelInvite(tripId: string, requesterId: string, inviteId: string) {
+    await this.assertOwner(tripId, requesterId);
+    await this.prisma.tripInvite.deleteMany({ where: { id: inviteId, tripId } });
+  }
+
   async addPlace(tripId: string, userId: string, dto: CreatePlaceDto) {
     await this.assertMember(tripId, userId);
     return this.prisma.place.create({
@@ -66,6 +105,32 @@ export class TripsService {
         lng: dto.lng,
         visitDate: dto.visitDate ? new Date(dto.visitDate) : undefined,
         order: dto.order,
+        notes: dto.notes,
+        departureTime: dto.departureTime ? new Date(dto.departureTime) : undefined,
+        arrivalTime: dto.arrivalTime ? new Date(dto.arrivalTime) : undefined,
+        departureAirport: dto.departureAirport,
+        arrivalAirport: dto.arrivalAirport,
+        checkIn: dto.checkIn ? new Date(dto.checkIn) : undefined,
+        checkOut: dto.checkOut ? new Date(dto.checkOut) : undefined,
+      },
+    });
+  }
+
+  async updatePlace(tripId: string, userId: string, placeId: string, dto: UpdatePlaceDto) {
+    await this.assertMember(tripId, userId);
+    const place = await this.prisma.place.findUnique({ where: { id: placeId } });
+    if (!place || place.tripId !== tripId) {
+      throw new NotFoundException('Place not found');
+    }
+
+    return this.prisma.place.update({
+      where: { id: placeId },
+      data: {
+        type: dto.type,
+        name: dto.name,
+        lat: dto.lat,
+        lng: dto.lng,
+        visitDate: dto.visitDate ? new Date(dto.visitDate) : undefined,
         notes: dto.notes,
         departureTime: dto.departureTime ? new Date(dto.departureTime) : undefined,
         arrivalTime: dto.arrivalTime ? new Date(dto.arrivalTime) : undefined,
@@ -122,6 +187,16 @@ export class TripsService {
     if (!membership) throw new ForbiddenException('Not a member of this trip');
   }
 
+  private async assertOwner(tripId: string, userId: string) {
+    const membership = await this.prisma.tripMember.findUnique({
+      where: { tripId_userId: { tripId, userId } },
+    });
+    if (!membership) throw new ForbiddenException('Not a member of this trip');
+    if (membership.role !== 'owner') {
+      throw new ForbiddenException('Only the owner can do this');
+    }
+  }
+
   async updateDates(tripId: string, userId: string, dto: UpdateTripDto) {
     await this.assertMember(tripId, userId);
 
@@ -141,13 +216,7 @@ export class TripsService {
 
   /** Delete Trip */
   async delete(tripId: string, userId: string) {
-    const membership = await this.prisma.tripMember.findUnique({
-      where: { tripId_userId: { tripId, userId } },
-    });
-    if (!membership) throw new ForbiddenException('Not a member of this trip');
-    if (membership.role !== 'owner') {
-      throw new ForbiddenException('Only the owner can delete this trip');
-    }
+    await this.assertOwner(tripId, userId);
     await this.prisma.trip.delete({ where: { id: tripId } });
   }
 

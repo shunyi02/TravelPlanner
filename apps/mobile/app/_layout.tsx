@@ -4,18 +4,22 @@ import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { colors } from '../src/theme';
-import { api, initAuth, setSessionExpiredHandler } from '../src/api';
+import { api, initAuth, setSessionExpiredHandler, type CurrentUser } from '../src/api';
 import { AuthScreen } from '../src/components/AuthScreen';
 import { AuthContext } from '../src/authContext';
 
 export default function RootLayout() {
   const [checking, setChecking] = useState(true);
   const [authed, setAuthed] = useState(false);
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 
   useEffect(() => {
     initAuth().then((loggedIn) => {
       setAuthed(loggedIn);
       setChecking(false);
+      if (loggedIn) {
+        api.getMe().then(setCurrentUser).catch(() => setCurrentUser(null));
+      }
     });
     // If a background token refresh ever fails (refresh token expired or
     // revoked), drop back to the login screen instead of leaving the user
@@ -24,7 +28,10 @@ export default function RootLayout() {
   }, []);
 
   const logout = () => {
-    api.logout().then(() => setAuthed(false));
+    api.logout().then(() => {
+      setAuthed(false);
+      setCurrentUser(null);
+    });
   };
 
   if (checking) {
@@ -41,14 +48,19 @@ export default function RootLayout() {
     return (
       <SafeAreaProvider>
         <StatusBar style="dark" />
-        <AuthScreen onAuthed={() => setAuthed(true)} />
+        <AuthScreen
+          onAuthed={() => {
+            setAuthed(true);
+            api.getMe().then(setCurrentUser).catch(() => setCurrentUser(null));
+          }}
+        />
       </SafeAreaProvider>
     );
   }
 
   return (
     <SafeAreaProvider>
-      <AuthContext.Provider value={{ logout }}>
+      <AuthContext.Provider value={{ logout, currentUser }}>
         <StatusBar style="dark" />
         <Stack
           screenOptions={{

@@ -4,7 +4,8 @@ import { Sidebar } from './components/Sidebar';
 import { TripsLandingPage } from './pages/TripsLandingPage';
 import { TripDetailPage } from './pages/TripDetailPage';
 import { AuthPage } from './pages/AuthPage';
-import { isLoggedIn, setSessionExpiredHandler } from './api';
+import { api, isLoggedIn, setSessionExpiredHandler, type CurrentUser } from './api';
+import { AuthContext } from './authContext';
 
 function TopBar() {
   return (
@@ -18,9 +19,14 @@ function TopBar() {
 function AuthedApp({ onLogout }: { onLogout: () => void }) {
   const location = useLocation();
   const showSidebar = location.pathname !== '/';
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+
+  useEffect(() => {
+    api.getMe().then(setCurrentUser).catch(() => setCurrentUser(null));
+  }, []);
 
   return (
-    <>
+    <AuthContext.Provider value={{ currentUser }}>
       <TopBar />
       <div className="app-shell" style={!showSidebar ? { gridTemplateColumns: '1fr' } : undefined}>
         {showSidebar && <Sidebar onLogout={onLogout} />}
@@ -29,7 +35,7 @@ function AuthedApp({ onLogout }: { onLogout: () => void }) {
           <Route path="/trips/:tripId" element={<TripDetailPage />} />
         </Routes>
       </div>
-    </>
+    </AuthContext.Provider>
   );
 }
 

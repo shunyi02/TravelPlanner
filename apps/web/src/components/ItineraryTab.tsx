@@ -113,6 +113,7 @@ export function ItineraryTab({
   const [endDate, setEndDate] = useState(trip.endDate?.slice(0, 10) ?? '');
   const [dateError, setDateError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingPlace, setEditingPlace] = useState<Place | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
@@ -186,21 +187,37 @@ export function ItineraryTab({
             </span>
           )}
         </div>
-        <button
-          type="button"
-          onClick={() => handleDelete(place)}
-          disabled={deletingId === place.id}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--owe)',
-            fontSize: 12,
-            padding: '4px 8px',
-            cursor: 'pointer',
-          }}
-        >
-          {deletingId === place.id ? 'Removing…' : 'Remove'}
-        </button>
+        <div style={{ display: 'flex', gap: 4 }}>
+          <button
+            type="button"
+            onClick={() => setEditingPlace(place)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--route)',
+              fontSize: 12,
+              padding: '4px 8px',
+              cursor: 'pointer',
+            }}
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            onClick={() => handleDelete(place)}
+            disabled={deletingId === place.id}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--owe)',
+              fontSize: 12,
+              padding: '4px 8px',
+              cursor: 'pointer',
+            }}
+          >
+            {deletingId === place.id ? 'Removing…' : 'Remove'}
+          </button>
+        </div>
       </div>
     );
   };
@@ -256,14 +273,19 @@ export function ItineraryTab({
         </div>
       )}
 
-      {showAddModal && (
+      {(showAddModal || editingPlace) && (
         <AddItineraryItemModal
           tripId={tripId}
           tripStartDate={startDate || undefined}
           tripEndDate={endDate || undefined}
-          onClose={() => setShowAddModal(false)}
-          onCreated={() => {
+          editPlace={editingPlace ?? undefined}
+          onClose={() => {
             setShowAddModal(false);
+            setEditingPlace(null);
+          }}
+          onSaved={() => {
+            setShowAddModal(false);
+            setEditingPlace(null);
             onChange();
           }}
         />

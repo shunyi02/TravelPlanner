@@ -29,8 +29,11 @@ export class SplitsService {
     return computeBalances(
       expenses.map((e) => ({
         paidById: e.paidById,
-        amount: Number(e.amount),
-        splits: e.splits.map((s) => ({ userId: s.userId, amountOwed: Number(s.amountOwed) })),
+        splits: e.splits.map((s) => ({
+          userId: s.userId,
+          amountOwed: Number(s.amountOwed),
+          settled: s.settled,
+        })),
       })),
     );
   }

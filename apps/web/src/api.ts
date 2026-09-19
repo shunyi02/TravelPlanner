@@ -120,9 +120,22 @@ export interface Place {
   checkOut: string | null;
 }
 
+export interface TripInvite {
+  id: string;
+  email: string;
+  createdAt: string;
+}
+
 export interface TripDetail extends Trip {
   members: Array<{ userId: string; role: string; coverPhoto: string | null; user: { name: string; email: string } }>;
   places: Place[];
+  invites: TripInvite[];
+}
+
+export interface CurrentUser {
+  id: string;
+  email: string;
+  name: string;
 }
 
 export interface ExpenseSplit {
@@ -163,6 +176,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ token, newPassword }),
     }),
+  getMe: () => request<CurrentUser>('/auth/me'),
   listTrips: () => request<Trip[]>('/trips'),
   createTrip: (data: { name: string; startDate?: string; endDate?: string; coverPhoto?: string }) =>
      request<TripDetail>('/trips', { method: 'POST', body: JSON.stringify(data) }),
@@ -185,8 +199,37 @@ export const api = {
       splits?: Array<{ userId: string; share: number }>;
     },
   ) => request<Expense>(`/trips/${tripId}/expenses`, { method: 'POST', body: JSON.stringify(data) }),
+  updateExpense: (
+    tripId: string,
+    expenseId: string,
+    data: {
+      description?: string;
+      amount?: number;
+      currency?: string;
+      paidById?: string;
+      splits?: Array<{ userId: string; share: number }>;
+    },
+  ) =>
+    request<Expense>(`/trips/${tripId}/expenses/${expenseId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  deleteExpense: (tripId: string, expenseId: string) =>
+    request<void>(`/trips/${tripId}/expenses/${expenseId}`, { method: 'DELETE' }),
+  setSplitSettled: (tripId: string, expenseId: string, splitUserId: string, settled: boolean) =>
+    request<ExpenseSplit>(`/trips/${tripId}/expenses/${expenseId}/splits/${splitUserId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ settled }),
+    }),
   getBalances: (tripId: string) => request<Balance[]>(`/trips/${tripId}/splits/balances`),
   getSettlements: (tripId: string) => request<Settlement[]>(`/trips/${tripId}/splits/settlements`),
+  inviteMember: (tripId: string, email: string) =>
+    request<TripInvite | { userId: string; role: string }>(`/trips/${tripId}/invites`, {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+  cancelInvite: (tripId: string, inviteId: string) =>
+    request<void>(`/trips/${tripId}/invites/${inviteId}`, { method: 'DELETE' }),
   addPlace: (
     tripId: string,
     data: {
@@ -204,6 +247,24 @@ export const api = {
       checkOut?: string;
     },
   ) => request<Place>(`/trips/${tripId}/places`, { method: 'POST', body: JSON.stringify(data) }),
+  updatePlace: (
+    tripId: string,
+    placeId: string,
+    data: Partial<{
+      type: PlaceType;
+      name: string;
+      lat: number;
+      lng: number;
+      notes: string;
+      visitDate: string;
+      departureTime: string;
+      arrivalTime: string;
+      departureAirport: string;
+      arrivalAirport: string;
+      checkIn: string;
+      checkOut: string;
+    }>,
+  ) => request<Place>(`/trips/${tripId}/places/${placeId}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deleteTrip: (tripId: string) =>
   request<void>(`/trips/${tripId}`, { method: 'DELETE' }),
   deletePlace: (tripId: string, placeId: string) =>

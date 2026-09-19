@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api, type TripDetail as TripDetailType, type Expense } from '../api';
+import { useAuth } from '../authContext';
 import { ItineraryTab } from '../components/ItineraryTab';
 import { ExpensesTab } from '../components/ExpensesTab';
 import { BalancesTab } from '../components/BalancesTab';
+import { MembersTab } from '../components/MembersTab';
 
-type Tab = 'itinerary' | 'expenses' | 'balances';
+type Tab = 'itinerary' | 'expenses' | 'balances' | 'members';
 
 export function TripDetailPage() {
   const { tripId } = useParams<{ tripId: string }>();
+  const { currentUser } = useAuth();
   const [trip, setTrip] = useState<TripDetailType | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [tab, setTab] = useState<Tab>('itinerary');
@@ -32,6 +35,7 @@ export function TripDetailPage() {
   if (!trip) return <div className="main"><p className="empty-state">Loading…</p></div>;
 
   const memberNames = Object.fromEntries(trip.members.map((m) => [m.userId, m.user.name]));
+  const isOwner = trip.members.find((m) => m.userId === currentUser?.id)?.role === 'owner';
 
   return (
     <div className="main">
@@ -53,6 +57,9 @@ export function TripDetailPage() {
         <button className={tab === 'balances' ? 'active' : ''} onClick={() => setTab('balances')}>
           Balances
         </button>
+        <button className={tab === 'members' ? 'active' : ''} onClick={() => setTab('members')}>
+          Members
+        </button>
       </div>
 
       {tab === 'itinerary' && <ItineraryTab tripId={tripId} trip={trip} places={trip.places} onChange={load} />}
@@ -60,6 +67,7 @@ export function TripDetailPage() {
         <ExpensesTab tripId={tripId} expenses={expenses} memberNames={memberNames} onChange={load} />
       )}
       {tab === 'balances' && <BalancesTab tripId={tripId} memberNames={memberNames} />}
+      {tab === 'members' && <MembersTab tripId={tripId} trip={trip} isOwner={isOwner} onChange={load} />}
     </div>
   );
 }

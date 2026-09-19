@@ -55,12 +55,15 @@ export function simplifyDebts(balances: Balance[]): Settlement[] {
 /**
  * Compute per-user net balances for a trip from a flat list of expenses.
  * amountOwed values should already reflect each user's share (see ExpenseSplitInput).
+ *
+ * A split with `settled: true` means that person already paid the payer back
+ * outside the ledger (cash, bank transfer, etc.), so it's excluded entirely —
+ * it no longer counts as a debt on either side.
  */
 export function computeBalances(
   expenses: Array<{
     paidById: string;
-    amount: number;
-    splits: Array<{ userId: string; amountOwed: number }>;
+    splits: Array<{ userId: string; amountOwed: number; settled: boolean }>;
   }>,
 ): Balance[] {
   const net = new Map<string, number>();
@@ -70,10 +73,10 @@ export function computeBalances(
   };
 
   for (const expense of expenses) {
-    // Payer fronted the full amount, so they're owed the whole thing back...
-    add(expense.paidById, expense.amount);
-    // ...minus their own share, which cancels below when their split is subtracted.
     for (const split of expense.splits) {
+      if (split.settled) continue;
+      if (split.userId === expense.paidById) continue; // not a debt to anyone
+      add(expense.paidById, split.amountOwed);
       add(split.userId, -split.amountOwed);
     }
   }

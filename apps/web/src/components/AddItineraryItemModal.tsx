@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, type PlaceType } from '../api';
+import { api, type Place, type PlaceType } from '../api';
 
 type FlightTripType = 'ONE_WAY' | 'ROUND_TRIP';
 
@@ -10,43 +10,58 @@ interface NominatimResult {
   lon: string;
 }
 
+/** ISO datetime -> "YYYY-MM-DDTHH:mm" in local time, for a datetime-local input's value. */
+function toDatetimeLocal(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export function AddItineraryItemModal({
   tripId,
   tripStartDate,
   tripEndDate,
+  editPlace,
   onClose,
-  onCreated,
+  onSaved,
 }: {
   tripId: string;
   tripStartDate?: string;
   tripEndDate?: string;
+  /** When set, the modal edits this existing place instead of creating a new one. */
+  editPlace?: Place;
   onClose: () => void;
-  onCreated: () => void;
+  onSaved: () => void;
 }) {
-  const [type, setType] = useState<PlaceType | null>(null);
-  const [name, setName] = useState('');
-  const [visitDate, setVisitDate] = useState('');
+  const [type, setType] = useState<PlaceType | null>(editPlace?.type ?? null);
+  const [name, setName] = useState(editPlace?.name ?? '');
+  const [visitDate, setVisitDate] = useState(editPlace?.visitDate ? toDatetimeLocal(editPlace.visitDate) : '');
 
   // location search (STOP only)
-  const [locationQuery, setLocationQuery] = useState('');
+  const [locationQuery, setLocationQuery] = useState(editPlace?.type === 'STOP' ? editPlace.name : '');
   const [locationResults, setLocationResults] = useState<NominatimResult[]>([]);
   const [searching, setSearching] = useState(false);
-  const [lat, setLat] = useState<number | undefined>();
-  const [lng, setLng] = useState<number | undefined>();
+  const [touchedLocation, setTouchedLocation] = useState(false);
+  const [lat, setLat] = useState<number | undefined>(editPlace?.lat ?? undefined);
+  const [lng, setLng] = useState<number | undefined>(editPlace?.lng ?? undefined);
 
   // flight (outbound)
   const [tripType, setTripType] = useState<FlightTripType>('ONE_WAY');
-  const [departureTime, setDepartureTime] = useState('');
-  const [arrivalTime, setArrivalTime] = useState('');
-  const [departureAirport, setDepartureAirport] = useState('');
-  const [arrivalAirport, setArrivalAirport] = useState('');
+  const [departureTime, setDepartureTime] = useState(
+    editPlace?.departureTime ? toDatetimeLocal(editPlace.departureTime) : '',
+  );
+  const [arrivalTime, setArrivalTime] = useState(
+    editPlace?.arrivalTime ? toDatetimeLocal(editPlace.arrivalTime) : '',
+  );
+  const [departureAirport, setDepartureAirport] = useState(editPlace?.departureAirport ?? '');
+  const [arrivalAirport, setArrivalAirport] = useState(editPlace?.arrivalAirport ?? '');
 
-  // flight (return leg, round trip only)
+  // flight (return leg, round trip only — create flow only, N/A when editing a single leg)
   const [returnDepartureTime, setReturnDepartureTime] = useState('');
   const [returnArrivalTime, setReturnArrivalTime] = useState('');
 
-  const [checkIn, setCheckIn] = useState('');
-  const [checkOut, setCheckOut] = useState('');
+  const [checkIn, setCheckIn] = useState(editPlace?.checkIn ? toDatetimeLocal(editPlace.checkIn) : '');
+  const [checkOut, setCheckOut] = useState(editPlace?.checkOut ? toDatetimeLocal(editPlace.checkOut) : '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,7 +72,7 @@ export function AddItineraryItemModal({
   // Debounced Nominatim (OpenStreetMap) search — free, no API key.
   // Rate-limited to ~1req/s per their usage policy, so wait for typing to pause.
   useEffect(() => {
-    if (type !== 'STOP' || locationQuery.trim().length < 3) {
+    if (!touchedLocation || type !== 'STOP' || locationQuery.trim().length < 3) {
       setLocationResults([]);
       return;
     }
@@ -76,7 +91,7 @@ export function AddItineraryItemModal({
       }
     }, 400);
     return () => clearTimeout(handle);
-  }, [locationQuery, type]);
+  }, [locationQuery, type, touchedLocation]);
 
   const pickLocation = (result: NominatimResult) => {
     setName(result.display_name.split(',')[0]);
@@ -86,6 +101,12 @@ export function AddItineraryItemModal({
     setLocationResults([]);
   };
 
+  /** Switch the type being edited/added. Clears fields specific to the previous type. */
+  const changeType = (next: PlaceType) => {
+    setType(next);
+    setError(null);
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!type || !name.trim()) return;
@@ -93,27 +114,32 @@ export function AddItineraryItemModal({
     setError(null);
     try {
       if (type === 'FLIGHT') {
-        await api.addPlace(tripId, {
+        const flightData = {
           type,
           name: name.trim(),
           departureTime: departureTime || undefined,
           arrivalTime: arrivalTime || undefined,
           departureAirport: departureAirport || undefined,
           arrivalAirport: arrivalAirport || undefined,
-        });
-        if (tripType === 'ROUND_TRIP') {
-          await api.addPlace(tripId, {
-            type,
-            name: `${name.trim()} (return)`,
-            departureTime: returnDepartureTime || undefined,
-            arrivalTime: returnArrivalTime || undefined,
-            // swapped: return leg goes arrival -> departure
-            departureAirport: arrivalAirport || undefined,
-            arrivalAirport: departureAirport || undefined,
-          });
+        };
+        if (editPlace) {
+          await api.updatePlace(tripId, editPlace.id, flightData);
+        } else {
+          await api.addPlace(tripId, flightData);
+          if (tripType === 'ROUND_TRIP') {
+            await api.addPlace(tripId, {
+              type,
+              name: `${name.trim()} (return)`,
+              departureTime: returnDepartureTime || undefined,
+              arrivalTime: returnArrivalTime || undefined,
+              // swapped: return leg goes arrival -> departure
+              departureAirport: arrivalAirport || undefined,
+              arrivalAirport: departureAirport || undefined,
+            });
+          }
         }
       } else {
-        await api.addPlace(tripId, {
+        const data = {
           type,
           name: name.trim(),
           visitDate: visitDate || undefined,
@@ -122,11 +148,16 @@ export function AddItineraryItemModal({
             checkIn: checkIn || undefined,
             checkOut: checkOut || undefined,
           }),
-        });
+        };
+        if (editPlace) {
+          await api.updatePlace(tripId, editPlace.id, data);
+        } else {
+          await api.addPlace(tripId, data);
+        }
       }
-      onCreated();
+      onSaved();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not add item');
+      setError(err instanceof Error ? err.message : `Could not ${editPlace ? 'save' : 'add'} item`);
     } finally {
       setSaving(false);
     }
@@ -151,8 +182,21 @@ export function AddItineraryItemModal({
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <h2 className="page-title" style={{ fontSize: 20 }}>
-          Add {type === 'STOP' ? 'stop' : type === 'HOTEL' ? 'hotel' : 'flight'}
+          {editPlace ? 'Edit' : 'Add'} {type === 'STOP' ? 'stop' : type === 'HOTEL' ? 'hotel' : 'flight'}
         </h2>
+        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+          {(['STOP', 'HOTEL', 'FLIGHT'] as PlaceType[]).map((t) => (
+            <button
+              key={t}
+              type="button"
+              className={type === t ? 'btn' : 'btn btn-outline'}
+              onClick={() => changeType(t)}
+              style={{ padding: '4px 12px', fontSize: 12 }}
+            >
+              {t === 'STOP' ? 'Stop' : t === 'HOTEL' ? 'Hotel' : 'Flight'}
+            </button>
+          ))}
+        </div>
         <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
           {type === 'STOP' ? (
             <div style={{ position: 'relative' }}>
@@ -160,6 +204,7 @@ export function AddItineraryItemModal({
                 placeholder="Search a place…"
                 value={locationQuery}
                 onChange={(e) => {
+                  setTouchedLocation(true);
                   setLocationQuery(e.target.value);
                   setName(e.target.value);
                   setLat(undefined);
@@ -234,26 +279,28 @@ export function AddItineraryItemModal({
 
           {type === 'FLIGHT' && (
             <>
-              <div style={{ display: 'flex', gap: 16 }}>
-                <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <input
-                    type="radio"
-                    name="tripType"
-                    checked={tripType === 'ONE_WAY'}
-                    onChange={() => setTripType('ONE_WAY')}
-                  />
-                  One way
-                </label>
-                <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <input
-                    type="radio"
-                    name="tripType"
-                    checked={tripType === 'ROUND_TRIP'}
-                    onChange={() => setTripType('ROUND_TRIP')}
-                  />
-                  Round trip
-                </label>
-              </div>
+              {!editPlace && (
+                <div style={{ display: 'flex', gap: 16 }}>
+                  <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <input
+                      type="radio"
+                      name="tripType"
+                      checked={tripType === 'ONE_WAY'}
+                      onChange={() => setTripType('ONE_WAY')}
+                    />
+                    One way
+                  </label>
+                  <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <input
+                      type="radio"
+                      name="tripType"
+                      checked={tripType === 'ROUND_TRIP'}
+                      onChange={() => setTripType('ROUND_TRIP')}
+                    />
+                    Round trip
+                  </label>
+                </div>
+              )}
 
               <input placeholder="Departure airport" value={departureAirport} onChange={(e) => setDepartureAirport(e.target.value)} />
               <input placeholder="Arrival airport" value={arrivalAirport} onChange={(e) => setArrivalAirport(e.target.value)} />
@@ -346,7 +393,11 @@ export function AddItineraryItemModal({
           {error && <p style={{ color: 'var(--owe)', margin: 0 }}>{error}</p>}
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
-            <button type="button" className="btn btn-outline" onClick={() => setType(null)}>Back</button>
+            {editPlace ? (
+              <button type="button" className="btn btn-outline" onClick={onClose}>Cancel</button>
+            ) : (
+              <button type="button" className="btn btn-outline" onClick={() => setType(null)}>Back</button>
+            )}
             <button type="submit" className="btn" disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
           </div>
         </form>

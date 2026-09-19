@@ -2,16 +2,19 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router';
 import { api, type TripDetail, type Expense } from '../../src/api';
+import { useAuth } from '../../src/authContext';
 import { ItineraryTab } from '../../src/components/ItineraryTab';
 import { ExpensesTab } from '../../src/components/ExpensesTab';
 import { BalancesTab } from '../../src/components/BalancesTab';
+import { MembersTab } from '../../src/components/MembersTab';
 import { colors } from '../../src/theme';
 
-type Tab = 'itinerary' | 'expenses' | 'balances';
+type Tab = 'itinerary' | 'expenses' | 'balances' | 'members';
 
 export default function TripDetailScreen() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const navigation = useNavigation();
+  const { currentUser } = useAuth();
   const [trip, setTrip] = useState<TripDetail | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [tab, setTab] = useState<Tab>('itinerary');
@@ -51,11 +54,12 @@ export default function TripDetailScreen() {
   }
 
   const memberNames = Object.fromEntries(trip.members.map((m) => [m.userId, m.user.name]));
+  const isOwner = trip.members.find((m) => m.userId === currentUser?.id)?.role === 'owner';
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ padding: 20 }}>
       <View style={styles.tabRow}>
-        {(['itinerary', 'expenses', 'balances'] as const).map((t) => (
+        {(['itinerary', 'expenses', 'balances', 'members'] as const).map((t) => (
           <Pressable key={t} style={styles.tabButton} onPress={() => setTab(t)}>
             <Text style={[styles.tabLabel, tab === t && styles.tabLabelActive]}>
               {t[0].toUpperCase() + t.slice(1)}
@@ -70,6 +74,7 @@ export default function TripDetailScreen() {
         <ExpensesTab tripId={tripId} expenses={expenses} memberNames={memberNames} onChange={load} />
       )}
       {tab === 'balances' && <BalancesTab tripId={tripId} memberNames={memberNames} />}
+      {tab === 'members' && <MembersTab tripId={tripId} trip={trip} isOwner={isOwner} onChange={load} />}
     </ScrollView>
   );
 }

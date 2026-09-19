@@ -30,7 +30,22 @@ model Trip {
   places    Place[]
   accommodations Accommodation[]
   expenses  Expense[]
+  invites   TripInvite[]
   createdAt DateTime     @default(now())
+}
+
+// A pending invite for someone who isn't a user yet. Consumed (turned into a
+// TripMember) automatically when they register with this email — see
+// AuthService.register.
+model TripInvite {
+  id        String   @id @default(uuid())
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  tripId    String
+  email     String
+  invitedBy String
+  createdAt DateTime @default(now())
+
+  @@unique([tripId, email])
 }
 
 model TripMember {

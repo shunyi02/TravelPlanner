@@ -37,7 +37,23 @@ export class AuthService {
       name: dto.name,
       password: dto.password,
     });
+    await this.consumePendingInvites(user.id, user.email);
     return this.issueTokenPair(user.id, user.email);
+  }
+
+  /** Joins the new user to any trips they were invited to by email before they signed up. */
+  private async consumePendingInvites(userId: string, email: string) {
+    const invites = await this.prisma.tripInvite.findMany({ where: { email } });
+    if (invites.length === 0) return;
+
+    await this.prisma.$transaction([
+      ...invites.map((invite) =>
+        this.prisma.tripMember.create({
+          data: { tripId: invite.tripId, userId, role: 'member' },
+        }),
+      ),
+      this.prisma.tripInvite.deleteMany({ where: { email } }),
+    ]);
   }
 
   async login(dto: LoginDto) {
@@ -112,6 +128,12 @@ export class AuthService {
     });
 
     return { message: 'Password updated. Please log in again.' };
+  }
+
+  async me(userId: string) {
+    const user = await this.usersService.findById(userId);
+    if (!user) throw new UnauthorizedException('Not authenticated');
+    return { id: user.id, email: user.email, name: user.name };
   }
 
   private async issueTokenPair(userId: string, email: string) {
