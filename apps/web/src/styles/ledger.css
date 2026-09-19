@@ -1,0 +1,82 @@
+/* Shared "ledger row" primitives used by Itinerary, Expenses, Balances and
+ * Members — a title/subtitle line with hover-revealed actions and/or a
+ * trailing amount or badge. */
+
+.ledger-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.ledger-row:last-child {
+  border-bottom: none;
+}
+
+.row-main {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.row-title {
+  font-weight: 500;
+}
+
+.row-sub {
+  color: var(--ink-soft);
+  font-size: 13px;
+  margin-left: 8px;
+}
+
+.ledger-row-actions {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.ledger-row:hover .ledger-row-actions,
+.ledger-row:focus-within .ledger-row-actions {
+  opacity: 1;
+}
+
+.row-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.amount {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.amount.owed-to-you {
+  color: var(--route);
+}
+
+.amount.you-owe {
+  color: var(--owe);
+}
+
+.pending-badge {
+  font-size: 11px;
+  color: var(--ledger);
+  background: var(--ledger-soft);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+}
+
+.settlement-note {
+  background: var(--ledger-soft);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 14px 16px;
+  margin-top: 8px;
+  color: var(--ink);
+}

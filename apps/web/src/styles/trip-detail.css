@@ -1,0 +1,28 @@
+/* TripDetailPage: the trip header and its section tab row. */
+
+.trip-dates {
+  color: var(--ink-soft);
+  margin: 0 0 32px;
+}
+
+.tab-row {
+  display: flex;
+  gap: 24px;
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 24px;
+}
+
+.tab-row button {
+  background: none;
+  border: none;
+  padding: 8px 0;
+  color: var(--ink-soft);
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.tab-row button.active {
+  color: var(--ink);
+  border-bottom-color: var(--route);
+}

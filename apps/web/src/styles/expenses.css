@@ -1,0 +1,63 @@
+/* ExpensesTab: the split editor shown when logging or editing an expense. */
+
+.split-breakdown {
+  margin: 4px 0 16px;
+  padding: 10px 0 10px 14px;
+  border-left: 2px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.split-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.split-mode-row {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  font-size: 13px;
+  margin-top: 8px;
+  color: var(--ink-soft);
+}
+
+.custom-split-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.custom-split-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.custom-split-row input {
+  width: 90px;
+  padding: 6px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+}
+
+.split-remaining {
+  font-size: 12px;
+  margin: 0;
+}
+
+.split-remaining.balanced {
+  color: var(--route);
+}
+
+.split-remaining.unbalanced {
+  color: var(--owe);
+}

@@ -1,0 +1,214 @@
+/* App shell: top bar + sidebar, and the sidebar's two states (all-trips nav
+ * vs. the single-trip panel in TripSidebarPanel). */
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  min-height: 100vh;
+}
+
+@media (max-width: 720px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+}
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--surface);
+}
+
+.top-bar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.top-bar-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--route);
+  flex-shrink: 0;
+  display: block;
+}
+
+.top-bar-name {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.top-bar-account {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.top-bar-profile {
+  position: relative;
+}
+
+.top-bar-profile-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 4px;
+  border-radius: 6px;
+  color: var(--ink);
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.top-bar-profile-btn:hover {
+  background: var(--route-soft);
+}
+
+.top-bar-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--route);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.top-bar-profile-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 180px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 12px 14px;
+  box-shadow: 0 4px 16px rgba(31, 42, 36, 0.12);
+  z-index: 60;
+}
+
+.top-bar-profile-name {
+  margin: 0;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.top-bar-profile-email {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.sidebar {
+  border-right: 1px solid var(--rule);
+  padding: 28px 24px;
+  background: var(--surface);
+}
+
+.brand {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0 0 28px;
+  color: var(--ink);
+}
+
+.trip-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.trip-list li {
+  border-bottom: 1px solid var(--rule);
+}
+
+.trip-list a {
+  display: block;
+  padding: 12px 4px;
+  color: var(--ink);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.trip-list a:hover,
+.trip-list a.active {
+  color: var(--route);
+}
+
+.sidebar-balance {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.sidebar-section-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  margin: 0 0 8px;
+}
+
+.sidebar-member-list {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+}
+
+.sidebar-member-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+}
+
+.sidebar-member-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--route);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.sidebar-member-avatar-pending {
+  background: var(--ledger-soft);
+  color: var(--ledger);
+}
+
+.sidebar-member-name {
+  flex: 1;
+  font-size: 13px;
+  color: var(--ink);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar form input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--surface);
+  margin-bottom: 8px;
+}

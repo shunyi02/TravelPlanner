@@ -1,0 +1,28 @@
+/* ItineraryTab: the numbered stop index and the trip route map. */
+
+.ledger-row .stop-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--route-soft);
+  color: var(--route);
+  font-size: 12px;
+  font-weight: 600;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.route-map {
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.route-map .leaflet-tooltip {
+  font-family: var(--font-body);
+  font-size: 12px;
+}

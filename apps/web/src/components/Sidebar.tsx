@@ -1,11 +1,27 @@
 import { useEffect, useState } from 'react';
-import { NavLink } from 'react-router-dom';
-import { useNavigate } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { api, type Trip } from '../api';
 import { AddTripModal } from './AddTripModal';
+import { TripSidebarPanel } from './TripSidebarPanel';
+
+/** "/trips/:tripId" (and any sub-path) -> tripId, else undefined. */
+function tripIdFromPath(pathname: string): string | undefined {
+  return pathname.match(/^\/trips\/([^/]+)/)?.[1];
+}
 
 export function Sidebar() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const tripId = tripIdFromPath(location.pathname);
+
+  if (tripId) {
+    return <TripSidebarPanel tripId={tripId} />;
+  }
+
+  return <AllTripsPanel navigate={navigate} />;
+}
+
+function AllTripsPanel({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);

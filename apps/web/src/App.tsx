@@ -1,16 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Link, Routes, Route, useLocation } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
 import { TripsLandingPage } from './pages/TripsLandingPage';
 import { TripDetailPage } from './pages/TripDetailPage';
 import { AuthPage } from './pages/AuthPage';
 import { api, isLoggedIn, setSessionExpiredHandler, type CurrentUser } from './api';
 import { AuthContext, useAuth } from './authContext';
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase();
-}
+import { initials } from './format';
 
 function TopBar() {
   const { currentUser, onLogout } = useAuth();
@@ -33,8 +29,10 @@ function TopBar() {
 
   return (
     <header className="top-bar">
-      <div className="top-bar-logo" />
-      <span className="top-bar-name">Cuti</span>
+      <Link to="/" className="top-bar-brand">
+        <span className="top-bar-logo" />
+        <span className="top-bar-name">Cuti</span>
+      </Link>
       <div className="top-bar-account">
         <div className="top-bar-profile" ref={menuRef}>
           <button
