@@ -14,6 +14,21 @@ function daysBetween(start: string, end: string): string[] {
   return days;
 }
 
+/** Calendar-day difference between two "YYYY-MM-DD" keys (UTC-anchored, matching
+ *  dayKeysFor's convention). */
+function dayDelta(fromDay: string, toDay: string): number {
+  const from = new Date(fromDay + 'T00:00:00Z').getTime();
+  const to = new Date(toDay + 'T00:00:00Z').getTime();
+  return Math.round((to - from) / 86_400_000);
+}
+
+/** Shift an ISO datetime by whole calendar days, keeping its time-of-day. */
+function shiftDateByDays(iso: string, delta: number): string {
+  const d = new Date(iso);
+  d.setUTCDate(d.getUTCDate() + delta);
+  return d.toISOString();
+}
+
 function formatDay(iso: string) {
   return new Date(iso + 'T00:00:00Z').toLocaleDateString(undefined, {
     day: 'numeric',
@@ -116,6 +131,9 @@ export function ItineraryTab({
   const [editingPlace, setEditingPlace] = useState<Place | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [dragPlace, setDragPlace] = useState<{ id: string; sourceDay?: string } | null>(null);
+  const [dragOverDay, setDragOverDay] = useState<string | null>(null);
+  const [moveError, setMoveError] = useState<string | null>(null);
 
   const handleSaveDates = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -145,6 +163,53 @@ export function ItineraryTab({
     }
   };
 
+  /** Move a place to a different day by shifting its date field(s). For a
+   *  place already scheduled, `sourceDay` (the day-bucket it was dragged from)
+   *  and the target day give a delta applied to every date field it has, so a
+   *  multi-day hotel keeps its length of stay. An unscheduled place just gets
+   *  the target day. */
+  const handleMoveToDay = async (placeId: string, sourceDay: string | undefined, targetDay: string) => {
+    const place = places.find((p) => p.id === placeId);
+    if (!place || sourceDay === targetDay) return;
+    setMoveError(null);
+    try {
+      if (place.type === 'HOTEL') {
+        if (!place.checkIn) {
+          await api.updatePlace(tripId, place.id, {
+            checkIn: `${targetDay}T00:00:00.000Z`,
+            checkOut: `${targetDay}T00:00:00.000Z`,
+          });
+        } else {
+          const delta = dayDelta(sourceDay!, targetDay);
+          await api.updatePlace(tripId, place.id, {
+            checkIn: shiftDateByDays(place.checkIn, delta),
+            checkOut: place.checkOut ? shiftDateByDays(place.checkOut, delta) : undefined,
+          });
+        }
+      } else if (place.type === 'FLIGHT') {
+        if (!place.departureTime) {
+          await api.updatePlace(tripId, place.id, { departureTime: `${targetDay}T00:00:00.000Z` });
+        } else {
+          const delta = dayDelta(sourceDay!, targetDay);
+          await api.updatePlace(tripId, place.id, {
+            departureTime: shiftDateByDays(place.departureTime, delta),
+            arrivalTime: place.arrivalTime ? shiftDateByDays(place.arrivalTime, delta) : undefined,
+          });
+        }
+      } else {
+        if (!place.visitDate) {
+          await api.updatePlace(tripId, place.id, { visitDate: `${targetDay}T00:00:00.000Z` });
+        } else {
+          const delta = dayDelta(sourceDay!, targetDay);
+          await api.updatePlace(tripId, place.id, { visitDate: shiftDateByDays(place.visitDate, delta) });
+        }
+      }
+      onChange();
+    } catch (err) {
+      setMoveError(err instanceof Error ? err.message : 'Could not move item to that day');
+    }
+  };
+
   const days = startDate && endDate ? daysBetween(startDate, endDate) : [];
   const daySet = new Set(days);
   const byDay = new Map<string, Place[]>();
@@ -164,14 +229,21 @@ export function ItineraryTab({
     dayPlaces.sort((a, b) => sortTimeForDay(a, day) - sortTimeForDay(b, day));
   }
 
-  const renderRow = (place: Place, opts?: { day?: string; index?: number }) => {
+  const renderRow = (place: Place, opts?: { day?: string; index?: number; draggable?: boolean }) => {
     const subtitle = placeSubtitle(place, opts?.day);
     const isTransitionDay =
       place.type === 'HOTEL' &&
       opts?.day &&
       (opts.day === place.checkIn?.slice(0, 10) || opts.day === place.checkOut?.slice(0, 10));
     return (
-      <div className="ledger-row" key={place.id}>
+      <div
+        className="ledger-row"
+        key={place.id}
+        draggable={opts?.draggable}
+        onDragStart={() => setDragPlace({ id: place.id, sourceDay: opts?.day })}
+        onDragEnd={() => setDragPlace(null)}
+        style={opts?.draggable ? { cursor: 'grab', opacity: dragPlace?.id === place.id ? 0.5 : 1 } : undefined}
+      >
         <div className="row-main">
           {opts?.index !== undefined && <span className="stop-index">{opts.index + 1}</span>}
           <span className="row-title">
@@ -234,6 +306,7 @@ export function ItineraryTab({
       </form>
       {dateError && <p style={{ color: 'var(--owe)', margin: '0 0 16px' }}>{dateError}</p>}
       {deleteError && <p style={{ color: 'var(--owe)', margin: '0 0 16px' }}>{deleteError}</p>}
+      {moveError && <p style={{ color: 'var(--owe)', margin: '0 0 16px' }}>{moveError}</p>}
 
       <button className="btn" style={{ marginBottom: 20 }} onClick={() => setShowAddModal(true)}>
         + Add
@@ -250,11 +323,28 @@ export function ItineraryTab({
           {days.map((day) => (
             <div key={day} style={{ marginBottom: 20 }}>
               <h3 style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 600 }}>{formatDay(day)}</h3>
-              <div style={{ borderTop: '1px solid var(--rule)', paddingTop: 4 }}>
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragOverDay(day);
+                }}
+                onDragLeave={() => setDragOverDay((d) => (d === day ? null : d))}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragOverDay(null);
+                  if (dragPlace) handleMoveToDay(dragPlace.id, dragPlace.sourceDay, day);
+                }}
+                style={{
+                  borderTop: '1px solid var(--rule)',
+                  paddingTop: 4,
+                  minHeight: 8,
+                  background: dragOverDay === day ? 'var(--route-soft)' : undefined,
+                }}
+              >
                 {(byDay.get(day) ?? []).length === 0 ? (
                   <p className="empty-state" style={{ padding: '8px 0' }}>No stops planned.</p>
                 ) : (
-                  byDay.get(day)!.map((place) => renderRow(place, { day }))
+                  byDay.get(day)!.map((place) => renderRow(place, { day, draggable: true }))
                 )}
               </div>
             </div>
@@ -266,7 +356,7 @@ export function ItineraryTab({
                 Unscheduled
               </h3>
               <div style={{ borderTop: '1px solid var(--rule)', paddingTop: 4 }}>
-                {unscheduled.map((place) => renderRow(place))}
+                {unscheduled.map((place) => renderRow(place, { draggable: true }))}
               </div>
             </div>
           )}
