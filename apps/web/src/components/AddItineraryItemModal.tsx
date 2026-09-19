@@ -37,8 +37,10 @@ export function AddItineraryItemModal({
   const [name, setName] = useState(editPlace?.name ?? '');
   const [visitDate, setVisitDate] = useState(editPlace?.visitDate ? toDatetimeLocal(editPlace.visitDate) : '');
 
-  // location search (STOP only)
-  const [locationQuery, setLocationQuery] = useState(editPlace?.type === 'STOP' ? editPlace.name : '');
+  // location search (STOP and HOTEL — flights aren't geocoded, just airport codes)
+  const [locationQuery, setLocationQuery] = useState(
+    editPlace?.type === 'STOP' || editPlace?.type === 'HOTEL' ? editPlace.name : '',
+  );
   const [locationResults, setLocationResults] = useState<NominatimResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [touchedLocation, setTouchedLocation] = useState(false);
@@ -72,7 +74,7 @@ export function AddItineraryItemModal({
   // Debounced Nominatim (OpenStreetMap) search — free, no API key.
   // Rate-limited to ~1req/s per their usage policy, so wait for typing to pause.
   useEffect(() => {
-    if (!touchedLocation || type !== 'STOP' || locationQuery.trim().length < 3) {
+    if (!touchedLocation || (type !== 'STOP' && type !== 'HOTEL') || locationQuery.trim().length < 3) {
       setLocationResults([]);
       return;
     }
@@ -143,7 +145,7 @@ export function AddItineraryItemModal({
           type,
           name: name.trim(),
           visitDate: visitDate || undefined,
-          ...(type === 'STOP' && { lat, lng }),
+          ...((type === 'STOP' || type === 'HOTEL') && { lat, lng }),
           ...(type === 'HOTEL' && {
             checkIn: checkIn || undefined,
             checkOut: checkOut || undefined,
@@ -198,7 +200,7 @@ export function AddItineraryItemModal({
           ))}
         </div>
         <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
-          {type === 'STOP' ? (
+          {type === 'STOP' || type === 'HOTEL' ? (
             <div style={{ position: 'relative' }}>
               <input
                 placeholder="Search a place…"

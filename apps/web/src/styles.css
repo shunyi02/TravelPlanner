@@ -183,6 +183,19 @@ h1.page-title {
   margin-left: 8px;
 }
 
+.ledger-row-actions {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.ledger-row:hover .ledger-row-actions,
+.ledger-row:focus-within .ledger-row-actions {
+  opacity: 1;
+}
+
 .amount {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -337,6 +350,18 @@ h1.page-title {
 
 .trip-hero {
   margin-bottom: 28px;
+}
+
+.route-map {
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.route-map .leaflet-tooltip {
+  font-family: var(--font-body);
+  font-size: 12px;
 }
 
 .trip-hero-status {
@@ -535,7 +560,8 @@ h1.page-title {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 50;
+  /* Above Leaflet's own controls/panes, which reach z-index 1000. */
+  z-index: 2000;
 }
 
 .modal {

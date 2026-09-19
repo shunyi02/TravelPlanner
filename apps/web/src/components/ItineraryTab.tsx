@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Place, TripDetail } from '../api';
 import { api } from '../api';
 import { AddItineraryItemModal } from './AddItineraryItemModal';
+import { RouteMap, type RouteStop } from './RouteMap';
 
 function daysBetween(start: string, end: string): string[] {
   const days: string[] = [];
@@ -229,6 +230,12 @@ export function ItineraryTab({
     dayPlaces.sort((a, b) => sortTimeForDay(a, day) - sortTimeForDay(b, day));
   }
 
+  /** The whole trip's located stops/hotels, in visit order, for the overview map. */
+  const routeStops: RouteStop[] = places
+    .filter((p): p is Place & { lat: number; lng: number } => p.lat != null && p.lng != null)
+    .sort((a, b) => sortTimeForDay(a, undefined) - sortTimeForDay(b, undefined))
+    .map((p, i) => ({ id: p.id, name: p.name, lat: p.lat, lng: p.lng, order: i + 1 }));
+
   const renderRow = (place: Place, opts?: { day?: string; index?: number; draggable?: boolean }) => {
     const subtitle = placeSubtitle(place, opts?.day);
     const isTransitionDay =
@@ -259,33 +266,15 @@ export function ItineraryTab({
             </span>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 4 }}>
-          <button
-            type="button"
-            onClick={() => setEditingPlace(place)}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--route)',
-              fontSize: 12,
-              padding: '4px 8px',
-              cursor: 'pointer',
-            }}
-          >
+        <div className="ledger-row-actions">
+          <button type="button" className="text-btn" onClick={() => setEditingPlace(place)}>
             Edit
           </button>
           <button
             type="button"
+            className="text-btn text-btn-danger"
             onClick={() => handleDelete(place)}
             disabled={deletingId === place.id}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--owe)',
-              fontSize: 12,
-              padding: '4px 8px',
-              cursor: 'pointer',
-            }}
           >
             {deletingId === place.id ? 'Removing…' : 'Remove'}
           </button>
@@ -311,6 +300,8 @@ export function ItineraryTab({
       <button className="btn" style={{ marginBottom: 20 }} onClick={() => setShowAddModal(true)}>
         + Add
       </button>
+
+      <RouteMap stops={routeStops} />
 
       {days.length === 0 ? (
         places.length === 0 ? (
