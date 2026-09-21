@@ -26,6 +26,23 @@ export interface RouteStop {
   order: number;
 }
 
+/** A Google Maps deep link for one stop — just a URL, no API key or billing. */
+function googleMapsStopUrl(stop: RouteStop): string {
+  return `https://www.google.com/maps/search/?api=1&query=${stop.lat},${stop.lng}`;
+}
+
+/** A Google Maps directions deep link across every stop in visit order —
+ *  same free URL scheme, just with an origin/destination/waypoints. */
+function googleMapsRouteUrl(stops: RouteStop[]): string {
+  const coord = (s: RouteStop) => `${s.lat},${s.lng}`;
+  const origin = coord(stops[0]);
+  const destination = coord(stops[stops.length - 1]);
+  const waypoints = stops.slice(1, -1).map(coord).join('|');
+  const params = new URLSearchParams({ api: '1', origin, destination });
+  if (waypoints) params.set('waypoints', waypoints);
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
+}
+
 /** The whole trip's route: a numbered pin per located stop/hotel, in visit
  *  order, with a line from each to the next. */
 export function RouteMap({ stops }: { stops: RouteStop[] }) {
@@ -48,13 +65,29 @@ export function RouteMap({ stops }: { stops: RouteStop[] }) {
         />
         {positions.length > 1 && <Polyline positions={positions} pathOptions={{ color: '#2b6e5e', weight: 3 }} />}
         {stops.map((stop) => (
-          <Marker key={stop.id} position={[stop.lat, stop.lng]} icon={markerIconDefault}>
+          <Marker
+            key={stop.id}
+            position={[stop.lat, stop.lng]}
+            icon={markerIconDefault}
+            eventHandlers={{ click: () => window.open(googleMapsStopUrl(stop), '_blank', 'noopener') }}
+          >
             <Tooltip direction="top" offset={[0, -34]}>
-              {stop.order}. {stop.name}
+              {stop.order}. {stop.name} — click for Google Maps
             </Tooltip>
           </Marker>
         ))}
       </MapContainer>
+
+      {stops.length > 1 && (
+        <a
+          className="route-map-open-link"
+          href={googleMapsRouteUrl(stops)}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Open full route in Google Maps ↗
+        </a>
+      )}
     </div>
   );
 }

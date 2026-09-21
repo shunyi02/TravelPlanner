@@ -26,3 +26,17 @@
   font-family: var(--font-body);
   font-size: 12px;
 }
+
+.route-map-open-link {
+  display: block;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--route);
+  text-decoration: none;
+  border-top: 1px solid var(--rule);
+  background: var(--surface);
+}
+
+.route-map-open-link:hover {
+  background: var(--route-soft);
+}
