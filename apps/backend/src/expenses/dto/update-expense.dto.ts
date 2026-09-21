@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
+  IsDateString,
   IsNumber,
   IsOptional,
   IsPositive,
@@ -25,6 +26,14 @@ export class UpdateExpenseDto {
   @IsOptional()
   @IsString()
   paidById?: string;
+
+  @IsOptional()
+  @IsString()
+  category?: string;
+
+  @IsOptional()
+  @IsDateString()
+  expenseDate?: string;
 
   /**
    * If provided, replaces the expense's splits entirely (same validation as

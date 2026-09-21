@@ -1,6 +1,10 @@
 import { useState } from 'react';
+import { EXPENSE_CATEGORIES, DEFAULT_EXPENSE_CATEGORY } from '@travel-planner/shared';
 import type { Expense } from '../api';
 import { api } from '../api';
+import { formatDateTime, fromDatetimeLocalValue, toDatetimeLocalValue } from '../format';
+
+const nowForInput = () => toDatetimeLocalValue(new Date().toISOString());
 
 type SplitMode = 'even' | 'custom';
 
@@ -114,6 +118,8 @@ export function ExpensesTab({
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [paidById, setPaidById] = useState(currentUserId ?? memberIds[0] ?? '');
+  const [category, setCategory] = useState<string>(DEFAULT_EXPENSE_CATEGORY);
+  const [expenseDate, setExpenseDate] = useState(nowForInput());
   const [splitMode, setSplitMode] = useState<SplitMode>('even');
   const [customAmounts, setCustomAmounts] = useState<Record<string, string>>({});
   const [showSplitEditor, setShowSplitEditor] = useState(false);
@@ -124,6 +130,8 @@ export function ExpensesTab({
   const [editDescription, setEditDescription] = useState('');
   const [editAmount, setEditAmount] = useState('');
   const [editPaidById, setEditPaidById] = useState('');
+  const [editCategory, setEditCategory] = useState<string>(DEFAULT_EXPENSE_CATEGORY);
+  const [editExpenseDate, setEditExpenseDate] = useState(nowForInput());
   const [editSplitMode, setEditSplitMode] = useState<SplitMode>('even');
   const [initialEditSplitMode, setInitialEditSplitMode] = useState<SplitMode>('even');
   const [editCustomAmounts, setEditCustomAmounts] = useState<Record<string, string>>({});
@@ -133,6 +141,8 @@ export function ExpensesTab({
     setDescription('');
     setAmount('');
     setPaidById(currentUserId ?? memberIds[0] ?? '');
+    setCategory(DEFAULT_EXPENSE_CATEGORY);
+    setExpenseDate(nowForInput());
     setSplitMode('even');
     setCustomAmounts({});
     setShowSplitEditor(false);
@@ -154,7 +164,14 @@ export function ExpensesTab({
     }
 
     try {
-      await api.createExpense(tripId, { description: description.trim(), amount: parsed, paidById, splits });
+      await api.createExpense(tripId, {
+        description: description.trim(),
+        amount: parsed,
+        paidById,
+        category,
+        expenseDate: fromDatetimeLocalValue(expenseDate),
+        splits,
+      });
       resetAddForm();
       onChange();
     } catch (err) {
@@ -175,6 +192,8 @@ export function ExpensesTab({
     setEditDescription(expense.description);
     setEditAmount(expense.amount);
     setEditPaidById(expense.paidById);
+    setEditCategory(expense.category);
+    setEditExpenseDate(toDatetimeLocalValue(expense.expenseDate));
     const mode: SplitMode = looksEven(expense, memberIds) ? 'even' : 'custom';
     setEditSplitMode(mode);
     setInitialEditSplitMode(mode);
@@ -191,11 +210,16 @@ export function ExpensesTab({
       description?: string;
       amount?: number;
       paidById?: string;
+      category?: string;
+      expenseDate?: string;
       splits?: Array<{ userId: string; share: number }>;
     } = {};
     if (editDescription.trim() !== expense.description) data.description = editDescription.trim();
     if (parsedAmount !== Number(expense.amount)) data.amount = parsedAmount;
     if (editPaidById !== expense.paidById) data.paidById = editPaidById;
+    if (editCategory !== expense.category) data.category = editCategory;
+    const editExpenseDateIso = fromDatetimeLocalValue(editExpenseDate);
+    if (editExpenseDateIso !== new Date(expense.expenseDate).toISOString()) data.expenseDate = editExpenseDateIso;
 
     if (showEditSplitEditor && editSplitMode === 'custom') {
       if (Math.abs(parsedAmount - sumAmounts(editCustomAmounts)) > 0.01) {
@@ -248,7 +272,11 @@ export function ExpensesTab({
               <div className="ledger-row" style={{ cursor: 'pointer' }} onClick={() => toggleExpand(expense.id)}>
                 <div className="row-main">
                   <span className="row-title">{expense.description}</span>
-                  <span className="row-sub">paid by {memberNames[expense.paidById] ?? 'someone'}</span>
+                  <span className="row-sub">
+                    <span className="category-badge">{expense.category}</span>
+                    {' · paid by '}{memberNames[expense.paidById] ?? 'someone'}
+                    {' · '}{formatDateTime(expense.expenseDate)}
+                  </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <span className="amount">
@@ -329,6 +357,24 @@ export function ExpensesTab({
                       </select>
                     </label>
                   </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
+                      Category
+                      <select value={editCategory} onChange={(e) => setEditCategory(e.target.value)}>
+                        {EXPENSE_CATEGORIES.map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
+                      When
+                      <input
+                        type="datetime-local"
+                        value={editExpenseDate}
+                        onChange={(e) => setEditExpenseDate(e.target.value)}
+                      />
+                    </label>
+                  </div>
                   <button
                     type="button"
                     className="text-btn"
@@ -381,14 +427,28 @@ export function ExpensesTab({
             Log expense
           </button>
         </div>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)', marginTop: 8 }}>
-          Paid by
-          <select value={paidById} onChange={(e) => setPaidById(e.target.value)}>
-            {memberIds.map((id) => (
-              <option key={id} value={id}>{memberNames[id] ?? id}</option>
-            ))}
-          </select>
-        </label>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 8 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
+            Paid by
+            <select value={paidById} onChange={(e) => setPaidById(e.target.value)}>
+              {memberIds.map((id) => (
+                <option key={id} value={id}>{memberNames[id] ?? id}</option>
+              ))}
+            </select>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
+            Category
+            <select value={category} onChange={(e) => setCategory(e.target.value)}>
+              {EXPENSE_CATEGORIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
+            When
+            <input type="datetime-local" value={expenseDate} onChange={(e) => setExpenseDate(e.target.value)} />
+          </label>
+        </div>
         <button
           type="button"
           className="text-btn"

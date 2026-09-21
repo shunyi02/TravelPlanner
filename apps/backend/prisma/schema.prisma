@@ -111,6 +111,14 @@ model Expense {
   description String
   amount      Decimal        @db.Decimal(12, 2)
   currency    String         @default("USD")
+  /** Free-form-ish label from a curated list (EXPENSE_CATEGORIES in the
+   *  shared package) — a plain string like Trip.currency, not a DB enum, so
+   *  adding a category later doesn't need a migration. */
+  category    String         @default("Other")
+  /** When the expense actually happened, as chosen by whoever logs it —
+   *  distinct from createdAt (when the row was inserted). Expenses are
+   *  listed ordered by this field. */
+  expenseDate DateTime       @default(now())
   paidBy      User           @relation("PaidBy", fields: [paidById], references: [id])
   paidById    String
   splits      ExpenseSplit[]

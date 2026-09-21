@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
+  IsDateString,
   IsNumber,
   IsOptional,
   IsPositive,
@@ -34,6 +35,16 @@ export class CreateExpenseDto {
   @IsOptional()
   @IsString()
   paidById?: string;
+
+  /** From EXPENSE_CATEGORIES in the shared package. Defaults to "Other". */
+  @IsOptional()
+  @IsString()
+  category?: string;
+
+  /** ISO datetime string for when the expense happened. Defaults to now. */
+  @IsOptional()
+  @IsDateString()
+  expenseDate?: string;
 
   /**
    * Who owes what share of this expense. If omitted, splits evenly across

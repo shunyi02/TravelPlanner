@@ -157,6 +157,8 @@ export interface Expense {
   description: string;
   amount: string;
   currency: string;
+  category: string;
+  expenseDate: string;
   paidById: string;
   splits: ExpenseSplit[];
   createdAt: string;
@@ -204,6 +206,8 @@ export const api = {
       description: string;
       amount: number;
       paidById?: string;
+      category?: string;
+      expenseDate?: string;
       splits?: Array<{ userId: string; share: number }>;
     },
   ) => request<Expense>(`/trips/${tripId}/expenses`, { method: 'POST', body: JSON.stringify(data) }),
@@ -214,6 +218,8 @@ export const api = {
       description?: string;
       amount?: number;
       paidById?: string;
+      category?: string;
+      expenseDate?: string;
       splits?: Array<{ userId: string; share: number }>;
     },
   ) =>

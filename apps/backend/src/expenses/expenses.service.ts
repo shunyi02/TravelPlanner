@@ -31,6 +31,8 @@ export class ExpensesService {
         description: dto.description,
         amount: dto.amount,
         currency,
+        category: dto.category ?? 'Other',
+        expenseDate: dto.expenseDate ? new Date(dto.expenseDate) : new Date(),
         paidById,
         splits: {
           create: amounts.map(({ userId: splitUserId, amount }) => ({
@@ -49,7 +51,7 @@ export class ExpensesService {
     return this.prisma.expense.findMany({
       where: { tripId },
       include: { splits: true },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { expenseDate: 'desc' },
     });
   }
 
@@ -81,6 +83,8 @@ export class ExpensesService {
       description: dto.description,
       amount: dto.amount,
       paidById: dto.paidById,
+      category: dto.category,
+      expenseDate: dto.expenseDate ? new Date(dto.expenseDate) : undefined,
     };
 
     if (splitInputs) {

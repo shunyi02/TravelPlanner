@@ -34,6 +34,8 @@ export interface ExpenseDto {
   description: string;
   amount: string; // decimal as string to avoid float precision issues over the wire
   currency: string;
+  category: string;
+  expenseDate: string;
   paidById: string;
   splits: Array<{ userId: string; amountOwed: string; settled: boolean }>;
 }
