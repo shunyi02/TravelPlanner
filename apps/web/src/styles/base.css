@@ -48,6 +48,7 @@ input {
 .main {
   padding: 40px 48px;
   max-width: 760px;
+  width: 100%;
   min-width: 0;
 }
 
