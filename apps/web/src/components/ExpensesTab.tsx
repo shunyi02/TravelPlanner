@@ -130,7 +130,6 @@ export function ExpensesTab({
   const [expenseDate, setExpenseDate] = useState(nowForInput());
   const [servicePct, setServicePct] = useState('');
   const [taxPct, setTaxPct] = useState('');
-  const [showTaxOptions, setShowTaxOptions] = useState(false);
   const [splitMode, setSplitMode] = useState<SplitMode>('even');
   const [customAmounts, setCustomAmounts] = useState<Record<string, string>>({});
   const [showSplitEditor, setShowSplitEditor] = useState(false);
@@ -145,7 +144,6 @@ export function ExpensesTab({
   const [editExpenseDate, setEditExpenseDate] = useState(nowForInput());
   const [editServicePct, setEditServicePct] = useState('');
   const [editTaxPct, setEditTaxPct] = useState('');
-  const [showEditTaxOptions, setShowEditTaxOptions] = useState(false);
   const [editSplitMode, setEditSplitMode] = useState<SplitMode>('even');
   const [initialEditSplitMode, setInitialEditSplitMode] = useState<SplitMode>('even');
   const [editCustomAmounts, setEditCustomAmounts] = useState<Record<string, string>>({});
@@ -161,7 +159,6 @@ export function ExpensesTab({
     setAmount('');
     setServicePct('');
     setTaxPct('');
-    setShowTaxOptions(false);
     setPaidById(currentUserId ?? memberIds[0] ?? '');
     setCategory(DEFAULT_EXPENSE_CATEGORY);
     setExpenseDate(nowForInput());
@@ -178,7 +175,7 @@ export function ExpensesTab({
 
     const svc = Number(servicePct) || 0;
     const tax = Number(taxPct) || 0;
-    const hasTax = showTaxOptions && (svc > 0 || tax > 0);
+    const hasTax = svc > 0 || tax > 0;
     const finalTotal = Number(computeTotal(parsed, svc, tax).toFixed(2));
 
     let splits: Array<{ userId: string; share: number }> | undefined;
@@ -223,7 +220,6 @@ export function ExpensesTab({
     setEditAmount(expense.subtotal ?? expense.amount);
     setEditServicePct(expense.servicePct ?? '');
     setEditTaxPct(expense.taxPct ?? '');
-    setShowEditTaxOptions(expense.servicePct != null || expense.taxPct != null);
     setEditPaidById(expense.paidById);
     setEditCategory(expense.category);
     setEditExpenseDate(toDatetimeLocalValue(expense.expenseDate));
@@ -241,7 +237,7 @@ export function ExpensesTab({
 
     const svc = Number(editServicePct) || 0;
     const tax = Number(editTaxPct) || 0;
-    const hasTax = showEditTaxOptions && (svc > 0 || tax > 0);
+    const hasTax = svc > 0 || tax > 0;
     const newTotal = Number(computeTotal(parsedAmount, svc, tax).toFixed(2));
     const newSubtotal = hasTax ? parsedAmount : null;
     const newServicePct = hasTax && svc > 0 ? svc : null;
@@ -394,14 +390,32 @@ export function ExpensesTab({
                     onChange={(e) => setEditDescription(e.target.value)}
                     placeholder="Name"
                   />
-                  <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                     <input
                       inputMode="decimal"
                       value={editAmount}
                       onChange={(e) => setEditAmount(e.target.value)}
-                      placeholder={showEditTaxOptions ? `Subtotal (${currency})` : `Amount (${currency})`}
+                      placeholder={`Price (${currency})`}
                       style={{ maxWidth: 140 }}
                     />
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
+                      Service %
+                      <input
+                        inputMode="decimal"
+                        value={editServicePct}
+                        onChange={(e) => setEditServicePct(e.target.value)}
+                        style={{ maxWidth: 60 }}
+                      />
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
+                      Tax %
+                      <input
+                        inputMode="decimal"
+                        value={editTaxPct}
+                        onChange={(e) => setEditTaxPct(e.target.value)}
+                        style={{ maxWidth: 60 }}
+                      />
+                    </label>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
                       Paid by
                       <select value={editPaidById} onChange={(e) => setEditPaidById(e.target.value)}>
@@ -411,6 +425,11 @@ export function ExpensesTab({
                       </select>
                     </label>
                   </div>
+                  {Number(editAmount) > 0 && (
+                    <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: 0 }}>
+                      Total (incl. tax): {currency} {editTotal.toFixed(2)}
+                    </p>
+                  )}
                   <div style={{ display: 'flex', gap: 8 }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
                       Category
@@ -429,41 +448,6 @@ export function ExpensesTab({
                       />
                     </label>
                   </div>
-                  <button
-                    type="button"
-                    className="text-btn"
-                    onClick={() => setShowEditTaxOptions((v) => !v)}
-                    style={{ alignSelf: 'flex-start' }}
-                  >
-                    {showEditTaxOptions ? 'Hide service charge / tax' : '+ Service charge / tax'}
-                  </button>
-                  {showEditTaxOptions && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
-                        Service %
-                        <input
-                          inputMode="decimal"
-                          value={editServicePct}
-                          onChange={(e) => setEditServicePct(e.target.value)}
-                          style={{ maxWidth: 70 }}
-                        />
-                      </label>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
-                        Tax %
-                        <input
-                          inputMode="decimal"
-                          value={editTaxPct}
-                          onChange={(e) => setEditTaxPct(e.target.value)}
-                          style={{ maxWidth: 70 }}
-                        />
-                      </label>
-                      {Number(editAmount) > 0 && (
-                        <span style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
-                          Total: {currency} {editTotal.toFixed(2)}
-                        </span>
-                      )}
-                    </div>
-                  )}
                   <button
                     type="button"
                     className="text-btn"
@@ -506,16 +490,39 @@ export function ExpensesTab({
             onChange={(e) => setDescription(e.target.value)}
           />
           <input
-            placeholder={showTaxOptions ? `Subtotal (${currency})` : `Amount (${currency})`}
+            placeholder={`Price (${currency})`}
             inputMode="decimal"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             style={{ maxWidth: 140 }}
           />
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
+            Service %
+            <input
+              inputMode="decimal"
+              value={servicePct}
+              onChange={(e) => setServicePct(e.target.value)}
+              style={{ maxWidth: 60 }}
+            />
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
+            Tax %
+            <input
+              inputMode="decimal"
+              value={taxPct}
+              onChange={(e) => setTaxPct(e.target.value)}
+              style={{ maxWidth: 60 }}
+            />
+          </label>
           <button className="btn" type="submit">
             Log expense
           </button>
         </div>
+        {Number(amount) > 0 && (
+          <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: '8px 0 0' }}>
+            Total (incl. tax): {currency} {total.toFixed(2)}
+          </p>
+        )}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 8 }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
             Paid by
@@ -538,41 +545,6 @@ export function ExpensesTab({
             <input type="datetime-local" value={expenseDate} onChange={(e) => setExpenseDate(e.target.value)} />
           </label>
         </div>
-        <button
-          type="button"
-          className="text-btn"
-          onClick={() => setShowTaxOptions((v) => !v)}
-          style={{ display: 'block', marginTop: 8 }}
-        >
-          {showTaxOptions ? 'Hide service charge / tax' : '+ Service charge / tax'}
-        </button>
-        {showTaxOptions && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, marginTop: 4 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
-              Service %
-              <input
-                inputMode="decimal"
-                value={servicePct}
-                onChange={(e) => setServicePct(e.target.value)}
-                style={{ maxWidth: 70 }}
-              />
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
-              Tax %
-              <input
-                inputMode="decimal"
-                value={taxPct}
-                onChange={(e) => setTaxPct(e.target.value)}
-                style={{ maxWidth: 70 }}
-              />
-            </label>
-            {Number(amount) > 0 && (
-              <span style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
-                Total: {currency} {total.toFixed(2)}
-              </span>
-            )}
-          </div>
-        )}
         <button
           type="button"
           className="text-btn"
