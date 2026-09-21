@@ -57,7 +57,7 @@ export function TripDetailPage() {
         </p>
       )}
 
-      <div className="tab-row">
+      <div className="tab-row no-print">
         <button className={tab === 'itinerary' ? 'active' : ''} onClick={() => setTab('itinerary')}>
           Itinerary
         </button>

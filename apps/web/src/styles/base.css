@@ -145,3 +145,24 @@ h1.page-title {
 .form-inline input {
   flex: 1;
 }
+
+/* Print: only the current tab's content (e.g. the itinerary) — no chrome,
+ * no interactive controls, no map (tiles don't reliably print). */
+@media print {
+  .top-bar,
+  .sidebar,
+  .no-print,
+  .ledger-row-actions,
+  .route-map {
+    display: none !important;
+  }
+
+  .app-shell {
+    display: block !important;
+  }
+
+  .main {
+    max-width: none;
+    padding: 0;
+  }
+}

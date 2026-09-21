@@ -292,7 +292,7 @@ export function ItineraryTab({
 
   return (
     <div>
-      <form className="form-inline" onSubmit={handleSaveDates} style={{ marginBottom: 24 }}>
+      <form className="form-inline no-print" onSubmit={handleSaveDates} style={{ marginBottom: 24 }}>
         <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
         <span>to</span>
         <input type="date" value={endDate} min={startDate || undefined} onChange={(e) => setEndDate(e.target.value)} />
@@ -304,9 +304,14 @@ export function ItineraryTab({
       {deleteError && <p style={{ color: 'var(--owe)', margin: '0 0 16px' }}>{deleteError}</p>}
       {moveError && <p style={{ color: 'var(--owe)', margin: '0 0 16px' }}>{moveError}</p>}
 
-      <button className="btn" style={{ marginBottom: 20 }} onClick={() => setShowAddModal(true)}>
-        + Add
-      </button>
+      <div className="no-print" style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+        <button className="btn" onClick={() => setShowAddModal(true)}>
+          + Add
+        </button>
+        <button className="btn btn-outline" onClick={() => window.print()}>
+          Export PDF
+        </button>
+      </div>
 
       {days.length === 0 ? (
         <>
@@ -323,7 +328,7 @@ export function ItineraryTab({
 
           return (
             <>
-              <div className="tab-row" style={{ marginBottom: 16 }}>
+              <div className="tab-row no-print" style={{ marginBottom: 16 }}>
                 <button className={currentDay === null ? 'active' : ''} onClick={() => setView('overview')}>
                   Overview
                 </button>
