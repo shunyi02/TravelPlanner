@@ -242,8 +242,15 @@ export function ItineraryTab({
       .sort((a, b) => sortTimeForDay(a, day) - sortTimeForDay(b, day))
       .map((p, i) => ({ id: p.id, name: p.name, lat: p.lat, lng: p.lng, order: i + 1, day: day ?? dayKeysFor(p)[0] ?? '' }));
 
-  /** The whole trip's located stops/hotels, in visit order, for the overview map. */
+  /** The whole trip's located stops/hotels, in visit order, for the overview map
+   *  when no trip dates are set yet (nothing is day-bucketed, so nothing counts
+   *  as "unscheduled" either). */
   const routeStops: RouteStop[] = toRouteStops(places);
+
+  /** Same, but for the day-bucketed overview map: excludes places sitting in the
+   *  "Unscheduled" list, which has no day and so shouldn't plot on the map. */
+  const unscheduledIds = new Set(unscheduled.map((p) => p.id));
+  const scheduledRouteStops: RouteStop[] = toRouteStops(places.filter((p) => !unscheduledIds.has(p.id)));
 
   const renderRow = (place: Place, opts?: { day?: string; index?: number; draggable?: boolean }) => {
     const subtitle = placeSubtitle(place, opts?.day);
@@ -348,7 +355,7 @@ export function ItineraryTab({
 
               {currentDay === null ? (
                 <>
-                  <RouteMap stops={routeStops} />
+                  <RouteMap stops={scheduledRouteStops} />
                   <div>
                     {days.map((day) => (
                       <div key={day} style={{ marginBottom: 20 }}>
