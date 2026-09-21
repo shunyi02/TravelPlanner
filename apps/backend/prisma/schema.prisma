@@ -11,6 +11,7 @@ model User {
   id            String              @id @default(uuid())
   email         String              @unique
   name          String
+  avatarUrl     String?
   passwordHash  String
   /** A member added by name (optionally email) without registering. Can log
    *  in normally once someone registers with this user's email — see

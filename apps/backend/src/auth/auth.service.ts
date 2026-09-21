@@ -138,7 +138,12 @@ export class AuthService {
   async me(userId: string) {
     const user = await this.usersService.findById(userId);
     if (!user) throw new UnauthorizedException('Not authenticated');
-    return { id: user.id, email: user.email, name: user.name };
+    return { id: user.id, email: user.email, name: user.name, avatarUrl: user.avatarUrl };
+  }
+
+  async updateProfile(userId: string, data: { name?: string; avatarUrl?: string }) {
+    const user = await this.usersService.updateProfile(userId, data);
+    return { id: user.id, email: user.email, name: user.name, avatarUrl: user.avatarUrl };
   }
 
   private async issueTokenPair(userId: string, email: string) {

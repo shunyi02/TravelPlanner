@@ -58,6 +58,10 @@ export class UsersService {
     return this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
   }
 
+  async updateProfile(userId: string, data: { name?: string; avatarUrl?: string }) {
+    return this.prisma.user.update({ where: { id: userId }, data });
+  }
+
   async findById(id: string) {
     return this.prisma.user.findUnique({ where: { id } });
   }

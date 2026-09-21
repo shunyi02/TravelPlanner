@@ -142,6 +142,7 @@ export interface CurrentUser {
   id: string;
   email: string;
   name: string;
+  avatarUrl: string | null;
 }
 
 export interface ExpenseSplit {
@@ -183,6 +184,8 @@ export const api = {
       body: JSON.stringify({ token, newPassword }),
     }),
   getMe: () => request<CurrentUser>('/auth/me'),
+  updateProfile: (data: { name?: string; avatarUrl?: string }) =>
+    request<CurrentUser>('/auth/me', { method: 'PATCH', body: JSON.stringify(data) }),
   listTrips: () => request<Trip[]>('/trips'),
   createTrip: (data: { name: string; startDate?: string; endDate?: string; coverPhoto?: string; currency?: string }) =>
      request<TripDetail>('/trips', { method: 'POST', body: JSON.stringify(data) }),

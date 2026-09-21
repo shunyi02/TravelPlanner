@@ -45,7 +45,13 @@ function TopBar() {
             onClick={() => setMenuOpen((open) => !open)}
             aria-expanded={menuOpen}
           >
-            <span className="top-bar-avatar">{currentUser ? initials(currentUser.name) : ''}</span>
+            <span className="top-bar-avatar">
+              {currentUser?.avatarUrl ? (
+                <img src={currentUser.avatarUrl} alt="" className="top-bar-avatar-img" />
+              ) : (
+                currentUser ? initials(currentUser.name) : ''
+              )}
+            </span>
             <span>{currentUser?.name ?? 'Profile'}</span>
           </button>
           {menuOpen && currentUser && (
@@ -85,7 +91,7 @@ function AuthedApp({ onLogout }: { onLogout: () => void }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ currentUser, onLogout }}>
+    <AuthContext.Provider value={{ currentUser, onLogout, setCurrentUser }}>
       <TopBar />
       <div className="app-shell" style={!showSidebar ? { gridTemplateColumns: '1fr' } : undefined}>
         {showSidebar && <Sidebar />}
