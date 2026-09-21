@@ -32,6 +32,14 @@ function formatDateRange(startDate: string | null, endDate: string | null): stri
   return fmt(calendarDate((startDate ?? endDate)!), true);
 }
 
+/** A trip counts as "past" once its last day (end date, or start date if it
+ *  has no end) is behind today — those move to the History tab instead of
+ *  the main list. A trip with no dates at all can't be past, so it stays. */
+function isPastTrip(trip: Trip): boolean {
+  const lastDay = trip.endDate ?? trip.startDate;
+  return lastDay != null && daysFromToday(lastDay) < 0;
+}
+
 /** A short, real-data status for a trip card: how soon it starts, or that
  *  it's underway. Past trips get no status. `sentence` completes "{name} __"
  *  for the hero line; `label` is the standalone badge text on the card. */
@@ -57,6 +65,7 @@ export function TripsLandingPage() {
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Trip | null>(null);
+  const [view, setView] = useState<'trips' | 'history'>('trips');
 
   const load = useCallback(() => {
     setError(null);
@@ -123,6 +132,10 @@ export function TripsLandingPage() {
     .sort((a, b) => calendarDate(a.startDate!).getTime() - calendarDate(b.startDate!).getTime())[0];
   const upcomingStatus = upcoming ? tripStatus(upcoming) : null;
 
+  const pastTrips = trips.filter(isPastTrip);
+  const activeTrips = trips.filter((t) => !isPastTrip(t));
+  const visibleTrips = view === 'history' ? pastTrips : activeTrips;
+
   return (
     <div className="main main-centered">
       <div className="trip-hero">
@@ -146,8 +159,24 @@ export function TripsLandingPage() {
           </button>
         </div>
       ) : (
-        <div className="trip-card-grid">
-          {trips.map((trip) => {
+        <>
+          <div className="tab-row no-print" style={{ justifyContent: 'center' }}>
+            <button className={view === 'trips' ? 'active' : ''} onClick={() => setView('trips')}>
+              Trips
+            </button>
+            <button className={view === 'history' ? 'active' : ''} onClick={() => setView('history')}>
+              History
+            </button>
+          </div>
+
+          {visibleTrips.length === 0 && (
+            <p className="empty-state">
+              {view === 'history' ? 'No past trips yet.' : 'No upcoming trips.'}
+            </p>
+          )}
+
+          <div className="trip-card-grid">
+          {visibleTrips.map((trip) => {
             const dateRange = formatDateRange(trip.startDate, trip.endDate);
             const status = tripStatus(trip);
             return (
@@ -189,13 +218,16 @@ export function TripsLandingPage() {
             );
           })}
 
-          <button
-            className="trip-card trip-card-add"
-            onClick={() => setShowModal(true)}
-          >
-            + Add a trip
-          </button>
-        </div>
+          {view === 'trips' && (
+            <button
+              className="trip-card trip-card-add"
+              onClick={() => setShowModal(true)}
+            >
+              + Add a trip
+            </button>
+          )}
+          </div>
+        </>
       )}
 
       {confirmDelete && (
