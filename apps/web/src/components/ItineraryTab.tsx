@@ -135,6 +135,7 @@ export function ItineraryTab({
   const [dragPlace, setDragPlace] = useState<{ id: string; sourceDay?: string } | null>(null);
   const [dragOverDay, setDragOverDay] = useState<string | null>(null);
   const [moveError, setMoveError] = useState<string | null>(null);
+  const [view, setView] = useState<'overview' | string>('overview');
 
   const handleSaveDates = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -230,11 +231,15 @@ export function ItineraryTab({
     dayPlaces.sort((a, b) => sortTimeForDay(a, day) - sortTimeForDay(b, day));
   }
 
+  /** Located stops/hotels from `list`, in visit order for `day` (undefined = whole-trip order). */
+  const toRouteStops = (list: Place[], day?: string): RouteStop[] =>
+    list
+      .filter((p): p is Place & { lat: number; lng: number } => p.lat != null && p.lng != null)
+      .sort((a, b) => sortTimeForDay(a, day) - sortTimeForDay(b, day))
+      .map((p, i) => ({ id: p.id, name: p.name, lat: p.lat, lng: p.lng, order: i + 1 }));
+
   /** The whole trip's located stops/hotels, in visit order, for the overview map. */
-  const routeStops: RouteStop[] = places
-    .filter((p): p is Place & { lat: number; lng: number } => p.lat != null && p.lng != null)
-    .sort((a, b) => sortTimeForDay(a, undefined) - sortTimeForDay(b, undefined))
-    .map((p, i) => ({ id: p.id, name: p.name, lat: p.lat, lng: p.lng, order: i + 1 }));
+  const routeStops: RouteStop[] = toRouteStops(places);
 
   const renderRow = (place: Place, opts?: { day?: string; index?: number; draggable?: boolean }) => {
     const subtitle = placeSubtitle(place, opts?.day);
@@ -301,57 +306,93 @@ export function ItineraryTab({
         + Add
       </button>
 
-      <RouteMap stops={routeStops} />
-
       {days.length === 0 ? (
-        places.length === 0 ? (
-          <p className="empty-state">No stops yet. Set trip dates above to plan day by day.</p>
-        ) : (
-          <div>{places.map((place, index) => renderRow(place, { index }))}</div>
-        )
-      ) : (
-        <div>
-          {days.map((day) => (
-            <div key={day} style={{ marginBottom: 20 }}>
-              <h3 style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 600 }}>{formatDay(day)}</h3>
-              <div
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setDragOverDay(day);
-                }}
-                onDragLeave={() => setDragOverDay((d) => (d === day ? null : d))}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setDragOverDay(null);
-                  if (dragPlace) handleMoveToDay(dragPlace.id, dragPlace.sourceDay, day);
-                }}
-                style={{
-                  borderTop: '1px solid var(--rule)',
-                  paddingTop: 4,
-                  minHeight: 8,
-                  background: dragOverDay === day ? 'var(--route-soft)' : undefined,
-                }}
-              >
-                {(byDay.get(day) ?? []).length === 0 ? (
-                  <p className="empty-state" style={{ padding: '8px 0' }}>No stops planned.</p>
-                ) : (
-                  byDay.get(day)!.map((place) => renderRow(place, { day, draggable: true }))
-                )}
-              </div>
-            </div>
-          ))}
-
-          {unscheduled.length > 0 && (
-            <div style={{ marginBottom: 20 }}>
-              <h3 style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 600, color: 'var(--ink-soft)' }}>
-                Unscheduled
-              </h3>
-              <div style={{ borderTop: '1px solid var(--rule)', paddingTop: 4 }}>
-                {unscheduled.map((place) => renderRow(place, { draggable: true }))}
-              </div>
-            </div>
+        <>
+          <RouteMap stops={routeStops} />
+          {places.length === 0 ? (
+            <p className="empty-state">No stops yet. Set trip dates above to plan day by day.</p>
+          ) : (
+            <div>{places.map((place, index) => renderRow(place, { index }))}</div>
           )}
-        </div>
+        </>
+      ) : (
+        (() => {
+          const currentDay = view !== 'overview' && days.includes(view) ? view : null;
+
+          return (
+            <>
+              <div className="tab-row" style={{ marginBottom: 16 }}>
+                <button className={currentDay === null ? 'active' : ''} onClick={() => setView('overview')}>
+                  Overview
+                </button>
+                {days.map((day) => (
+                  <button key={day} className={currentDay === day ? 'active' : ''} onClick={() => setView(day)}>
+                    {formatDay(day)}
+                  </button>
+                ))}
+              </div>
+
+              {currentDay === null ? (
+                <>
+                  <RouteMap stops={routeStops} />
+                  <div>
+                    {days.map((day) => (
+                      <div key={day} style={{ marginBottom: 20 }}>
+                        <h3 style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 600 }}>{formatDay(day)}</h3>
+                        <div
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            setDragOverDay(day);
+                          }}
+                          onDragLeave={() => setDragOverDay((d) => (d === day ? null : d))}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            setDragOverDay(null);
+                            if (dragPlace) handleMoveToDay(dragPlace.id, dragPlace.sourceDay, day);
+                          }}
+                          style={{
+                            borderTop: '1px solid var(--rule)',
+                            paddingTop: 4,
+                            minHeight: 8,
+                            background: dragOverDay === day ? 'var(--route-soft)' : undefined,
+                          }}
+                        >
+                          {(byDay.get(day) ?? []).length === 0 ? (
+                            <p className="empty-state" style={{ padding: '8px 0' }}>No stops planned.</p>
+                          ) : (
+                            byDay.get(day)!.map((place) => renderRow(place, { day, draggable: true }))
+                          )}
+                        </div>
+                      </div>
+                    ))}
+
+                    {unscheduled.length > 0 && (
+                      <div style={{ marginBottom: 20 }}>
+                        <h3 style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 600, color: 'var(--ink-soft)' }}>
+                          Unscheduled
+                        </h3>
+                        <div style={{ borderTop: '1px solid var(--rule)', paddingTop: 4 }}>
+                          {unscheduled.map((place) => renderRow(place, { draggable: true }))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <RouteMap stops={toRouteStops(byDay.get(currentDay) ?? [], currentDay)} />
+                  <div style={{ borderTop: '1px solid var(--rule)', paddingTop: 4 }}>
+                    {(byDay.get(currentDay) ?? []).length === 0 ? (
+                      <p className="empty-state" style={{ padding: '8px 0' }}>No stops planned.</p>
+                    ) : (
+                      byDay.get(currentDay)!.map((place) => renderRow(place, { day: currentDay }))
+                    )}
+                  </div>
+                </>
+              )}
+            </>
+          );
+        })()
       )}
 
       {(showAddModal || editingPlace) && (
