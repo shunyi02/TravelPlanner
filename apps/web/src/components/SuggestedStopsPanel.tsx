@@ -2,77 +2,109 @@ import { useState } from 'react';
 import { api, type Trip } from '../api';
 
 interface Suggestion {
-  id: number;
+  id: string;
   name: string;
   lat: number;
   lng: number;
-  category: string;
+  description?: string;
   imageUrl?: string;
 }
 
-const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
-const SEARCH_RADIUS_M = 15_000;
+const SEARCH_RADIUS_KM = 10;
+const RESULT_LIMIT = 40;
 
-/** Node tags this cares about, roughly in "most likely to be a famous
- *  landmark" order — no real popularity signal exists in free OSM data. */
-const TOURISM_TAGS = ['attraction', 'museum', 'viewpoint', 'artwork'];
+/** Wikidata types that plausibly mean "somewhere a tourist would go" — kept
+ *  broad on purpose (the sitelink-count sort below is what actually keeps
+ *  quality high, not this list). */
+const ATTRACTION_TYPES = [
+  'Q570116', // tourist attraction
+  'Q4989906', // monument
+  'Q33506', // museum
+  'Q16560', // palace
+  'Q16970', // church building
+  'Q23413', // castle
+  'Q839954', // archaeological site
+  'Q174782', // town square
+  'Q22698', // park
+];
 
 /**
- * Best-effort free image lookup for one OSM node — no key, no paid image
- * API. Prefers the node's `wikipedia` tag (fetches that Wikipedia article's
- * thumbnail via the public REST summary endpoint); falls back to a direct
- * `wikimedia_commons` file tag via Commons' Special:FilePath redirect.
- * Neither tag is guaranteed to exist, so most suggestions still end up
- * with no image — the card just shows a placeholder then.
+ * "Famous nearby places" via a Wikidata SPARQL query (query.wikidata.org —
+ * free, no key, CORS-enabled). History: first tried OSM/Overpass tourism
+ * tags (caught anything tagged attraction/museum/etc regardless of size —
+ * random fountains, a WWII bunker, no popularity signal at all). Then tried
+ * plain Wikipedia geosearch (any nearby article with coordinates) — better,
+ * but a big city has thousands of geotagged articles for streets, metro
+ * stations, and office buildings, which buried real landmarks under purely-
+ * closer noise.
+ *
+ * The fix: Wikidata's `wikibase:sitelinks` count — how many languages have
+ * an article on this exact entity. A random square or parish church has a
+ * handful at most; Notre-Dame or the Louvre has 100+. Sorting by that
+ * (descending) is a real, structured fame signal instead of a guess, and it
+ * degrades gracefully for a small destination with few notable entries —
+ * there's no hard cutoff, just best-first.
  */
-async function resolveImage(tags: Record<string, string>): Promise<string | undefined> {
-  const wikipedia = tags.wikipedia;
-  if (wikipedia) {
-    const sep = wikipedia.indexOf(':');
-    const lang = sep > 0 ? wikipedia.slice(0, sep) : 'en';
-    const title = sep > 0 ? wikipedia.slice(sep + 1) : wikipedia;
-    try {
-      const res = await fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.thumbnail?.source) return data.thumbnail.source as string;
-      }
-    } catch {
-      // fall through to the Commons tag, if any
-    }
-  }
-  const commons = tags.wikimedia_commons;
-  if (commons?.startsWith('File:')) {
-    return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(commons.slice('File:'.length))}?width=300`;
-  }
-  return undefined;
-}
-
 async function fetchSuggestions(lat: number, lng: number): Promise<Suggestion[]> {
-  const query = `[out:json][timeout:25];(node["tourism"~"^(${TOURISM_TAGS.join('|')})$"](around:${SEARCH_RADIUS_M},${lat},${lng}););out body 30;`;
-  const res = await fetch(OVERPASS_URL, { method: 'POST', body: `data=${encodeURIComponent(query)}` });
+  const point = `Point(${lng} ${lat})`;
+  const query = `
+    PREFIX wd: <http://www.wikidata.org/entity/>
+    PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+    PREFIX bd: <http://www.bigdata.com/rdf#>
+    PREFIX wikibase: <http://wikiba.se/ontology#>
+    PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+
+    SELECT ?place ?placeLabel ?coord ?image ?typeLabel ?sitelinks WHERE {
+      SERVICE wikibase:around {
+        ?place wdt:P625 ?coord .
+        bd:serviceParam wikibase:center "${point}"^^geo:wktLiteral .
+        bd:serviceParam wikibase:radius "${SEARCH_RADIUS_KM}" .
+      }
+      ?place wdt:P31 ?type .
+      VALUES ?type { ${ATTRACTION_TYPES.map((q) => `wd:${q}`).join(' ')} }
+      ?place wikibase:sitelinks ?sitelinks .
+      OPTIONAL { ?place wdt:P18 ?image }
+      SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+    }
+    ORDER BY DESC(?sitelinks)
+    LIMIT ${RESULT_LIMIT}
+  `;
+  const res = await fetch(`https://query.wikidata.org/sparql?${new URLSearchParams({ query, format: 'json' })}`, {
+    headers: { Accept: 'application/sparql-results+json' },
+  });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   const data = await res.json();
-  const elements: Array<{ id: number; lat: number; lon: number; tags?: Record<string, string> }> = data.elements ?? [];
+  const bindings: Array<{
+    place: { value: string };
+    placeLabel: { value: string };
+    coord: { value: string };
+    image?: { value: string };
+    typeLabel?: { value: string };
+  }> = data.results?.bindings ?? [];
 
-  return Promise.all(
-    elements
-      .filter((el) => el.tags?.name)
-      .map(async (el) => ({
-        id: el.id,
-        name: el.tags!.name,
-        lat: el.lat,
-        lng: el.lon,
-        category: el.tags!.tourism ?? 'attraction',
-        imageUrl: await resolveImage(el.tags!),
-      })),
-  );
+  const byId = new Map<string, Suggestion>();
+  for (const b of bindings) {
+    const id = b.place.value.split('/').pop()!;
+    // Raw QID as the label means no English (or fallback) name resolved —
+    // not useful to show. A place can also appear once per P18 (image) it
+    // has, so keep the first (highest-sitelinks) occurrence per id.
+    if (byId.has(id) || /^Q\d+$/.test(b.placeLabel.value)) continue;
+    const coordMatch = /Point\(([-\d.]+) ([-\d.]+)\)/.exec(b.coord.value);
+    if (!coordMatch) continue;
+    byId.set(id, {
+      id,
+      name: b.placeLabel.value,
+      lng: parseFloat(coordMatch[1]),
+      lat: parseFloat(coordMatch[2]),
+      description: b.typeLabel?.value,
+      imageUrl: b.image ? `${b.image.value}?width=300` : undefined,
+    });
+  }
+  return [...byId.values()];
 }
 
-/** Suggests well-known nearby places (OpenStreetMap Overpass API — free, no
- *  key) for a trip with a geocoded destination, addable to the itinerary
- *  with one click. No fame ranking exists in this free data — it's tag
- *  presence, not popularity — so coverage/order is best-effort. */
+/** Suggests well-known nearby places for a trip with a geocoded destination,
+ *  addable to the itinerary with one click. */
 export function SuggestedStopsPanel({
   tripId,
   trip,
@@ -87,7 +119,7 @@ export function SuggestedStopsPanel({
   const [suggestions, setSuggestions] = useState<Suggestion[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [addedIds, setAddedIds] = useState<Set<number>>(new Set());
+  const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
 
   if (trip.destinationLat == null || trip.destinationLng == null) {
     return (
@@ -145,7 +177,7 @@ export function SuggestedStopsPanel({
                   )}
                   <div className="suggested-stop-body">
                     <span className="suggested-stop-name" title={s.name}>{s.name}</span>
-                    <span className="suggested-stop-category">{s.category}</span>
+                    {s.description && <span className="suggested-stop-category">{s.description}</span>}
                     <button
                       type="button"
                       className="btn btn-outline suggested-stop-add"
