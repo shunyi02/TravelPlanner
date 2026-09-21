@@ -161,3 +161,9 @@
   color: var(--route);
   margin: 4px 0 0;
 }
+
+.suggested-stops-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}

@@ -99,6 +99,9 @@ export interface Trip {
   endDate: string | null;
   coverPhoto: string | null;
   currency: string;
+  destinationName: string | null;
+  destinationLat: number | null;
+  destinationLng: number | null;
 }
 
 export type PlaceType = 'STOP' | 'HOTEL' | 'FLIGHT';
@@ -189,10 +192,27 @@ export const api = {
   updateProfile: (data: { name?: string; avatarUrl?: string }) =>
     request<CurrentUser>('/auth/me', { method: 'PATCH', body: JSON.stringify(data) }),
   listTrips: () => request<Trip[]>('/trips'),
-  createTrip: (data: { name: string; startDate?: string; endDate?: string; coverPhoto?: string; currency?: string }) =>
-     request<TripDetail>('/trips', { method: 'POST', body: JSON.stringify(data) }),
-  updateTrip: (tripId: string, data: { startDate?: string; endDate?: string; currency?: string }) =>
-  request<Trip>(`/trips/${tripId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  createTrip: (data: {
+    name: string;
+    startDate?: string;
+    endDate?: string;
+    coverPhoto?: string;
+    currency?: string;
+    destinationName?: string;
+    destinationLat?: number;
+    destinationLng?: number;
+  }) => request<TripDetail>('/trips', { method: 'POST', body: JSON.stringify(data) }),
+  updateTrip: (
+    tripId: string,
+    data: {
+      startDate?: string;
+      endDate?: string;
+      currency?: string;
+      destinationName?: string;
+      destinationLat?: number;
+      destinationLng?: number;
+    },
+  ) => request<Trip>(`/trips/${tripId}`, { method: 'PATCH', body: JSON.stringify(data) }),
   getTrip: (tripId: string) => request<TripDetail>(`/trips/${tripId}`),
   reorderPlaces: (tripId: string, orderedPlaceIds: string[]) =>
     request<Place[]>(`/trips/${tripId}/places/reorder`, {

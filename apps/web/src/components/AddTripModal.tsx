@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { COMMON_CURRENCIES } from '@travel-planner/shared';
 import { api } from '../api';
+import { LocationSearchField } from './LocationSearchField';
 
 export function AddTripModal({
   onClose,
@@ -14,6 +15,10 @@ export function AddTripModal({
   const [endDate, setEndDate] = useState('');
   const [coverPhoto, setCoverPhoto] = useState<string | null>(null);
   const [currency, setCurrency] = useState('USD');
+  const [destinationQuery, setDestinationQuery] = useState('');
+  const [destinationName, setDestinationName] = useState<string | undefined>();
+  const [destinationLat, setDestinationLat] = useState<number | undefined>();
+  const [destinationLng, setDestinationLng] = useState<number | undefined>();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,6 +44,9 @@ export function AddTripModal({
         endDate: endDate || undefined,
         coverPhoto: coverPhoto || undefined,
         currency,
+        destinationName,
+        destinationLat,
+        destinationLng,
       });
       onCreated(trip.id);
     } catch (err) {
@@ -77,6 +85,31 @@ export function AddTripModal({
               autoFocus
               style={{ display: 'block', marginTop: 4, width: '100%' }}
             />
+          </label>
+
+          <label style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
+            Destination (optional)
+            <div style={{ marginTop: 4 }}>
+              <LocationSearchField
+                query={destinationQuery}
+                onQueryChange={(q) => {
+                  setDestinationQuery(q);
+                  setDestinationName(undefined);
+                  setDestinationLat(undefined);
+                  setDestinationLng(undefined);
+                }}
+                onPick={(result) => {
+                  setDestinationQuery(result.displayName);
+                  setDestinationName(result.name);
+                  setDestinationLat(result.lat);
+                  setDestinationLng(result.lng);
+                }}
+                lat={destinationLat}
+                lng={destinationLng}
+                placeholder="Search a city…"
+                showMap={false}
+              />
+            </div>
           </label>
 
           <label style={{ fontSize: 13, color: 'var(--ink-soft)' }}>

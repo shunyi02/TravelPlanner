@@ -1,4 +1,4 @@
-import { IsISO8601, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsISO8601, IsNumber, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class CreateTripDto {
   @IsString()
@@ -22,4 +22,18 @@ export class CreateTripDto {
   @IsOptional()
   @IsString()
   currency?: string;
+
+  /** The trip's city/area — geocoded client-side (Nominatim), sent as a
+   *  name + coordinates. Powers the "suggest places to visit" panel. */
+  @IsOptional()
+  @IsString()
+  destinationName?: string;
+
+  @IsOptional()
+  @IsNumber()
+  destinationLat?: number;
+
+  @IsOptional()
+  @IsNumber()
+  destinationLng?: number;
 }

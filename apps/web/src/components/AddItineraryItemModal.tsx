@@ -1,27 +1,9 @@
-import { useEffect, useState } from 'react';
-import L from 'leaflet';
-import { MapContainer, Marker, TileLayer } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
+import { useState } from 'react';
 import { api, type Place, type PlaceType } from '../api';
 import { AirportField } from './AirportField';
+import { LocationSearchField } from './LocationSearchField';
 
 type FlightTripType = 'ONE_WAY' | 'ROUND_TRIP';
-
-interface NominatimResult {
-  place_id: number;
-  display_name: string;
-  lat: string;
-  lon: string;
-}
-
-/** Same colored-badge look as the trip route map, just a single fixed pin
- *  here — no per-day coloring needed for a one-location preview. */
-const previewPinIcon = L.divIcon({
-  className: 'route-map-pin',
-  html: `<span style="background:#2b6e5e"></span>`,
-  iconSize: [26, 26],
-  iconAnchor: [13, 13],
-});
 
 const PLACE_TYPE_INFO: Record<PlaceType, { label: string; icon: string; hint: string }> = {
   STOP: { label: 'Stop', icon: '📍', hint: 'A place to visit — attraction, restaurant, etc.' },
@@ -79,9 +61,6 @@ export function AddItineraryItemModal({
   const [locationQuery, setLocationQuery] = useState(
     editPlace?.type === 'STOP' || editPlace?.type === 'HOTEL' ? editPlace.name : '',
   );
-  const [locationResults, setLocationResults] = useState<NominatimResult[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [touchedLocation, setTouchedLocation] = useState(false);
   const [lat, setLat] = useState<number | undefined>(editPlace?.lat ?? undefined);
   const [lng, setLng] = useState<number | undefined>(editPlace?.lng ?? undefined);
 
@@ -112,38 +91,6 @@ export function AddItineraryItemModal({
   // datetime-local needs "YYYY-MM-DDTHH:mm" bounds, not just a date
   const dtMin = tripStartDate ? `${tripStartDate}T00:00` : undefined;
   const dtMax = tripEndDate ? `${tripEndDate}T23:59` : undefined;
-
-  // Debounced Nominatim (OpenStreetMap) search — free, no API key.
-  // Rate-limited to ~1req/s per their usage policy, so wait for typing to pause.
-  useEffect(() => {
-    if (!touchedLocation || (type !== 'STOP' && type !== 'HOTEL') || locationQuery.trim().length < 3) {
-      setLocationResults([]);
-      return;
-    }
-    const handle = setTimeout(async () => {
-      setSearching(true);
-      try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(locationQuery)}`,
-        );
-        const data: NominatimResult[] = await res.json();
-        setLocationResults(data);
-      } catch {
-        setLocationResults([]);
-      } finally {
-        setSearching(false);
-      }
-    }, 400);
-    return () => clearTimeout(handle);
-  }, [locationQuery, type, touchedLocation]);
-
-  const pickLocation = (result: NominatimResult) => {
-    setName(result.display_name.split(',')[0]);
-    setLat(parseFloat(result.lat));
-    setLng(parseFloat(result.lon));
-    setLocationQuery(result.display_name);
-    setLocationResults([]);
-  };
 
   /** Switch the type being edited/added. Clears fields specific to the previous type. */
   const changeType = (next: PlaceType) => {
@@ -258,85 +205,24 @@ export function AddItineraryItemModal({
         </div>
         <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
           {type === 'STOP' || type === 'HOTEL' ? (
-            <div style={{ position: 'relative' }}>
-              <input
-                placeholder="Search a place…"
-                value={locationQuery}
-                onChange={(e) => {
-                  setTouchedLocation(true);
-                  setLocationQuery(e.target.value);
-                  setName(e.target.value);
-                  setLat(undefined);
-                  setLng(undefined);
-                }}
-                autoFocus
-                required
-              />
-              {searching && (
-                <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '4px 0 0' }}>Searching…</p>
-              )}
-              {locationResults.length > 0 && (
-                <ul
-                  style={{
-                    listStyle: 'none',
-                    margin: '4px 0 0',
-                    padding: 0,
-                    border: '1px solid var(--rule)',
-                    borderRadius: 6,
-                    maxHeight: 180,
-                    overflowY: 'auto',
-                    background: 'var(--surface)',
-                    position: 'absolute',
-                    width: '100%',
-                    zIndex: 10,
-                  }}
-                >
-                  {locationResults.map((r) => (
-                    <li key={r.place_id}>
-                      <button
-                        type="button"
-                        onClick={() => pickLocation(r)}
-                        style={{
-                          display: 'block',
-                          width: '100%',
-                          textAlign: 'left',
-                          padding: '8px 10px',
-                          background: 'none',
-                          border: 'none',
-                          fontSize: 13,
-                        }}
-                      >
-                        {r.display_name}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {lat !== undefined && lng !== undefined && (
-                <>
-                  <p style={{ fontSize: 12, color: 'var(--route)', margin: '4px 0 0' }}>
-                    📍 {lat.toFixed(5)}, {lng.toFixed(5)}
-                  </p>
-                  <div className="location-preview-map">
-                    <MapContainer
-                      key={`${lat},${lng}`}
-                      center={[lat, lng]}
-                      zoom={14}
-                      scrollWheelZoom={false}
-                      dragging={false}
-                      zoomControl={false}
-                      style={{ height: 140, width: '100%' }}
-                    >
-                      <TileLayer
-                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                      />
-                      <Marker position={[lat, lng]} icon={previewPinIcon} />
-                    </MapContainer>
-                  </div>
-                </>
-              )}
-            </div>
+            <LocationSearchField
+              query={locationQuery}
+              onQueryChange={(q) => {
+                setLocationQuery(q);
+                setName(q);
+                setLat(undefined);
+                setLng(undefined);
+              }}
+              onPick={(result) => {
+                setName(result.name);
+                setLat(result.lat);
+                setLng(result.lng);
+                setLocationQuery(result.displayName);
+              }}
+              lat={lat}
+              lng={lng}
+              autoFocus
+            />
           ) : (
             <input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} autoFocus required />
           )}

@@ -3,6 +3,7 @@ import type { Place, TripDetail } from '../api';
 import { api } from '../api';
 import { AddItineraryItemModal } from './AddItineraryItemModal';
 import { RouteMap, type RouteStop } from './RouteMap';
+import { SuggestedStopsPanel } from './SuggestedStopsPanel';
 
 function daysBetween(start: string, end: string): string[] {
   const days: string[] = [];
@@ -313,6 +314,13 @@ export function ItineraryTab({
           Export PDF
         </button>
       </div>
+
+      <SuggestedStopsPanel
+        tripId={tripId}
+        trip={trip}
+        existingPlaceNames={places.map((p) => p.name)}
+        onAdded={onChange}
+      />
 
       {days.length === 0 ? (
         <>

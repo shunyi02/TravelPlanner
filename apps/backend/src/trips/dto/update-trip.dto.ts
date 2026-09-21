@@ -1,4 +1,4 @@
-import { IsISO8601, IsOptional, IsString } from 'class-validator';
+import { IsISO8601, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class UpdateTripDto {
   @IsOptional()
@@ -14,4 +14,16 @@ export class UpdateTripDto {
   @IsOptional()
   @IsString()
   currency?: string;
+
+  @IsOptional()
+  @IsString()
+  destinationName?: string;
+
+  @IsOptional()
+  @IsNumber()
+  destinationLat?: number;
+
+  @IsOptional()
+  @IsNumber()
+  destinationLng?: number;
 }

@@ -24,6 +24,9 @@ export class TripsService {
         endDate: dto.endDate ? new Date(dto.endDate) : undefined,
         coverPhoto: dto.coverPhoto,
         currency: dto.currency,
+        destinationName: dto.destinationName,
+        destinationLat: dto.destinationLat,
+        destinationLng: dto.destinationLng,
         members: {
           create: { userId, role: 'owner' },
         },
@@ -241,6 +244,9 @@ export class TripsService {
         startDate: dto.startDate ? new Date(dto.startDate) : undefined,
         endDate: dto.endDate ? new Date(dto.endDate) : undefined,
         currency: dto.currency,
+        destinationName: dto.destinationName,
+        destinationLat: dto.destinationLat,
+        destinationLng: dto.destinationLng,
       },
     });
   }

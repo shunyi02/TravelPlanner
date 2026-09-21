@@ -34,6 +34,12 @@ model Trip {
   /** ISO 4217 code (e.g. "USD"). Every expense on this trip is logged in
    *  this currency — Balances has no cross-currency conversion. */
   currency  String       @default("USD")
+  /** The trip's city/area, geocoded once at creation (or later via update)
+   *  — powers the "suggest places to visit" panel. Optional: a trip with
+   *  no destination just doesn't get suggestions. */
+  destinationName String?
+  destinationLat  Float?
+  destinationLng  Float?
   members   TripMember[]
   places    Place[]
   accommodations Accommodation[]
