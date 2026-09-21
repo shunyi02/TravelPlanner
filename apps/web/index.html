@@ -4,6 +4,36 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Travel Planner</title>
+    <script>
+      (function () {
+        var THEME_VARS = {
+          forest: null,
+          ocean: {
+            '--bg': '#f7fafc', '--surface': '#ffffff', '--ink': '#1b2733', '--ink-soft': '#54626f',
+            '--rule': '#d7e1e8', '--route': '#2064a6', '--route-soft': '#e3edf6',
+            '--ledger': '#9c7a1e', '--ledger-soft': '#f5eede', '--owe': '#a4433a', '--owe-soft': '#f5e6e4',
+          },
+          plum: {
+            '--bg': '#faf8fb', '--surface': '#ffffff', '--ink': '#291f2e', '--ink-soft': '#645868',
+            '--rule': '#e0d4e3', '--route': '#6d3f8f', '--route-soft': '#ede2f2',
+            '--ledger': '#a1791e', '--ledger-soft': '#f5efe0', '--owe': '#a23f4e', '--owe-soft': '#f5e3e6',
+          },
+          clay: {
+            '--bg': '#fdf8f4', '--surface': '#ffffff', '--ink': '#2c2320', '--ink-soft': '#6b5c55',
+            '--rule': '#ead9cd', '--route': '#b1552e', '--route-soft': '#f5e5da',
+            '--ledger': '#8c7a1e', '--ledger-soft': '#f0eddb', '--owe': '#9c3c3c', '--owe-soft': '#f4e0e0',
+          },
+        };
+        try {
+          var id = localStorage.getItem('theme');
+          var vars = id && THEME_VARS[id];
+          if (vars) {
+            var root = document.documentElement.style;
+            for (var key in vars) root.setProperty(key, vars[key]);
+          }
+        } catch (e) {}
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

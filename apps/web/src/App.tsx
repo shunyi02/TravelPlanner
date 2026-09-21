@@ -4,6 +4,8 @@ import { Sidebar } from './components/Sidebar';
 import { TripsLandingPage } from './pages/TripsLandingPage';
 import { TripDetailPage } from './pages/TripDetailPage';
 import { AuthPage } from './pages/AuthPage';
+import { ProfileModal } from './components/ProfileModal';
+import { SettingsModal } from './components/SettingsModal';
 import { api, isLoggedIn, setSessionExpiredHandler, type CurrentUser } from './api';
 import { AuthContext, useAuth } from './authContext';
 import { initials } from './format';
@@ -11,6 +13,8 @@ import { initials } from './format';
 function TopBar() {
   const { currentUser, onLogout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -46,8 +50,26 @@ function TopBar() {
           </button>
           {menuOpen && currentUser && (
             <div className="top-bar-profile-menu">
-              <p className="top-bar-profile-name">{currentUser.name}</p>
-              <p className="top-bar-profile-email">{currentUser.email}</p>
+              <button
+                type="button"
+                className="top-bar-profile-menu-item"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setShowProfile(true);
+                }}
+              >
+                Profile
+              </button>
+              <button
+                type="button"
+                className="top-bar-profile-menu-item"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setShowSettings(true);
+                }}
+              >
+                Settings
+              </button>
             </div>
           )}
         </div>
@@ -55,6 +77,11 @@ function TopBar() {
           Log out
         </button>
       </div>
+
+      {showProfile && currentUser && (
+        <ProfileModal currentUser={currentUser} onClose={() => setShowProfile(false)} />
+      )}
+      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
     </header>
   );
 }
