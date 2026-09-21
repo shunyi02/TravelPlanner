@@ -3,6 +3,7 @@ import L from 'leaflet';
 import { MapContainer, Marker, TileLayer } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { api, type Place, type PlaceType } from '../api';
+import { AirportField } from './AirportField';
 
 type FlightTripType = 'ONE_WAY' | 'ROUND_TRIP';
 
@@ -391,8 +392,8 @@ export function AddItineraryItemModal({
                 </div>
               )}
 
-              <input placeholder="Departure airport" value={departureAirport} onChange={(e) => setDepartureAirport(e.target.value)} />
-              <input placeholder="Arrival airport" value={arrivalAirport} onChange={(e) => setArrivalAirport(e.target.value)} />
+              <AirportField placeholder="Departure airport" value={departureAirport} onChange={setDepartureAirport} />
+              <AirportField placeholder="Arrival airport" value={arrivalAirport} onChange={setArrivalAirport} />
 
               <div className="flight-leg">
                 <p className="flight-leg-title">
