@@ -213,6 +213,7 @@ export function ItineraryTab({
   };
 
   const days = startDate && endDate ? daysBetween(startDate, endDate) : [];
+  const currentDay = view !== 'overview' && days.includes(view) ? view : null;
   const daySet = new Set(days);
   const byDay = new Map<string, Place[]>();
   const unscheduled: Place[] = [];
@@ -324,8 +325,6 @@ export function ItineraryTab({
         </>
       ) : (
         (() => {
-          const currentDay = view !== 'overview' && days.includes(view) ? view : null;
-
           return (
             <>
               <div className="tab-row no-print" style={{ marginBottom: 16 }}>
@@ -407,6 +406,7 @@ export function ItineraryTab({
           tripId={tripId}
           tripStartDate={startDate || undefined}
           tripEndDate={endDate || undefined}
+          defaultDay={editingPlace ? undefined : currentDay ?? undefined}
           editPlace={editingPlace ?? undefined}
           onClose={() => {
             setShowAddModal(false);

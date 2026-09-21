@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react';
+import L from 'leaflet';
+import { MapContainer, Marker, TileLayer } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
 import { api, type Place, type PlaceType } from '../api';
 
 type FlightTripType = 'ONE_WAY' | 'ROUND_TRIP';
@@ -8,6 +11,33 @@ interface NominatimResult {
   display_name: string;
   lat: string;
   lon: string;
+}
+
+/** Same colored-badge look as the trip route map, just a single fixed pin
+ *  here — no per-day coloring needed for a one-location preview. */
+const previewPinIcon = L.divIcon({
+  className: 'route-map-pin',
+  html: `<span style="background:#2b6e5e"></span>`,
+  iconSize: [26, 26],
+  iconAnchor: [13, 13],
+});
+
+const PLACE_TYPE_INFO: Record<PlaceType, { label: string; icon: string; hint: string }> = {
+  STOP: { label: 'Stop', icon: '📍', hint: 'A place to visit — attraction, restaurant, etc.' },
+  HOTEL: { label: 'Hotel', icon: '🏨', hint: 'Where you’re staying, with check-in/out' },
+  FLIGHT: { label: 'Flight', icon: '✈️', hint: 'A flight leg, one-way or round trip' },
+};
+
+/** "YYYY-MM-DD" + hour/minute -> a datetime-local value on that day. */
+function dayAt(day: string, hour: number, minute = 0): string {
+  return `${day}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+/** The day after `day` ("YYYY-MM-DD"), for a hotel's default check-out. */
+function nextDay(day: string): string {
+  const d = new Date(day + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
 }
 
 /** ISO datetime -> "YYYY-MM-DDTHH:mm" in local time, for a datetime-local input's value. */
@@ -21,6 +51,7 @@ export function AddItineraryItemModal({
   tripId,
   tripStartDate,
   tripEndDate,
+  defaultDay,
   editPlace,
   onClose,
   onSaved,
@@ -28,6 +59,9 @@ export function AddItineraryItemModal({
   tripId: string;
   tripStartDate?: string;
   tripEndDate?: string;
+  /** The day tab the modal was opened from (create flow only) — prefills
+   *  each type's date field(s) to that day instead of leaving them blank. */
+  defaultDay?: string;
   /** When set, the modal edits this existing place instead of creating a new one. */
   editPlace?: Place;
   onClose: () => void;
@@ -35,7 +69,10 @@ export function AddItineraryItemModal({
 }) {
   const [type, setType] = useState<PlaceType | null>(editPlace?.type ?? null);
   const [name, setName] = useState(editPlace?.name ?? '');
-  const [visitDate, setVisitDate] = useState(editPlace?.visitDate ? toDatetimeLocal(editPlace.visitDate) : '');
+  const [visitDate, setVisitDate] = useState(
+    editPlace?.visitDate ? toDatetimeLocal(editPlace.visitDate) : defaultDay ? dayAt(defaultDay, 12) : '',
+  );
+  const [notes, setNotes] = useState(editPlace?.notes ?? '');
 
   // location search (STOP and HOTEL — flights aren't geocoded, just airport codes)
   const [locationQuery, setLocationQuery] = useState(
@@ -50,10 +87,10 @@ export function AddItineraryItemModal({
   // flight (outbound)
   const [tripType, setTripType] = useState<FlightTripType>('ONE_WAY');
   const [departureTime, setDepartureTime] = useState(
-    editPlace?.departureTime ? toDatetimeLocal(editPlace.departureTime) : '',
+    editPlace?.departureTime ? toDatetimeLocal(editPlace.departureTime) : defaultDay ? dayAt(defaultDay, 9) : '',
   );
   const [arrivalTime, setArrivalTime] = useState(
-    editPlace?.arrivalTime ? toDatetimeLocal(editPlace.arrivalTime) : '',
+    editPlace?.arrivalTime ? toDatetimeLocal(editPlace.arrivalTime) : defaultDay ? dayAt(defaultDay, 12) : '',
   );
   const [departureAirport, setDepartureAirport] = useState(editPlace?.departureAirport ?? '');
   const [arrivalAirport, setArrivalAirport] = useState(editPlace?.arrivalAirport ?? '');
@@ -62,8 +99,12 @@ export function AddItineraryItemModal({
   const [returnDepartureTime, setReturnDepartureTime] = useState('');
   const [returnArrivalTime, setReturnArrivalTime] = useState('');
 
-  const [checkIn, setCheckIn] = useState(editPlace?.checkIn ? toDatetimeLocal(editPlace.checkIn) : '');
-  const [checkOut, setCheckOut] = useState(editPlace?.checkOut ? toDatetimeLocal(editPlace.checkOut) : '');
+  const [checkIn, setCheckIn] = useState(
+    editPlace?.checkIn ? toDatetimeLocal(editPlace.checkIn) : defaultDay ? dayAt(defaultDay, 15) : '',
+  );
+  const [checkOut, setCheckOut] = useState(
+    editPlace?.checkOut ? toDatetimeLocal(editPlace.checkOut) : defaultDay ? dayAt(nextDay(defaultDay), 11) : '',
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -146,6 +187,7 @@ export function AddItineraryItemModal({
           name: name.trim(),
           visitDate: visitDate || undefined,
           ...((type === 'STOP' || type === 'HOTEL') && { lat, lng }),
+          ...(type === 'STOP' && { notes: notes.trim() || undefined }),
           ...(type === 'HOTEL' && {
             checkIn: checkIn || undefined,
             checkOut: checkOut || undefined,
@@ -170,10 +212,24 @@ export function AddItineraryItemModal({
       <div className="modal-backdrop" onClick={onClose}>
         <div className="modal" onClick={(e) => e.stopPropagation()}>
           <h2 className="page-title" style={{ fontSize: 20 }}>Add to itinerary</h2>
-          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-            <button className="btn btn-outline" onClick={() => setType('STOP')}>Stop</button>
-            <button className="btn btn-outline" onClick={() => setType('HOTEL')}>Hotel</button>
-            <button className="btn btn-outline" onClick={() => setType('FLIGHT')}>Flight</button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 16 }}>
+            {(['STOP', 'HOTEL', 'FLIGHT'] as PlaceType[]).map((t) => {
+              const info = PLACE_TYPE_INFO[t];
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  className="place-type-option"
+                  onClick={() => setType(t)}
+                >
+                  <span className="place-type-option-icon">{info.icon}</span>
+                  <span>
+                    <span className="place-type-option-label">{info.label}</span>
+                    <span className="place-type-option-hint">{info.hint}</span>
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -184,7 +240,7 @@ export function AddItineraryItemModal({
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <h2 className="page-title" style={{ fontSize: 20 }}>
-          {editPlace ? 'Edit' : 'Add'} {type === 'STOP' ? 'stop' : type === 'HOTEL' ? 'hotel' : 'flight'}
+          {PLACE_TYPE_INFO[type].icon} {editPlace ? 'Edit' : 'Add'} {PLACE_TYPE_INFO[type].label.toLowerCase()}
         </h2>
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
           {(['STOP', 'HOTEL', 'FLIGHT'] as PlaceType[]).map((t) => (
@@ -195,7 +251,7 @@ export function AddItineraryItemModal({
               onClick={() => changeType(t)}
               style={{ padding: '4px 12px', fontSize: 12 }}
             >
-              {t === 'STOP' ? 'Stop' : t === 'HOTEL' ? 'Hotel' : 'Flight'}
+              {PLACE_TYPE_INFO[t].icon} {PLACE_TYPE_INFO[t].label}
             </button>
           ))}
         </div>
@@ -256,9 +312,28 @@ export function AddItineraryItemModal({
                 </ul>
               )}
               {lat !== undefined && lng !== undefined && (
-                <p style={{ fontSize: 12, color: 'var(--route)', margin: '4px 0 0' }}>
-                  📍 {lat.toFixed(5)}, {lng.toFixed(5)}
-                </p>
+                <>
+                  <p style={{ fontSize: 12, color: 'var(--route)', margin: '4px 0 0' }}>
+                    📍 {lat.toFixed(5)}, {lng.toFixed(5)}
+                  </p>
+                  <div className="location-preview-map">
+                    <MapContainer
+                      key={`${lat},${lng}`}
+                      center={[lat, lng]}
+                      zoom={14}
+                      scrollWheelZoom={false}
+                      dragging={false}
+                      zoomControl={false}
+                      style={{ height: 140, width: '100%' }}
+                    >
+                      <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+                      <Marker position={[lat, lng]} icon={previewPinIcon} />
+                    </MapContainer>
+                  </div>
+                </>
               )}
             </div>
           ) : (
@@ -275,6 +350,18 @@ export function AddItineraryItemModal({
                 min={dtMin}
                 max={dtMax}
                 style={{ display: 'block', marginTop: 4 }}
+              />
+            </label>
+          )}
+
+          {type === 'STOP' && (
+            <label style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
+              Notes (optional)
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={2}
+                style={{ display: 'block', marginTop: 4, width: '100%', resize: 'vertical' }}
               />
             </label>
           )}
@@ -307,36 +394,42 @@ export function AddItineraryItemModal({
               <input placeholder="Departure airport" value={departureAirport} onChange={(e) => setDepartureAirport(e.target.value)} />
               <input placeholder="Arrival airport" value={arrivalAirport} onChange={(e) => setArrivalAirport(e.target.value)} />
 
-              <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-soft)', margin: '4px 0 0' }}>
-                {tripType === 'ROUND_TRIP' ? 'Outbound' : 'Flight'}
-              </p>
-              <label style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
-                Departure
-                <input
-                  type="datetime-local"
-                  value={departureTime}
-                  onChange={(e) => setDepartureTime(e.target.value)}
-                  min={dtMin}
-                  max={dtMax}
-                  style={{ display: 'block', marginTop: 4 }}
-                />
-              </label>
-              <label style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
-                Arrival
-                <input
-                  type="datetime-local"
-                  value={arrivalTime}
-                  onChange={(e) => setArrivalTime(e.target.value)}
-                  min={dtMin}
-                  max={dtMax}
-                  style={{ display: 'block', marginTop: 4 }}
-                />
-              </label>
+              <div className="flight-leg">
+                <p className="flight-leg-title">
+                  ✈️ {tripType === 'ROUND_TRIP' ? 'Outbound' : 'Flight'}
+                  {(departureAirport || arrivalAirport) && (
+                    <span className="flight-leg-route"> · {departureAirport || '?'} → {arrivalAirport || '?'}</span>
+                  )}
+                </p>
+                <label style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
+                  Departure
+                  <input
+                    type="datetime-local"
+                    value={departureTime}
+                    onChange={(e) => setDepartureTime(e.target.value)}
+                    min={dtMin}
+                    max={dtMax}
+                    style={{ display: 'block', marginTop: 4 }}
+                  />
+                </label>
+                <label style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
+                  Arrival
+                  <input
+                    type="datetime-local"
+                    value={arrivalTime}
+                    onChange={(e) => setArrivalTime(e.target.value)}
+                    min={dtMin}
+                    max={dtMax}
+                    style={{ display: 'block', marginTop: 4 }}
+                  />
+                </label>
+              </div>
 
               {tripType === 'ROUND_TRIP' && (
-                <>
-                  <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-soft)', margin: '8px 0 0' }}>
-                    Return ({arrivalAirport || '?'} → {departureAirport || '?'})
+                <div className="flight-leg">
+                  <p className="flight-leg-title">
+                    ✈️ Return
+                    <span className="flight-leg-route"> · {arrivalAirport || '?'} → {departureAirport || '?'}</span>
                   </p>
                   <label style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
                     Departure
@@ -360,7 +453,7 @@ export function AddItineraryItemModal({
                       style={{ display: 'block', marginTop: 4 }}
                     />
                   </label>
-                </>
+                </div>
               )}
             </>
           )}

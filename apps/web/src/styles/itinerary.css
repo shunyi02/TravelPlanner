@@ -62,3 +62,68 @@
 .route-map-open-link:hover {
   background: var(--route-soft);
 }
+
+/* AddItineraryItemModal: type picker, location preview map, flight legs. */
+
+.place-type-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.place-type-option:hover {
+  border-color: var(--route);
+  background: var(--route-soft);
+}
+
+.place-type-option-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.place-type-option-label {
+  display: block;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.place-type-option-hint {
+  display: block;
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-top: 2px;
+}
+
+.location-preview-map {
+  margin-top: 8px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.flight-leg {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 4px;
+}
+
+.flight-leg-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.flight-leg-route {
+  font-weight: 500;
+  color: var(--route);
+}
