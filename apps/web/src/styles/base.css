@@ -45,6 +45,21 @@ input {
   font-size: inherit;
 }
 
+input:not([type='radio']):not([type='checkbox']):not([type='file']),
+select,
+textarea {
+  padding: 8px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+input:disabled {
+  color: var(--ink-soft);
+  background: var(--bg);
+}
+
 .main {
   padding: 40px 48px;
   max-width: 760px;
@@ -129,8 +144,4 @@ h1.page-title {
 
 .form-inline input {
   flex: 1;
-  padding: 8px 10px;
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  background: var(--surface);
 }

@@ -52,17 +52,48 @@ export function AddTripModal({
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <h2 className="page-title" style={{ fontSize: 22 }}>New trip</h2>
-        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
-          {coverPhoto && (
-            <img src={coverPhoto} alt="Cover preview" style={{ width: '100%', borderRadius: 6, maxHeight: 160, objectFit: 'cover' }} />
-          )}
-          <input type="file" accept="image/*" onChange={(e) => handleFile(e.target.files?.[0] ?? null)} />
-          <input placeholder="Trip name" value={name} onChange={(e) => setName(e.target.value)} required autoFocus />
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-            <span>to</span>
-            <input type="date" value={endDate} min={startDate || undefined} onChange={(e) => setEndDate(e.target.value)} />
+        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <span className="profile-avatar-preview" style={{ borderRadius: 6, width: 64, height: 64 }}>
+              {coverPhoto && <img src={coverPhoto} alt="" />}
+            </span>
+            <label className="btn btn-outline" style={{ cursor: 'pointer' }}>
+              {coverPhoto ? 'Change cover photo' : 'Add cover photo'}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
+                style={{ display: 'none' }}
+              />
+            </label>
           </div>
+
+          <label style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
+            Trip name
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              autoFocus
+              style={{ display: 'block', marginTop: 4, width: '100%' }}
+            />
+          </label>
+
+          <label style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
+            Dates
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 4 }}>
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={{ flex: 1 }} />
+              <span>to</span>
+              <input
+                type="date"
+                value={endDate}
+                min={startDate || undefined}
+                onChange={(e) => setEndDate(e.target.value)}
+                style={{ flex: 1 }}
+              />
+            </div>
+          </label>
+
           <label style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
             Currency
             <select
@@ -75,6 +106,7 @@ export function AddTripModal({
               ))}
             </select>
           </label>
+
           {error && <p style={{ color: 'var(--owe)', margin: 0 }}>{error}</p>}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
             <button type="button" className="btn btn-outline" onClick={onClose}>Cancel</button>
