@@ -3,6 +3,7 @@ import { EXPENSE_CATEGORIES, DEFAULT_EXPENSE_CATEGORY } from '@travel-planner/sh
 import type { Expense } from '../api';
 import { api } from '../api';
 import { formatDateTime, fromDatetimeLocalValue, toDatetimeLocalValue } from '../format';
+import { CategoryPieChart } from './CategoryPieChart';
 
 const nowForInput = () => toDatetimeLocalValue(new Date().toISOString());
 
@@ -470,6 +471,8 @@ export function ExpensesTab({
         )}
         {error && <p style={{ color: 'var(--owe)' }}>{error}</p>}
       </form>
+
+      <CategoryPieChart expenses={expenses} currency={currency} />
     </div>
   );
 }
