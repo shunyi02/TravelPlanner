@@ -231,12 +231,14 @@ export function ItineraryTab({
     dayPlaces.sort((a, b) => sortTimeForDay(a, day) - sortTimeForDay(b, day));
   }
 
-  /** Located stops/hotels from `list`, in visit order for `day` (undefined = whole-trip order). */
+  /** Located stops/hotels from `list`, in visit order for `day` (undefined = whole-trip
+   *  order). Each stop is tagged with its own day bucket for map coloring — `day` when
+   *  given (a single-day call site), else the place's own first day key ("" if unscheduled). */
   const toRouteStops = (list: Place[], day?: string): RouteStop[] =>
     list
       .filter((p): p is Place & { lat: number; lng: number } => p.lat != null && p.lng != null)
       .sort((a, b) => sortTimeForDay(a, day) - sortTimeForDay(b, day))
-      .map((p, i) => ({ id: p.id, name: p.name, lat: p.lat, lng: p.lng, order: i + 1 }));
+      .map((p, i) => ({ id: p.id, name: p.name, lat: p.lat, lng: p.lng, order: i + 1, day: day ?? dayKeysFor(p)[0] ?? '' }));
 
   /** The whole trip's located stops/hotels, in visit order, for the overview map. */
   const routeStops: RouteStop[] = toRouteStops(places);

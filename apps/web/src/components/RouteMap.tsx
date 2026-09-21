@@ -1,21 +1,19 @@
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
-import markerIcon from 'leaflet/dist/images/marker-icon.png';
-import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import { MapContainer, Marker, Polyline, TileLayer, Tooltip } from 'react-leaflet';
+import { hueForIndex, NEUTRAL_HUE } from '../palette';
 
-// Leaflet's default marker icon points at relative image paths that don't
-// survive bundling; point it at the bundled asset URLs instead.
-const markerIconDefault = L.icon({
-  iconUrl: markerIcon,
-  iconRetinaUrl: markerIcon2x,
-  shadowUrl: markerShadow,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
+/** A colored numbered badge (the same visual language as the itinerary
+ *  list's .stop-index circle) instead of Leaflet's default pin image, so
+ *  each day's stops read as one color on the map. */
+function dayMarkerIcon(color: string, order: number) {
+  return L.divIcon({
+    className: 'route-map-pin',
+    html: `<span style="background:${color}">${order}</span>`,
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
+  });
+}
 
 export interface RouteStop {
   id: string;
@@ -24,6 +22,9 @@ export interface RouteStop {
   lng: number;
   /** 1-based position in the trip's visit order, shown in the marker tooltip. */
   order: number;
+  /** Day-bucket key ("YYYY-MM-DD"), or "" if unscheduled — pins/route
+   *  segments are colored per distinct value, in first-seen order. */
+  day: string;
 }
 
 /** A Google Maps deep link for one stop — just a URL, no API key or billing. */
@@ -44,12 +45,21 @@ function googleMapsRouteUrl(stops: RouteStop[]): string {
 }
 
 /** The whole trip's route: a numbered pin per located stop/hotel, in visit
- *  order, with a line from each to the next. */
+ *  order, with a line from each to the next. Each distinct day gets its own
+ *  color (pins + the segments joining that day's own stops), so multiple
+ *  days on the same overview map read apart at a glance; a single-day map
+ *  (the per-day tabs) naturally renders as one color. Past 7 distinct days,
+ *  colors repeat — the order number on each pin is the fallback identity
+ *  cue when hue alone runs out. */
 export function RouteMap({ stops }: { stops: RouteStop[] }) {
   if (stops.length === 0) return null;
 
   const positions: [number, number][] = stops.map((s) => [s.lat, s.lng]);
   const single = positions.length === 1;
+
+  const dayOrder: string[] = [];
+  for (const s of stops) if (!dayOrder.includes(s.day)) dayOrder.push(s.day);
+  const colorForDay = (day: string) => (day ? hueForIndex(dayOrder.indexOf(day)) : NEUTRAL_HUE);
 
   return (
     <div className="route-map">
@@ -63,12 +73,19 @@ export function RouteMap({ stops }: { stops: RouteStop[] }) {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        {positions.length > 1 && <Polyline positions={positions} pathOptions={{ color: '#2b6e5e', weight: 3 }} />}
+        {dayOrder.map((day) => {
+          const dayPositions = stops.filter((s) => s.day === day).map((s): [number, number] => [s.lat, s.lng]);
+          return (
+            dayPositions.length > 1 && (
+              <Polyline key={day || '(unscheduled)'} positions={dayPositions} pathOptions={{ color: colorForDay(day), weight: 3 }} />
+            )
+          );
+        })}
         {stops.map((stop) => (
           <Marker
             key={stop.id}
             position={[stop.lat, stop.lng]}
-            icon={markerIconDefault}
+            icon={dayMarkerIcon(colorForDay(stop.day), stop.order)}
             eventHandlers={{ click: () => window.open(googleMapsStopUrl(stop), '_blank', 'noopener') }}
           >
             <Tooltip direction="top" offset={[0, -34]}>

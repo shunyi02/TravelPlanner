@@ -1,14 +1,13 @@
 import { useRef, useState } from 'react';
 import { EXPENSE_CATEGORIES } from '@travel-planner/shared';
 import type { Expense } from '../api';
+import { CATEGORICAL_HUES, NEUTRAL_HUE } from '../palette';
 
 /**
- * One validated ring of the default categorical palette (see the dataviz
- * skill's palette.md): the 8-hue set minus violet, reordered so every
- * consecutive pair — including the wrap from the last slice back to the
- * first — clears the CVD/contrast gates. Matches EXPENSE_CATEGORIES' order
- * 1:1, so a category always gets the same color regardless of which other
- * categories are present.
+ * Matches EXPENSE_CATEGORIES' order 1:1 (the ring is already ordered so
+ * every consecutive pair — including the wrap from the last slice back to
+ * the first — clears the CVD/contrast gates), so a category always gets
+ * the same color regardless of which other categories are present.
  *
  * A pie's slice neighbors change with the data (which categories are
  * present), so not every possible pair of these 7 hues clears the stricter
@@ -17,15 +16,9 @@ import type { Expense } from '../api';
  * categories. The always-visible legend (name + amount + percent) is the
  * mitigation: nobody has to tell two categories apart by color alone.
  */
-const CATEGORY_COLORS: Record<string, string> = {
-  Food: '#2a78d6',
-  Transport: '#eb6834',
-  Accommodation: '#1baf7a',
-  Activities: '#eda100',
-  Shopping: '#e87ba4',
-  Tickets: '#008300',
-  Other: '#e34948',
-};
+const CATEGORY_COLORS: Record<string, string> = Object.fromEntries(
+  EXPENSE_CATEGORIES.map((cat, i) => [cat, CATEGORICAL_HUES[i] ?? NEUTRAL_HUE]),
+);
 
 interface Slice {
   category: string;

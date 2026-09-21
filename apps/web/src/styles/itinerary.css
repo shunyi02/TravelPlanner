@@ -27,6 +27,28 @@
   font-size: 12px;
 }
 
+/* Leaflet's div-icon default (white box + border) — replaced by the colored
+ * circle in .route-map-pin span. */
+.leaflet-div-icon.route-map-pin {
+  background: transparent;
+  border: none;
+}
+
+.route-map-pin span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
 .route-map-open-link {
   display: block;
   padding: 8px 14px;
