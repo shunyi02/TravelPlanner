@@ -29,7 +29,10 @@ export function AuthPage({ onAuthed }: { onAuthed: () => void }) {
 
   return (
     <div className="main" style={{ maxWidth: 360, margin: '80px auto' }}>
-      <h1 className="page-title">{mode === 'login' ? 'Log in' : 'Create account'}</h1>
+      <div className="auth-brand">
+        <span className="top-bar-logo auth-logo-flipped" />
+        <span className="auth-brand-name">Cuti</span>
+      </div>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 20 }}>
         {mode === 'register' && (
           <input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} required />
