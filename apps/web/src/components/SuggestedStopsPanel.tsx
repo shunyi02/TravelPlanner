@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { api, type Trip } from '../api';
+import { LocationSearchField } from './LocationSearchField';
 
 interface Suggestion {
   id: string;
@@ -103,8 +104,10 @@ async function fetchSuggestions(lat: number, lng: number): Promise<Suggestion[]>
   return [...byId.values()];
 }
 
-/** Suggests well-known nearby places for a trip with a geocoded destination,
- *  addable to the itinerary with one click. */
+/** Suggests well-known nearby places, addable to the itinerary with one
+ *  click. Defaults to the trip's own destination, but the location field is
+ *  editable — search anywhere (e.g. a side trip to Kamakura from a Tokyo
+ *  trip) and suggestions run against that point instead. */
 export function SuggestedStopsPanel({
   tripId,
   trip,
@@ -116,26 +119,24 @@ export function SuggestedStopsPanel({
   existingPlaceNames: string[];
   onAdded: () => void;
 }) {
+  const [searchQuery, setSearchQuery] = useState(trip.destinationName ?? '');
+  const [searchLat, setSearchLat] = useState<number | undefined>(trip.destinationLat ?? undefined);
+  const [searchLng, setSearchLng] = useState<number | undefined>(trip.destinationLng ?? undefined);
   const [suggestions, setSuggestions] = useState<Suggestion[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
 
-  if (trip.destinationLat == null || trip.destinationLng == null) {
-    return (
-      <p className="empty-state" style={{ padding: '8px 0' }}>
-        Add a destination to this trip (from the create-trip form) to get place suggestions.
-      </p>
-    );
-  }
-
   const existingLower = new Set(existingPlaceNames.map((n) => n.toLowerCase()));
 
   const handleSuggest = async () => {
+    if (searchLat == null || searchLng == null) return;
     setLoading(true);
     setError(null);
+    setSuggestions(null);
+    setAddedIds(new Set());
     try {
-      const results = await fetchSuggestions(trip.destinationLat!, trip.destinationLng!);
+      const results = await fetchSuggestions(searchLat, searchLng);
       setSuggestions(results.filter((s) => !existingLower.has(s.name.toLowerCase())));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load suggestions');
@@ -156,15 +157,39 @@ export function SuggestedStopsPanel({
 
   return (
     <div className="no-print" style={{ marginBottom: 20 }}>
-      <button type="button" className="btn btn-outline" onClick={handleSuggest} disabled={loading}>
-        {loading ? 'Finding places…' : '✨ Suggest places to visit'}
-      </button>
+      <div className="suggested-stops-search">
+        <LocationSearchField
+          query={searchQuery}
+          onQueryChange={(q) => {
+            setSearchQuery(q);
+            setSearchLat(undefined);
+            setSearchLng(undefined);
+          }}
+          onPick={(result) => {
+            setSearchQuery(result.displayName);
+            setSearchLat(result.lat);
+            setSearchLng(result.lng);
+          }}
+          lat={searchLat}
+          lng={searchLng}
+          placeholder="Search a place…"
+          showMap={false}
+        />
+        <button
+          type="button"
+          className="btn btn-outline"
+          onClick={handleSuggest}
+          disabled={loading || searchLat == null || searchLng == null}
+        >
+          {loading ? 'Finding places…' : '✨ Suggest places to visit'}
+        </button>
+      </div>
       {error && <p style={{ color: 'var(--owe)', margin: '8px 0 0' }}>{error}</p>}
       {suggestions && (
         <>
           {suggestions.length === 0 ? (
             <p className="empty-state" style={{ padding: '8px 0' }}>
-              No new suggestions found near {trip.destinationName ?? 'this destination'}.
+              No new suggestions found near {searchQuery || 'this location'}.
             </p>
           ) : (
             <div className="suggested-stops-grid">

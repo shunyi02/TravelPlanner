@@ -162,6 +162,21 @@
   margin: 4px 0 0;
 }
 
+.suggested-stops-search {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.suggested-stops-search > div {
+  flex: 1;
+  max-width: 320px;
+}
+
+.suggested-stops-search .btn {
+  flex-shrink: 0;
+}
+
 .suggested-stops-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
