@@ -4,17 +4,17 @@ import { Sidebar } from './components/Sidebar';
 import { TripsLandingPage } from './pages/TripsLandingPage';
 import { TripDetailPage } from './pages/TripDetailPage';
 import { AuthPage } from './pages/AuthPage';
-import { ProfileModal } from './components/ProfileModal';
-import { SettingsModal } from './components/SettingsModal';
+import { ProfilePage } from './pages/ProfilePage';
+import { SettingsPage } from './pages/SettingsPage';
 import { api, isLoggedIn, setSessionExpiredHandler, type CurrentUser } from './api';
 import { AuthContext, useAuth } from './authContext';
 import { initials } from './format';
 
+const NO_SIDEBAR_PATHS = ['/', '/profile', '/settings'];
+
 function TopBar() {
   const { currentUser, onLogout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -50,26 +50,20 @@ function TopBar() {
           </button>
           {menuOpen && currentUser && (
             <div className="top-bar-profile-menu">
-              <button
-                type="button"
+              <Link
+                to="/profile"
                 className="top-bar-profile-menu-item"
-                onClick={() => {
-                  setMenuOpen(false);
-                  setShowProfile(true);
-                }}
+                onClick={() => setMenuOpen(false)}
               >
                 Profile
-              </button>
-              <button
-                type="button"
+              </Link>
+              <Link
+                to="/settings"
                 className="top-bar-profile-menu-item"
-                onClick={() => {
-                  setMenuOpen(false);
-                  setShowSettings(true);
-                }}
+                onClick={() => setMenuOpen(false)}
               >
                 Settings
-              </button>
+              </Link>
             </div>
           )}
         </div>
@@ -77,18 +71,13 @@ function TopBar() {
           Log out
         </button>
       </div>
-
-      {showProfile && currentUser && (
-        <ProfileModal currentUser={currentUser} onClose={() => setShowProfile(false)} />
-      )}
-      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
     </header>
   );
 }
 
 function AuthedApp({ onLogout }: { onLogout: () => void }) {
   const location = useLocation();
-  const showSidebar = location.pathname !== '/';
+  const showSidebar = !NO_SIDEBAR_PATHS.includes(location.pathname);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 
   useEffect(() => {
@@ -103,6 +92,8 @@ function AuthedApp({ onLogout }: { onLogout: () => void }) {
         <Routes>
           <Route path="/" element={<TripsLandingPage />} />
           <Route path="/trips/:tripId" element={<TripDetailPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </div>
     </AuthContext.Provider>
