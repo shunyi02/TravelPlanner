@@ -162,8 +162,62 @@
   margin: 4px 0 0;
 }
 
-.suggested-stops-list {
-  list-style: none;
-  margin: 8px 0 0;
-  padding: 0;
+.suggested-stops-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.suggested-stop-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.suggested-stop-image {
+  height: 90px;
+  width: 100%;
+  object-fit: cover;
+  display: block;
+  background: var(--route-soft);
+}
+
+.suggested-stop-image-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+}
+
+.suggested-stop-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+}
+
+.suggested-stop-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.suggested-stop-category {
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.suggested-stop-add {
+  margin-top: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  align-self: flex-start;
 }
