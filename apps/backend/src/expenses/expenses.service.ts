@@ -33,6 +33,9 @@ export class ExpensesService {
         currency,
         category: dto.category ?? 'Other',
         expenseDate: dto.expenseDate ? new Date(dto.expenseDate) : new Date(),
+        subtotal: dto.subtotal,
+        servicePct: dto.servicePct,
+        taxPct: dto.taxPct,
         paidById,
         splits: {
           create: amounts.map(({ userId: splitUserId, amount }) => ({
@@ -85,6 +88,9 @@ export class ExpensesService {
       paidById: dto.paidById,
       category: dto.category,
       expenseDate: dto.expenseDate ? new Date(dto.expenseDate) : undefined,
+      subtotal: dto.subtotal,
+      servicePct: dto.servicePct,
+      taxPct: dto.taxPct,
     };
 
     if (splitInputs) {

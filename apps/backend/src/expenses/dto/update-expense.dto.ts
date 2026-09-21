@@ -7,6 +7,7 @@ import {
   IsOptional,
   IsPositive,
   IsString,
+  Min,
   MinLength,
   ValidateNested,
 } from 'class-validator';
@@ -34,6 +35,22 @@ export class UpdateExpenseDto {
   @IsOptional()
   @IsDateString()
   expenseDate?: string;
+
+  /** Null clears it back to "no breakdown" (see CreateExpenseDto). */
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
+  subtotal?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  servicePct?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  taxPct?: number | null;
 
   /**
    * If provided, replaces the expense's splits entirely (same validation as

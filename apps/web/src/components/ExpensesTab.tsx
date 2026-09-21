@@ -15,6 +15,13 @@ function evenAmounts(memberIds: string[], total: number): Record<string, string>
   return Object.fromEntries(memberIds.map((id) => [id, each ? each.toFixed(2) : '']));
 }
 
+/** Applies service charge then tax on top, both as percentages, compounding
+ *  (tax is charged on the post-service-charge amount, matching how a
+ *  restaurant bill actually adds them). Either can be 0. */
+function computeTotal(base: number, servicePct: number, taxPct: number): number {
+  return base * (1 + servicePct / 100) * (1 + taxPct / 100);
+}
+
 function sumAmounts(amounts: Record<string, string>): number {
   return Object.values(amounts).reduce((sum, v) => sum + (Number(v) || 0), 0);
 }
@@ -121,6 +128,9 @@ export function ExpensesTab({
   const [paidById, setPaidById] = useState(currentUserId ?? memberIds[0] ?? '');
   const [category, setCategory] = useState<string>(DEFAULT_EXPENSE_CATEGORY);
   const [expenseDate, setExpenseDate] = useState(nowForInput());
+  const [servicePct, setServicePct] = useState('');
+  const [taxPct, setTaxPct] = useState('');
+  const [showTaxOptions, setShowTaxOptions] = useState(false);
   const [splitMode, setSplitMode] = useState<SplitMode>('even');
   const [customAmounts, setCustomAmounts] = useState<Record<string, string>>({});
   const [showSplitEditor, setShowSplitEditor] = useState(false);
@@ -133,14 +143,25 @@ export function ExpensesTab({
   const [editPaidById, setEditPaidById] = useState('');
   const [editCategory, setEditCategory] = useState<string>(DEFAULT_EXPENSE_CATEGORY);
   const [editExpenseDate, setEditExpenseDate] = useState(nowForInput());
+  const [editServicePct, setEditServicePct] = useState('');
+  const [editTaxPct, setEditTaxPct] = useState('');
+  const [showEditTaxOptions, setShowEditTaxOptions] = useState(false);
   const [editSplitMode, setEditSplitMode] = useState<SplitMode>('even');
   const [initialEditSplitMode, setInitialEditSplitMode] = useState<SplitMode>('even');
   const [editCustomAmounts, setEditCustomAmounts] = useState<Record<string, string>>({});
   const [showEditSplitEditor, setShowEditSplitEditor] = useState(false);
 
+  /** The actual total to charge/split: base amount plus service charge and
+   *  tax, when those options are in use (otherwise just the base amount). */
+  const total = computeTotal(Number(amount) || 0, Number(servicePct) || 0, Number(taxPct) || 0);
+  const editTotal = computeTotal(Number(editAmount) || 0, Number(editServicePct) || 0, Number(editTaxPct) || 0);
+
   const resetAddForm = () => {
     setDescription('');
     setAmount('');
+    setServicePct('');
+    setTaxPct('');
+    setShowTaxOptions(false);
     setPaidById(currentUserId ?? memberIds[0] ?? '');
     setCategory(DEFAULT_EXPENSE_CATEGORY);
     setExpenseDate(nowForInput());
@@ -155,9 +176,14 @@ export function ExpensesTab({
     const parsed = Number(amount);
     if (!description.trim() || !parsed || parsed <= 0) return;
 
+    const svc = Number(servicePct) || 0;
+    const tax = Number(taxPct) || 0;
+    const hasTax = showTaxOptions && (svc > 0 || tax > 0);
+    const finalTotal = Number(computeTotal(parsed, svc, tax).toFixed(2));
+
     let splits: Array<{ userId: string; share: number }> | undefined;
     if (showSplitEditor && splitMode === 'custom') {
-      if (Math.abs(parsed - sumAmounts(customAmounts)) > 0.01) {
+      if (Math.abs(finalTotal - sumAmounts(customAmounts)) > 0.01) {
         setError('Custom amounts must add up to the total.');
         return;
       }
@@ -167,7 +193,10 @@ export function ExpensesTab({
     try {
       await api.createExpense(tripId, {
         description: description.trim(),
-        amount: parsed,
+        amount: finalTotal,
+        subtotal: hasTax ? parsed : undefined,
+        servicePct: hasTax && svc > 0 ? svc : undefined,
+        taxPct: hasTax && tax > 0 ? tax : undefined,
         paidById,
         category,
         expenseDate: fromDatetimeLocalValue(expenseDate),
@@ -191,7 +220,10 @@ export function ExpensesTab({
     setEditingId(expense.id);
     setError(null);
     setEditDescription(expense.description);
-    setEditAmount(expense.amount);
+    setEditAmount(expense.subtotal ?? expense.amount);
+    setEditServicePct(expense.servicePct ?? '');
+    setEditTaxPct(expense.taxPct ?? '');
+    setShowEditTaxOptions(expense.servicePct != null || expense.taxPct != null);
     setEditPaidById(expense.paidById);
     setEditCategory(expense.category);
     setEditExpenseDate(toDatetimeLocalValue(expense.expenseDate));
@@ -207,23 +239,37 @@ export function ExpensesTab({
     const parsedAmount = Number(editAmount);
     if (!editDescription.trim() || !parsedAmount || parsedAmount <= 0) return;
 
+    const svc = Number(editServicePct) || 0;
+    const tax = Number(editTaxPct) || 0;
+    const hasTax = showEditTaxOptions && (svc > 0 || tax > 0);
+    const newTotal = Number(computeTotal(parsedAmount, svc, tax).toFixed(2));
+    const newSubtotal = hasTax ? parsedAmount : null;
+    const newServicePct = hasTax && svc > 0 ? svc : null;
+    const newTaxPct = hasTax && tax > 0 ? tax : null;
+
     const data: {
       description?: string;
       amount?: number;
       paidById?: string;
       category?: string;
       expenseDate?: string;
+      subtotal?: number | null;
+      servicePct?: number | null;
+      taxPct?: number | null;
       splits?: Array<{ userId: string; share: number }>;
     } = {};
     if (editDescription.trim() !== expense.description) data.description = editDescription.trim();
-    if (parsedAmount !== Number(expense.amount)) data.amount = parsedAmount;
+    if (newTotal !== Number(expense.amount)) data.amount = newTotal;
+    if (newSubtotal !== (expense.subtotal != null ? Number(expense.subtotal) : null)) data.subtotal = newSubtotal;
+    if (newServicePct !== (expense.servicePct != null ? Number(expense.servicePct) : null)) data.servicePct = newServicePct;
+    if (newTaxPct !== (expense.taxPct != null ? Number(expense.taxPct) : null)) data.taxPct = newTaxPct;
     if (editPaidById !== expense.paidById) data.paidById = editPaidById;
     if (editCategory !== expense.category) data.category = editCategory;
     const editExpenseDateIso = fromDatetimeLocalValue(editExpenseDate);
     if (editExpenseDateIso !== new Date(expense.expenseDate).toISOString()) data.expenseDate = editExpenseDateIso;
 
     if (showEditSplitEditor && editSplitMode === 'custom') {
-      if (Math.abs(parsedAmount - sumAmounts(editCustomAmounts)) > 0.01) {
+      if (Math.abs(newTotal - sumAmounts(editCustomAmounts)) > 0.01) {
         setError('Custom amounts must add up to the total.');
         return;
       }
@@ -277,6 +323,13 @@ export function ExpensesTab({
                     <span className="category-badge">{expense.category}</span>
                     {' · paid by '}{memberNames[expense.paidById] ?? 'someone'}
                     {' · '}{formatDateTime(expense.expenseDate)}
+                    {expense.subtotal != null && (
+                      <>
+                        {' · '}{expense.currency} {expense.subtotal}
+                        {expense.servicePct != null && ` +${expense.servicePct}% service`}
+                        {expense.taxPct != null && ` +${expense.taxPct}% tax`}
+                      </>
+                    )}
                   </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -339,14 +392,14 @@ export function ExpensesTab({
                   <input
                     value={editDescription}
                     onChange={(e) => setEditDescription(e.target.value)}
-                    placeholder="What was it for?"
+                    placeholder="Name"
                   />
                   <div style={{ display: 'flex', gap: 8 }}>
                     <input
                       inputMode="decimal"
                       value={editAmount}
                       onChange={(e) => setEditAmount(e.target.value)}
-                      placeholder={`Amount (${currency})`}
+                      placeholder={showEditTaxOptions ? `Subtotal (${currency})` : `Amount (${currency})`}
                       style={{ maxWidth: 140 }}
                     />
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
@@ -379,6 +432,41 @@ export function ExpensesTab({
                   <button
                     type="button"
                     className="text-btn"
+                    onClick={() => setShowEditTaxOptions((v) => !v)}
+                    style={{ alignSelf: 'flex-start' }}
+                  >
+                    {showEditTaxOptions ? 'Hide service charge / tax' : '+ Service charge / tax'}
+                  </button>
+                  {showEditTaxOptions && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
+                        Service %
+                        <input
+                          inputMode="decimal"
+                          value={editServicePct}
+                          onChange={(e) => setEditServicePct(e.target.value)}
+                          style={{ maxWidth: 70 }}
+                        />
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
+                        Tax %
+                        <input
+                          inputMode="decimal"
+                          value={editTaxPct}
+                          onChange={(e) => setEditTaxPct(e.target.value)}
+                          style={{ maxWidth: 70 }}
+                        />
+                      </label>
+                      {Number(editAmount) > 0 && (
+                        <span style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
+                          Total: {currency} {editTotal.toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    className="text-btn"
                     onClick={() => setShowEditSplitEditor((v) => !v)}
                     style={{ alignSelf: 'flex-start' }}
                   >
@@ -388,7 +476,7 @@ export function ExpensesTab({
                     <SplitEditor
                       memberIds={memberIds}
                       memberNames={memberNames}
-                      total={Number(editAmount) || 0}
+                      total={editTotal}
                       mode={editSplitMode}
                       onModeChange={setEditSplitMode}
                       amounts={editCustomAmounts}
@@ -413,12 +501,12 @@ export function ExpensesTab({
       <form onSubmit={handleAdd} style={{ marginTop: 20 }}>
         <div className="form-inline" style={{ marginTop: 0 }}>
           <input
-            placeholder="What was it for?"
+            placeholder="Name"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
           <input
-            placeholder={`Amount (${currency})`}
+            placeholder={showTaxOptions ? `Subtotal (${currency})` : `Amount (${currency})`}
             inputMode="decimal"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
@@ -453,6 +541,41 @@ export function ExpensesTab({
         <button
           type="button"
           className="text-btn"
+          onClick={() => setShowTaxOptions((v) => !v)}
+          style={{ display: 'block', marginTop: 8 }}
+        >
+          {showTaxOptions ? 'Hide service charge / tax' : '+ Service charge / tax'}
+        </button>
+        {showTaxOptions && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, marginTop: 4 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
+              Service %
+              <input
+                inputMode="decimal"
+                value={servicePct}
+                onChange={(e) => setServicePct(e.target.value)}
+                style={{ maxWidth: 70 }}
+              />
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
+              Tax %
+              <input
+                inputMode="decimal"
+                value={taxPct}
+                onChange={(e) => setTaxPct(e.target.value)}
+                style={{ maxWidth: 70 }}
+              />
+            </label>
+            {Number(amount) > 0 && (
+              <span style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
+                Total: {currency} {total.toFixed(2)}
+              </span>
+            )}
+          </div>
+        )}
+        <button
+          type="button"
+          className="text-btn"
           onClick={() => setShowSplitEditor((v) => !v)}
           style={{ display: 'block', marginTop: 8 }}
         >
@@ -462,7 +585,7 @@ export function ExpensesTab({
           <SplitEditor
             memberIds={memberIds}
             memberNames={memberNames}
-            total={Number(amount) || 0}
+            total={total}
             mode={splitMode}
             onModeChange={setSplitMode}
             amounts={customAmounts}

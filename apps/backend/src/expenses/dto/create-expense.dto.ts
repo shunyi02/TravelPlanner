@@ -41,6 +41,25 @@ export class CreateExpenseDto {
   @IsString()
   category?: string;
 
+  /** Pre-tax amount, when `amount` was computed from a subtotal plus
+   *  servicePct/taxPct rather than entered directly. */
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
+  subtotal?: number;
+
+  /** Service charge, as a percentage (e.g. 10 for 10%). */
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  servicePct?: number;
+
+  /** Tax, as a percentage, applied on top of subtotal+servicePct. */
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  taxPct?: number;
+
   /** ISO datetime string for when the expense happened. Defaults to now. */
   @IsOptional()
   @IsDateString()

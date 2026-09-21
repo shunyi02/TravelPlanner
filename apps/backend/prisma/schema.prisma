@@ -117,6 +117,13 @@ model Expense {
   description String
   amount      Decimal        @db.Decimal(12, 2)
   currency    String         @default("USD")
+  /** Pre-tax amount actually entered, when servicePct/taxPct were used to
+   *  compute `amount`. Null for a plain expense with no breakdown (amount
+   *  is the whole story). Kept only to repopulate the edit form's fields —
+   *  `amount` (the compounded total) is still what balances/splits use. */
+  subtotal    Decimal?       @db.Decimal(12, 2)
+  servicePct  Decimal?       @db.Decimal(5, 2)
+  taxPct      Decimal?       @db.Decimal(5, 2)
   /** Free-form-ish label from a curated list (EXPENSE_CATEGORIES in the
    *  shared package) — a plain string like Trip.currency, not a DB enum, so
    *  adding a category later doesn't need a migration. */

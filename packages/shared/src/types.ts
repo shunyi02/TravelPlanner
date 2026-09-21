@@ -36,6 +36,9 @@ export interface ExpenseDto {
   currency: string;
   category: string;
   expenseDate: string;
+  subtotal: string | null;
+  servicePct: string | null;
+  taxPct: string | null;
   paidById: string;
   splits: Array<{ userId: string; amountOwed: string; settled: boolean }>;
 }

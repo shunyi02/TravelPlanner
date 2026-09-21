@@ -162,6 +162,9 @@ export interface Expense {
   currency: string;
   category: string;
   expenseDate: string;
+  subtotal: string | null;
+  servicePct: string | null;
+  taxPct: string | null;
   paidById: string;
   splits: ExpenseSplit[];
   createdAt: string;
@@ -228,6 +231,9 @@ export const api = {
       paidById?: string;
       category?: string;
       expenseDate?: string;
+      subtotal?: number;
+      servicePct?: number;
+      taxPct?: number;
       splits?: Array<{ userId: string; share: number }>;
     },
   ) => request<Expense>(`/trips/${tripId}/expenses`, { method: 'POST', body: JSON.stringify(data) }),
@@ -240,6 +246,9 @@ export const api = {
       paidById?: string;
       category?: string;
       expenseDate?: string;
+      subtotal?: number | null;
+      servicePct?: number | null;
+      taxPct?: number | null;
       splits?: Array<{ userId: string; share: number }>;
     },
   ) =>
