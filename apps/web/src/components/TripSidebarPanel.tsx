@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { COMMON_CURRENCIES, type Balance } from '@travel-planner/shared';
+import type { Balance } from '@travel-planner/shared';
 import { api, type TripDetail } from '../api';
 import { useAuth } from '../authContext';
 import { initials } from '../format';
@@ -63,16 +63,6 @@ export function TripSidebarPanel({ tripId }: { tripId: string }) {
     }
   };
 
-  const handleCurrencyChange = async (currency: string) => {
-    setError(null);
-    try {
-      await api.updateTrip(tripId, { currency });
-      notifyAndReload();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not change currency');
-    }
-  };
-
   const handleCancelInvite = async (inviteId: string) => {
     try {
       await api.cancelInvite(tripId, inviteId);
@@ -85,29 +75,8 @@ export function TripSidebarPanel({ tripId }: { tripId: string }) {
   return (
     <aside className="sidebar">
       <Link to="/" className="back-link">&larr; Back to trips</Link>
-      <p className="brand" style={{ marginBottom: 4 }}>{trip.name}</p>
-      {(trip.startDate || trip.endDate) && (
-        <p className="trip-dates" style={{ marginBottom: 4 }}>
-          {trip.startDate?.slice(0, 10)}
-          {trip.endDate ? ` – ${trip.endDate.slice(0, 10)}` : ''}
-        </p>
-      )}
 
-      {isOwner ? (
-        <select
-          value={trip.currency}
-          onChange={(e) => handleCurrencyChange(e.target.value)}
-          style={{ marginBottom: 16, fontSize: 13 }}
-        >
-          {COMMON_CURRENCIES.map((c) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
-      ) : (
-        <p className="sidebar-balance" style={{ marginBottom: 16 }}>{trip.currency}</p>
-      )}
-
-      <p className="sidebar-balance" style={{ marginBottom: 20 }}>
+      <p className="sidebar-balance" style={{ marginTop: 16, marginBottom: 20 }}>
         {Math.abs(myBalance) < 0.01 ? (
           'You’re all settled up'
         ) : (
