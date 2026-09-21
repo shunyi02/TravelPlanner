@@ -7,6 +7,8 @@ import './styles/layout.css';
 import './styles/modal.css';
 import './styles/ledger.css';
 import './styles/expenses.css';
+import './styles/charts.css';
+import './styles/report.css';
 import './styles/trips.css';
 import './styles/trip-detail.css';
 import './styles/itinerary.css';

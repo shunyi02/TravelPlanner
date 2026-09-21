@@ -329,7 +329,7 @@ export function ExpensesTab({
               <View style={styles.breakdown}>
                 <TextInput
                   style={styles.input}
-                  placeholder="What was it for?"
+                  placeholder="Name"
                   placeholderTextColor={colors.inkSoft}
                   value={editDescription}
                   onChangeText={setEditDescription}
@@ -375,7 +375,7 @@ export function ExpensesTab({
         <View style={styles.form}>
           <TextInput
             style={[styles.input, { flex: 2 }]}
-            placeholder="What was it for?"
+            placeholder="Name"
             placeholderTextColor={colors.inkSoft}
             value={description}
             onChangeText={setDescription}

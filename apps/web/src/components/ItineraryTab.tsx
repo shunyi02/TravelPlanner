@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Place, TripDetail } from '../api';
 import { api } from '../api';
 import { AddItineraryItemModal } from './AddItineraryItemModal';
+import { DayWeather } from './DayWeather';
 import { RouteMap, type RouteStop } from './RouteMap';
 import { SuggestedStopsPanel } from './SuggestedStopsPanel';
+import type { DayForecast } from '../weather';
+import { fetchWeather } from '../weather';
 
 function daysBetween(start: string, end: string): string[] {
   const days: string[] = [];
@@ -137,6 +140,7 @@ export function ItineraryTab({
   const [dragOverDay, setDragOverDay] = useState<string | null>(null);
   const [moveError, setMoveError] = useState<string | null>(null);
   const [view, setView] = useState<'overview' | string>('overview');
+  const [weather, setWeather] = useState<Map<string, DayForecast>>(new Map());
 
   const handleSaveDates = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -214,6 +218,21 @@ export function ItineraryTab({
   };
 
   const days = startDate && endDate ? daysBetween(startDate, endDate) : [];
+
+  useEffect(() => {
+    if (trip.destinationLat == null || trip.destinationLng == null || days.length === 0) {
+      setWeather(new Map());
+      return;
+    }
+    let cancelled = false;
+    fetchWeather(trip.destinationLat, trip.destinationLng, days[0], days[days.length - 1]).then((result) => {
+      if (!cancelled) setWeather(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trip.destinationLat, trip.destinationLng, startDate, endDate]);
   const currentDay = view !== 'overview' && days.includes(view) ? view : null;
   const daySet = new Set(days);
   const byDay = new Map<string, Place[]>();
@@ -348,7 +367,7 @@ export function ItineraryTab({
                 </button>
                 {days.map((day) => (
                   <button key={day} className={currentDay === day ? 'active' : ''} onClick={() => setView(day)}>
-                    {formatDay(day)}
+                    {formatDay(day)} <DayWeather forecast={weather.get(day)} compact />
                   </button>
                 ))}
               </div>
@@ -359,7 +378,9 @@ export function ItineraryTab({
                   <div>
                     {days.map((day) => (
                       <div key={day} style={{ marginBottom: 20 }}>
-                        <h3 style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 600 }}>{formatDay(day)}</h3>
+                        <h3 style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 600 }}>
+                          {formatDay(day)} <DayWeather forecast={weather.get(day)} />
+                        </h3>
                         <div
                           onDragOver={(e) => {
                             e.preventDefault();
@@ -401,6 +422,9 @@ export function ItineraryTab({
                 </>
               ) : (
                 <>
+                  <h3 style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 600 }}>
+                    {formatDay(currentDay)} <DayWeather forecast={weather.get(currentDay)} />
+                  </h3>
                   <RouteMap stops={toRouteStops(byDay.get(currentDay) ?? [], currentDay)} />
                   <div style={{ borderTop: '1px solid var(--rule)', paddingTop: 4 }}>
                     {(byDay.get(currentDay) ?? []).length === 0 ? (

@@ -1,4 +1,16 @@
-/* ItineraryTab: the numbered stop index and the trip route map. */
+/* ItineraryTab: the numbered stop index, the trip route map, and the
+ * per-day weather badge (day headers and day-picker tabs). */
+
+.day-weather {
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-left: 4px;
+}
+
+.day-weather-compact {
+  margin-left: 4px;
+}
 
 .ledger-row .stop-index {
   display: inline-flex;

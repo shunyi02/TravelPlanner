@@ -99,6 +99,7 @@ export interface Trip {
   endDate: string | null;
   coverPhoto: string | null;
   currency: string;
+  budget: string | null;
   destinationName: string | null;
   destinationLat: number | null;
   destinationLng: number | null;
@@ -201,6 +202,7 @@ export const api = {
     endDate?: string;
     coverPhoto?: string;
     currency?: string;
+    budget?: number;
     destinationName?: string;
     destinationLat?: number;
     destinationLng?: number;
@@ -211,6 +213,7 @@ export const api = {
       startDate?: string;
       endDate?: string;
       currency?: string;
+      budget?: number | null;
       destinationName?: string;
       destinationLat?: number;
       destinationLng?: number;

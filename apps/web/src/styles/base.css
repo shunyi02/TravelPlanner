@@ -25,6 +25,16 @@ body,
   height: 100%;
 }
 
+/* Flex column so TopBar takes its natural height and .app-shell (or
+ * AuthPage's lone .main) gets exactly the rest — not an independent 100vh
+ * stacked below TopBar, which overflowed the viewport by TopBar's height. A
+ * flex container also stops a child's margin (e.g. AuthPage's centering
+ * margin) from collapsing through and adding phantom scroll of its own. */
+#root {
+  display: flex;
+  flex-direction: column;
+}
+
 body {
   margin: 0;
   background: var(--bg);

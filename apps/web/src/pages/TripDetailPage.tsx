@@ -5,9 +5,10 @@ import { useAuth } from '../authContext';
 import { ItineraryTab } from '../components/ItineraryTab';
 import { ExpensesTab } from '../components/ExpensesTab';
 import { BalancesTab } from '../components/BalancesTab';
+import { ReportTab } from '../components/ReportTab';
 import { notifyTripChanged, onTripChanged } from '../tripEvents';
 
-type Tab = 'itinerary' | 'expenses' | 'balances';
+type Tab = 'itinerary' | 'expenses' | 'balances' | 'report';
 
 export function TripDetailPage() {
   const { tripId } = useParams<{ tripId: string }>();
@@ -67,6 +68,9 @@ export function TripDetailPage() {
         <button className={tab === 'balances' ? 'active' : ''} onClick={() => setTab('balances')}>
           Balances
         </button>
+        <button className={tab === 'report' ? 'active' : ''} onClick={() => setTab('report')}>
+          Report
+        </button>
       </div>
 
       {tab === 'itinerary' && <ItineraryTab tripId={tripId} trip={trip} places={trip.places} onChange={handleChange} />}
@@ -81,6 +85,9 @@ export function TripDetailPage() {
         />
       )}
       {tab === 'balances' && <BalancesTab tripId={tripId} memberNames={memberNames} />}
+      {tab === 'report' && (
+        <ReportTab tripId={tripId} trip={trip} expenses={expenses} memberNames={memberNames} onChange={handleChange} />
+      )}
     </div>
   );
 }

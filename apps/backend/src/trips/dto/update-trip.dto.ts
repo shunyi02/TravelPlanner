@@ -15,6 +15,11 @@ export class UpdateTripDto {
   @IsString()
   currency?: string;
 
+  /** Null clears the budget back to "not set". */
+  @IsOptional()
+  @IsNumber()
+  budget?: number | null;
+
   @IsOptional()
   @IsString()
   destinationName?: string;

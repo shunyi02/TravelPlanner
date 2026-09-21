@@ -23,6 +23,11 @@ export class CreateTripDto {
   @IsString()
   currency?: string;
 
+  /** Overall spending target for the trip, in `currency`. */
+  @IsOptional()
+  @IsNumber()
+  budget?: number;
+
   /** The trip's city/area — geocoded client-side (Nominatim), sent as a
    *  name + coordinates. Powers the "suggest places to visit" panel. */
   @IsOptional()

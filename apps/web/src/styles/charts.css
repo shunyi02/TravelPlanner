@@ -1,0 +1,109 @@
+/* Shared chart primitives — PieChart (category & member breakdowns) and
+ * SpendOverTimeChart (Report tab). One shared tooltip box style for both. */
+
+.chart-tooltip {
+  position: absolute;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  box-shadow: 0 4px 16px rgba(31, 42, 36, 0.12);
+  z-index: 10;
+  white-space: nowrap;
+}
+
+.chart-tooltip strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.chart-tooltip span {
+  color: var(--ink-soft);
+}
+
+.pie-chart {
+  position: relative;
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid var(--rule);
+}
+
+.pie-chart-body {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.pie-chart-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 220px;
+}
+
+.pie-chart-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.pie-chart-legend-row.active {
+  background: var(--route-soft);
+}
+
+.pie-chart-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.pie-chart-legend-name {
+  color: var(--ink);
+  min-width: 100px;
+}
+
+.pie-chart-legend-amount {
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.bar-chart {
+  position: relative;
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid var(--rule);
+}
+
+.bar-chart-body {
+  margin-top: 12px;
+  overflow-x: auto;
+}
+
+.bar-chart-bar {
+  cursor: pointer;
+}
+
+.bar-chart-baseline {
+  stroke: var(--rule);
+  stroke-width: 1;
+}
+
+.bar-chart-label {
+  fill: var(--ink-soft);
+  font-size: 9px;
+}
