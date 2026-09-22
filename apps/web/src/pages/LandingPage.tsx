@@ -72,6 +72,32 @@ export function LandingPage({
           </button>
         </div>
       </footer>
+
+      <footer className="landing-site-footer">
+        <div className="landing-site-footer-inner">
+          <a className="landing-site-footer-link" href="mailto:hello@cuti.app">
+            Contact us
+          </a>
+          <div className="landing-site-footer-credits">
+            <p>
+              Map data ©{' '}
+              <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">
+                OpenStreetMap
+              </a>{' '}
+              contributors · place suggestions from{' '}
+              <a href="https://www.wikidata.org" target="_blank" rel="noopener noreferrer">
+                Wikidata
+              </a>
+            </p>
+          </div>
+        </div>
+        <p className="landing-site-footer-powered-by">
+          Powered by{' '}
+          <a href="https://shinto.co" target="_blank" rel="noopener noreferrer">
+            Shinto.co
+          </a>
+        </p>
+      </footer>
     </div>
   );
 }
