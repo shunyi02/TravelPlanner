@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { MapContainer, Marker, Polyline, TileLayer, Tooltip } from 'react-leaflet';
@@ -15,16 +16,62 @@ function dayMarkerIcon(color: string, order: number) {
   });
 }
 
+/** A small triangle, same shape as the app's own logo mark, rotated to the
+ *  segment's bearing — shows *direction* along a line, which matters once
+ *  lines can diverge and reconverge and a plain line no longer reads as
+ *  obviously sequential. */
+function arrowIcon(color: string, angleDeg: number) {
+  return L.divIcon({
+    className: 'route-map-arrow',
+    html: `<span style="background:${color}; transform: rotate(${angleDeg}deg)"></span>`,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7],
+  });
+}
+
+/** Compass-style bearing (0° = toward increasing lat, 90° = toward
+ *  increasing lng) from `a` to `b` — planar, not geodesic, which matches the
+ *  straight-line Polyline these arrows sit on. */
+function bearing(a: [number, number], b: [number, number]): number {
+  const [latA, lngA] = a;
+  const [latB, lngB] = b;
+  return (Math.atan2(lngB - lngA, latB - latA) * 180) / Math.PI;
+}
+
+function midpoint(a: [number, number], b: [number, number]): [number, number] {
+  return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+}
+
 export interface RouteStop {
   id: string;
   name: string;
   lat: number;
   lng: number;
-  /** 1-based position in the trip's visit order, shown in the marker tooltip. */
+  /** 1-based position within this stop's day, shown in the marker tooltip. */
   order: number;
-  /** Day-bucket key ("YYYY-MM-DD"), or "" if unscheduled — pins/route
-   *  segments are colored per distinct value, in first-seen order. */
-  day: string;
+  /** This pin's own color identity. "" renders neutral — either genuinely
+   *  unscheduled, or a stop everyone shares on a day that's otherwise split
+   *  into sub-groups (so the shared stop reads as a common point, not as
+   *  "belonging" to whichever sub-group happened to get a color first). */
+  colorGroup: string;
+  /** Which route line(s) this point sits on. Usually just its own day; a
+   *  shared stop on a split day sits on *every* sub-group's line that day,
+   *  so those lines visibly reconverge there instead of just ending. */
+  lineGroups: string[];
+}
+
+/** colorGroup -> hue, assigned in first-seen order across `stops`. Exported
+ *  so the itinerary list can color-match its rows to each stop's map pin. */
+export function routeColorMap(stops: RouteStop[]): Map<string, string> {
+  const order: string[] = [];
+  for (const s of stops) {
+    if (s.colorGroup && !order.includes(s.colorGroup)) order.push(s.colorGroup);
+  }
+  const colors = new Map<string, string>();
+  for (const s of stops) {
+    colors.set(s.colorGroup, s.colorGroup ? hueForIndex(order.indexOf(s.colorGroup)) : NEUTRAL_HUE);
+  }
+  return colors;
 }
 
 /** A Google Maps deep link for one stop — just a URL, no API key or billing. */
@@ -45,21 +92,27 @@ function googleMapsRouteUrl(stops: RouteStop[]): string {
 }
 
 /** The whole trip's route: a numbered pin per located stop/hotel, in visit
- *  order, with a line from each to the next. Each distinct day gets its own
- *  color (pins + the segments joining that day's own stops), so multiple
- *  days on the same overview map read apart at a glance; a single-day map
- *  (the per-day tabs) naturally renders as one color. Past 7 distinct days,
- *  colors repeat — the order number on each pin is the fallback identity
- *  cue when hue alone runs out. */
+ *  order, with a line joining each day's own stops. A day split across
+ *  sub-groups becomes several colored lines instead of one, and a stop
+ *  everyone shares that day sits on all of them — so the lines visibly
+ *  diverge for the split and reconverge wherever the group is back
+ *  together, rather than drawing a line between two people going to
+ *  different places. Past 7 distinct colors, hues repeat — the order number
+ *  on each pin is the fallback identity cue when hue alone runs out. */
 export function RouteMap({ stops }: { stops: RouteStop[] }) {
   if (stops.length === 0) return null;
 
   const positions: [number, number][] = stops.map((s) => [s.lat, s.lng]);
   const single = positions.length === 1;
 
-  const dayOrder: string[] = [];
-  for (const s of stops) if (!dayOrder.includes(s.day)) dayOrder.push(s.day);
-  const colorForDay = (day: string) => (day ? hueForIndex(dayOrder.indexOf(day)) : NEUTRAL_HUE);
+  const colorFor = routeColorMap(stops);
+
+  const lineKeys: string[] = [];
+  for (const s of stops) {
+    for (const key of s.lineGroups) {
+      if (!lineKeys.includes(key)) lineKeys.push(key);
+    }
+  }
 
   return (
     <div className="route-map">
@@ -73,19 +126,32 @@ export function RouteMap({ stops }: { stops: RouteStop[] }) {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        {dayOrder.map((day) => {
-          const dayPositions = stops.filter((s) => s.day === day).map((s): [number, number] => [s.lat, s.lng]);
+        {lineKeys.map((key) => {
+          const linePositions = stops
+            .filter((s) => s.lineGroups.includes(key))
+            .map((s): [number, number] => [s.lat, s.lng]);
+          if (linePositions.length < 2) return null;
+          const color = colorFor.get(key) ?? NEUTRAL_HUE;
           return (
-            dayPositions.length > 1 && (
-              <Polyline key={day || '(unscheduled)'} positions={dayPositions} pathOptions={{ color: colorForDay(day), weight: 3 }} />
-            )
+            <Fragment key={key || '(unscheduled)'}>
+              <Polyline positions={linePositions} pathOptions={{ color, weight: 3 }} />
+              {linePositions.slice(1).map((point, i) => (
+                <Marker
+                  key={i}
+                  position={midpoint(linePositions[i], point)}
+                  icon={arrowIcon(color, bearing(linePositions[i], point))}
+                  interactive={false}
+                  keyboard={false}
+                />
+              ))}
+            </Fragment>
           );
         })}
         {stops.map((stop) => (
           <Marker
             key={stop.id}
             position={[stop.lat, stop.lng]}
-            icon={dayMarkerIcon(colorForDay(stop.day), stop.order)}
+            icon={dayMarkerIcon(colorFor.get(stop.colorGroup) ?? NEUTRAL_HUE, stop.order)}
             eventHandlers={{ click: () => window.open(googleMapsStopUrl(stop), '_blank', 'noopener') }}
           >
             <Tooltip direction="top" offset={[0, -34]}>

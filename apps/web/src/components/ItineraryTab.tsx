@@ -3,7 +3,7 @@ import type { Place, TripDetail } from '../api';
 import { api } from '../api';
 import { AddItineraryItemModal } from './AddItineraryItemModal';
 import { DayWeather } from './DayWeather';
-import { RouteMap, type RouteStop } from './RouteMap';
+import { RouteMap, routeColorMap, type RouteStop } from './RouteMap';
 import { SuggestedStopsPanel } from './SuggestedStopsPanel';
 import type { DayForecast } from '../weather';
 import { fetchWeather } from '../weather';
@@ -66,6 +66,17 @@ function dayKeysFor(place: Place): string[] {
     return place.departureTime ? [place.departureTime.slice(0, 10)] : [];
   }
   return place.visitDate ? [place.visitDate.slice(0, 10)] : [];
+}
+
+/** Empty string means "everyone" (no assignees) — same convention as
+ *  Place.assignments itself. Two stops are "for the same audience" only
+ *  when this matches exactly. */
+function assigneeSignature(place: Place): string {
+  return [...assigneeSet(place)].sort().join(',');
+}
+
+function assigneeSet(place: Place): Set<string> {
+  return new Set(place.assignments.map((a) => a.userId));
 }
 
 /** For a hotel shown under a specific day, label what's happening that day
@@ -303,24 +314,98 @@ export function ItineraryTab({
     dayPlaces.sort((a, b) => sortTimeForDay(a, day) - sortTimeForDay(b, day));
   }
 
-  /** Located stops/hotels from `list`, in visit order for `day` (undefined = whole-trip
-   *  order). Each stop is tagged with its own day bucket for map coloring — `day` when
-   *  given (a single-day call site), else the place's own first day key ("" if unscheduled). */
-  const toRouteStops = (list: Place[], day?: string): RouteStop[] =>
-    list
-      .filter((p): p is Place & { lat: number; lng: number } => p.lat != null && p.lng != null)
-      .sort((a, b) => sortTimeForDay(a, day) - sortTimeForDay(b, day))
-      .map((p, i) => ({ id: p.id, name: p.name, lat: p.lat, lng: p.lng, order: i + 1, day: day ?? dayKeysFor(p)[0] ?? '' }));
+  /** Located stops/hotels from `list`, bucketed by day — `day` when given (a
+   *  single-day call site), else each place's own first day key ("" if
+   *  unscheduled). With `splitByAssignee` (the single-day map/list only —
+   *  the overview stays one-color-per-day, or it gets noisy fast), a day
+   *  with 2+ distinct assignee sets becomes several sub-group lines instead
+   *  of one. A stop sits on a sub-group's line whenever that sub-group's
+   *  members are all included in the stop's own assignees (an unassigned
+   *  "everyone" stop is a superset of everything, so it sits on all of
+   *  them) — so B and C's own stops never link to each other, but a later
+   *  stop covering both B and C links back to each of their lines, showing
+   *  the group reconverging rather than just two lines ending nearby. */
+  const toRouteStops = (list: Place[], day?: string, splitByAssignee = true): RouteStop[] => {
+    const located = list.filter((p): p is Place & { lat: number; lng: number } => p.lat != null && p.lng != null);
+
+    const byBucket = new Map<string, typeof located>();
+    for (const p of located) {
+      const d = day ?? dayKeysFor(p)[0] ?? '';
+      if (!byBucket.has(d)) byBucket.set(d, []);
+      byBucket.get(d)!.push(p);
+    }
+
+    const result: RouteStop[] = [];
+    for (const [d, bucket] of byBucket) {
+      const sorted = [...bucket].sort((a, b) => sortTimeForDay(a, day) - sortTimeForDay(b, day));
+      const signatures = splitByAssignee ? [...new Set(sorted.map(assigneeSignature).filter(Boolean))] : [];
+      const isSplit = signatures.length >= 2;
+
+      // Counts per line, not globally: a stop is "1" if it's the first stop
+      // on ITS OWN line, even if another sub-group already visited their own
+      // first stop earlier that day. A stop shared by several lines (a
+      // reconvene point) advances every line it's on and shows the furthest
+      // of them — "stop 2 for whichever line took longest to get here."
+      const lineCounters = new Map<string, number>();
+
+      sorted.forEach((p) => {
+        const set = assigneeSet(p);
+        const signature = assigneeSignature(p);
+        const shared = isSplit && set.size === 0;
+        const lineGroups = !isSplit
+          ? [d]
+          : shared
+            ? signatures.map((s) => `${d}#${s}`)
+            : signatures.filter((s) => s.split(',').every((id) => set.has(id))).map((s) => `${d}#${s}`);
+
+        let order = 0;
+        for (const lg of lineGroups) {
+          const next = (lineCounters.get(lg) ?? 0) + 1;
+          lineCounters.set(lg, next);
+          order = Math.max(order, next);
+        }
+
+        result.push({
+          id: p.id,
+          name: p.name,
+          lat: p.lat,
+          lng: p.lng,
+          order,
+          colorGroup: isSplit ? (shared ? '' : `${d}#${signature}`) : d,
+          lineGroups,
+        });
+      });
+    }
+    return result;
+  };
 
   /** The whole trip's located stops/hotels, in visit order, for the overview map
    *  when no trip dates are set yet (nothing is day-bucketed, so nothing counts
-   *  as "unscheduled" either). */
-  const routeStops: RouteStop[] = toRouteStops(visiblePlaces);
+   *  as "unscheduled" either). Kept to one color per day — sub-group detail is
+   *  reserved for a specific day's own tab, or the overview gets noisy fast. */
+  const routeStops: RouteStop[] = toRouteStops(visiblePlaces, undefined, false);
 
   /** Same, but for the day-bucketed overview map: excludes places sitting in the
    *  "Unscheduled" list, which has no day and so shouldn't plot on the map. */
   const unscheduledIds = new Set(unscheduled.map((p) => p.id));
-  const scheduledRouteStops: RouteStop[] = toRouteStops(visiblePlaces.filter((p) => !unscheduledIds.has(p.id)));
+  const scheduledRouteStops: RouteStop[] = toRouteStops(
+    visiblePlaces.filter((p) => !unscheduledIds.has(p.id)),
+    undefined,
+    false,
+  );
+
+  // Bucketing (and so coloring) only depends on each place's own day, not on
+  // which other days are present, so computing this once off the whole list
+  // gives every overview row the same color its pin gets on the overview map.
+  const overviewRouteStops = toRouteStops(visiblePlaces, undefined, false);
+  const overviewColors = routeColorMap(overviewRouteStops);
+  const overviewColorGroupByPlaceId = new Map(overviewRouteStops.map((s) => [s.id, s.colorGroup]));
+
+  // The single day tab's own sub-group-aware colors, only computed for
+  // whichever day is currently open.
+  const dayRouteStops = currentDay ? toRouteStops(byDay.get(currentDay) ?? [], currentDay) : [];
+  const dayColors = routeColorMap(dayRouteStops);
+  const dayColorGroupByPlaceId = new Map(dayRouteStops.map((s) => [s.id, s.colorGroup]));
 
   const renderRow = (place: Place, opts?: { day?: string; index?: number; draggable?: boolean }) => {
     const subtitle = placeSubtitle(place, opts?.day);
@@ -328,6 +413,11 @@ export function ItineraryTab({
       place.type === 'HOTEL' &&
       opts?.day &&
       (opts.day === place.checkIn?.slice(0, 10) || opts.day === place.checkOut?.slice(0, 10));
+    // The single-day tab shows sub-group-aware colors; everywhere else
+    // (overview, unscheduled, the flat no-dates list) stays one-per-day.
+    const onCurrentDayTab = currentDay !== null && opts?.day === currentDay;
+    const colorGroupByPlaceId = onCurrentDayTab ? dayColorGroupByPlaceId : overviewColorGroupByPlaceId;
+    const routeColors = onCurrentDayTab ? dayColors : overviewColors;
     return (
       <div
         className="ledger-row"
@@ -339,6 +429,13 @@ export function ItineraryTab({
       >
         <div className="row-main">
           {opts?.index !== undefined && <span className="stop-index">{opts.index + 1}</span>}
+          {colorGroupByPlaceId.has(place.id) && (
+            <span
+              className="route-color-dot"
+              style={{ background: routeColors.get(colorGroupByPlaceId.get(place.id)!) }}
+              title="Matches this stop's pin on the map"
+            />
+          )}
           <span className="row-title">
             {place.type === 'FLIGHT' ? '✈ ' : place.type === 'HOTEL' ? '🏨 ' : ''}
             {place.name}
