@@ -1,0 +1,152 @@
+/* LandingPage: the logged-out intro shown before AuthPage. */
+
+.landing {
+  min-height: 100%;
+  background: var(--bg);
+}
+
+.landing-bar,
+.landing-hero,
+.landing-features,
+.landing-footer-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding-left: 48px;
+  padding-right: 48px;
+}
+
+@media (max-width: 720px) {
+  .landing-bar,
+  .landing-hero,
+  .landing-features,
+  .landing-footer-inner {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+}
+
+.landing-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 20px;
+  padding-bottom: 20px;
+}
+
+.landing-hero {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: 48px;
+  padding-top: 48px;
+  padding-bottom: 64px;
+}
+
+@media (max-width: 720px) {
+  .landing-hero {
+    grid-template-columns: 1fr;
+    padding-top: 24px;
+    padding-bottom: 40px;
+  }
+}
+
+.landing-hero-copy h1 {
+  font-size: 44px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  margin: 0 0 16px;
+  color: var(--ink);
+}
+
+.landing-hero-copy p {
+  font-size: 17px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  max-width: 46ch;
+  margin: 0 0 28px;
+}
+
+.landing-cta {
+  padding: 12px 24px;
+  font-size: 16px;
+}
+
+/* Echoes the trip card's own route-map motif (see .trip-card-strip-fallback)
+ * so the hero visual is drawn from the product itself, not stock decoration. */
+.landing-hero-art {
+  aspect-ratio: 1;
+  border-radius: var(--radius-lg);
+  background-color: var(--route-soft);
+  background-image:
+    radial-gradient(circle 5px at 20% 65%, var(--route) 98%, transparent 100%),
+    radial-gradient(circle 5px at 52% 30%, var(--route) 98%, transparent 100%),
+    radial-gradient(circle 5px at 82% 60%, var(--route) 98%, transparent 100%),
+    linear-gradient(115deg, transparent 49%, var(--route) 49.6%, var(--route) 50.4%, transparent 51%);
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  box-shadow: var(--shadow-sm);
+}
+
+@media (max-width: 720px) {
+  .landing-hero-art {
+    display: none;
+  }
+}
+
+.landing-features {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  padding-bottom: 64px;
+}
+
+@media (max-width: 720px) {
+  .landing-features {
+    grid-template-columns: 1fr;
+  }
+}
+
+.landing-feature {
+  padding: 24px;
+}
+
+.landing-feature-icon {
+  font-size: 26px;
+  display: block;
+  margin-bottom: 12px;
+}
+
+.landing-feature h3 {
+  margin: 0 0 6px;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.landing-feature p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.landing-footer {
+  background: var(--route-soft);
+  padding: 48px 0;
+}
+
+.landing-footer-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.landing-footer-inner p {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+}

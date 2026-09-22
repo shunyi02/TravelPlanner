@@ -4,9 +4,10 @@ import { Sidebar } from './components/Sidebar';
 import { TripsLandingPage } from './pages/TripsLandingPage';
 import { TripDetailPage } from './pages/TripDetailPage';
 import { AuthPage } from './pages/AuthPage';
+import { LandingPage } from './pages/LandingPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { SettingsPage } from './pages/SettingsPage';
-import { api, isLoggedIn, setSessionExpiredHandler, type CurrentUser } from './api';
+import { api, getResetToken, isLoggedIn, setSessionExpiredHandler, type CurrentUser } from './api';
 import { AuthContext, useAuth } from './authContext';
 import { initials } from './format';
 
@@ -109,14 +110,42 @@ function AuthedApp({ onLogout }: { onLogout: () => void }) {
 
 export default function App() {
   const [authed, setAuthed] = useState(isLoggedIn());
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [showAuth, setShowAuth] = useState(false);
 
   useEffect(() => {
     setSessionExpiredHandler(() => setAuthed(false));
   }, []);
 
+  const handleLogout = () => {
+    setAuthed(false);
+    setShowAuth(false);
+  };
+
   if (!authed) {
-    return <AuthPage onAuthed={() => setAuthed(true)} />;
+    const resetToken = getResetToken();
+    if (resetToken || showAuth) {
+      return (
+        <AuthPage
+          onAuthed={() => setAuthed(true)}
+          initialMode={authMode}
+          onBack={resetToken ? undefined : () => setShowAuth(false)}
+        />
+      );
+    }
+    return (
+      <LandingPage
+        onLogin={() => {
+          setAuthMode('login');
+          setShowAuth(true);
+        }}
+        onGetStarted={() => {
+          setAuthMode('register');
+          setShowAuth(true);
+        }}
+      />
+    );
   }
 
-  return <AuthedApp onLogout={() => setAuthed(false)} />;
+  return <AuthedApp onLogout={handleLogout} />;
 }

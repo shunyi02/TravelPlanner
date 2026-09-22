@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { api } from '../api';
+import { api, getResetToken } from '../api';
 
-/** A reset-password link (from the reset email) lands here as `?token=...`.
- *  Read once at module load — the value doesn't change during the page's life. */
-const resetToken = new URLSearchParams(window.location.search).get('token');
+/** Read once at module load — the value doesn't change during the page's life. */
+const resetToken = getResetToken();
 
 function ResetPasswordForm() {
   const [newPassword, setNewPassword] = useState('');
@@ -60,8 +59,17 @@ function ResetPasswordForm() {
   );
 }
 
-export function AuthPage({ onAuthed }: { onAuthed: () => void }) {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+export function AuthPage({
+  onAuthed,
+  initialMode = 'login',
+  onBack,
+}: {
+  onAuthed: () => void;
+  initialMode?: 'login' | 'register';
+  /** Shown as a "back" link above the form when set (e.g. returning to a landing page). */
+  onBack?: () => void;
+}) {
+  const [mode, setMode] = useState<'login' | 'register'>(initialMode);
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
@@ -90,6 +98,11 @@ export function AuthPage({ onAuthed }: { onAuthed: () => void }) {
 
   return (
     <div className="main" style={{ maxWidth: 360, margin: '80px auto' }}>
+      {onBack && (
+        <button type="button" className="back-link" style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={onBack}>
+          ← Back
+        </button>
+      )}
       <div className="auth-brand">
         <span className="top-bar-logo auth-logo-flipped" />
         <span className="auth-brand-name">Cuti</span>
@@ -119,16 +132,16 @@ export function AuthPage({ onAuthed }: { onAuthed: () => void }) {
         </button>
       </form>
       <button
-        className="btn btn-outline"
-        style={{ marginTop: 12, border: 'none' }}
+        className="text-btn"
+        style={{ display: 'block', marginTop: 16 }}
         onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
       >
         {mode === 'login' ? "Don't have an account? Sign up" : 'Already have an account? Log in'}
       </button>
       {mode === 'login' && (
         <button
-          className="btn btn-outline"
-          style={{ marginTop: 4, border: 'none', fontSize: 13 }}
+          className="text-btn"
+          style={{ display: 'block', marginTop: 8 }}
           onClick={async () => {
             if (!email) {
               setError('Enter your email above first');

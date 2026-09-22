@@ -32,6 +32,11 @@ export function isLoggedIn(): boolean {
   return getAccessToken() !== null;
 }
 
+/** A password-reset email link lands here as `?token=...`. */
+export function getResetToken(): string | null {
+  return new URLSearchParams(window.location.search).get('token');
+}
+
 async function rawRequest(path: string, options: RequestInit, token: string | null): Promise<Response> {
   return fetch(`${BASE_URL}${path}`, {
     ...options,

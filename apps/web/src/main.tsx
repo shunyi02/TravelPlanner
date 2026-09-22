@@ -14,6 +14,7 @@ import './styles/trip-detail.css';
 import './styles/itinerary.css';
 import './styles/settings.css';
 import './styles/profile.css';
+import './styles/landing.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
