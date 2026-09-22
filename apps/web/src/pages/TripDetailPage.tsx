@@ -81,6 +81,8 @@ export function TripDetailPage() {
           memberNames={memberNames}
           currency={trip.currency}
           currentUserId={currentUser?.id}
+          tripStartDate={trip.startDate}
+          tripEndDate={trip.endDate}
           onChange={handleChange}
         />
       )}

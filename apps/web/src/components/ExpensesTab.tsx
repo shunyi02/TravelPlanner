@@ -2,137 +2,38 @@ import { useState } from 'react';
 import { EXPENSE_CATEGORIES, DEFAULT_EXPENSE_CATEGORY } from '@travel-planner/shared';
 import type { Expense } from '../api';
 import { api } from '../api';
-import { formatDateTime, fromDatetimeLocalValue, toDatetimeLocalValue } from '../format';
+import { dateKey, formatDateTime, formatDayHeading, fromDatetimeLocalValue, toDatetimeLocalValue } from '../format';
 import { CategoryPieChart } from './CategoryPieChart';
+import { AddExpenseModal } from './AddExpenseModal';
+import {
+  computeTotal,
+  expenseDateBounds,
+  looksEven,
+  nowForInput,
+  sumAmounts,
+  toShares,
+  SplitEditor,
+  type AmountMode,
+  type SplitMode,
+} from './expenseShared';
 
-const nowForInput = () => toDatetimeLocalValue(new Date().toISOString());
-
-type SplitMode = 'even' | 'custom';
-/** 'base': the amount entered excludes tax, servicePct/taxPct compute the
- *  total. 'total': the amount entered already is the final, tax-included
- *  total (what most receipts show), so no tax fields apply. */
-type AmountMode = 'base' | 'total';
-
-function evenAmounts(memberIds: string[], total: number): Record<string, string> {
-  if (memberIds.length === 0) return {};
-  const each = total / memberIds.length;
-  return Object.fromEntries(memberIds.map((id) => [id, each ? each.toFixed(2) : '']));
-}
-
-/** Applies service charge then tax on top, both as percentages, compounding
- *  (tax is charged on the post-service-charge amount, matching how a
- *  restaurant bill actually adds them). Either can be 0. */
-function computeTotal(base: number, servicePct: number, taxPct: number): number {
-  return base * (1 + servicePct / 100) * (1 + taxPct / 100);
-}
-
-function sumAmounts(amounts: Record<string, string>): number {
-  return Object.values(amounts).reduce((sum, v) => sum + (Number(v) || 0), 0);
-}
-
-function toShares(amounts: Record<string, string>): Array<{ userId: string; share: number }> {
-  const entries = Object.entries(amounts)
-    .map(([userId, val]) => [userId, Number(val) || 0] as const)
-    .filter(([, val]) => val > 0);
-  const total = entries.reduce((sum, [, val]) => sum + val, 0);
-  if (total <= 0) return [];
-  return entries.map(([userId, val]) => ({ userId, share: val / total }));
-}
-
-/** Splits are treated as "even" if every trip member owes an equal share. */
-function looksEven(expense: Expense, memberIds: string[]): boolean {
-  if (expense.splits.length !== memberIds.length) return false;
-  const values = expense.splits.map((s) => Number(s.amountOwed));
-  return values.every((v) => Math.abs(v - values[0]) < 0.01);
-}
-
-function SplitEditor({
-  memberIds,
-  memberNames,
-  total,
-  taxMultiplier = 1,
-  currency,
-  mode,
-  onModeChange,
-  amounts,
-  onAmountsChange,
-}: {
-  memberIds: string[];
-  memberNames: Record<string, string>;
-  /** What custom amounts must sum to — the base fare when tax applies
-   *  (taxMultiplier !== 1), otherwise the plain total. */
-  total: number;
-  /** (1 + service%)(1 + tax%). Each member's base share, once entered, is
-   *  multiplied by this to show the final amount they actually owe. */
-  taxMultiplier?: number;
-  currency?: string;
-  mode: SplitMode;
-  onModeChange: (mode: SplitMode) => void;
-  amounts: Record<string, string>;
-  onAmountsChange: (amounts: Record<string, string>) => void;
-}) {
-  const diff = total - sumAmounts(amounts);
-  const balanced = Math.abs(diff) < 0.01;
-  const hasTax = Math.abs(taxMultiplier - 1) > 0.0001;
-
-  return (
-    <div>
-      <div className="split-mode-row">
-        <label>
-          <input
-            type="radio"
-            checked={mode === 'even'}
-            onChange={() => onModeChange('even')}
-          />{' '}
-          Split evenly
-        </label>
-        <label>
-          <input
-            type="radio"
-            checked={mode === 'custom'}
-            onChange={() => {
-              onModeChange('custom');
-              if (Object.keys(amounts).length === 0) onAmountsChange(evenAmounts(memberIds, total));
-            }}
-          />{' '}
-          Custom amounts{hasTax ? ' (base fare, before tax)' : ''}
-        </label>
-      </div>
-      {mode === 'custom' && (
-        <div className="custom-split-grid">
-          {memberIds.map((id) => {
-            const val = Number(amounts[id]) || 0;
-            return (
-              <div className="custom-split-row" key={id}>
-                <span>{memberNames[id] ?? id}</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <input
-                    inputMode="decimal"
-                    value={amounts[id] ?? ''}
-                    onChange={(e) => onAmountsChange({ ...amounts, [id]: e.target.value })}
-                  />
-                  {hasTax && val > 0 && (
-                    <span style={{ color: 'var(--ink-soft)' }}>
-                      → pays {currency} {(val * taxMultiplier).toFixed(2)}
-                    </span>
-                  )}
-                </span>
-              </div>
-            );
-          })}
-          <p className={`split-remaining ${balanced ? 'balanced' : 'unbalanced'}`}>
-            {balanced
-              ? hasTax
-                ? 'Base fares add up.'
-                : 'Splits add up.'
-              : diff > 0
-                ? `${diff.toFixed(2)} left to assign`
-                : `${Math.abs(diff).toFixed(2)} over`}
-          </p>
-        </div>
-      )}
-    </div>
-  );
+/** Groups expenses by calendar day (in the viewer's local time), preserving
+ *  first-seen order, each with its day heading and spending total. */
+function groupByDay(
+  expenses: Expense[],
+): Array<{ key: string; heading: string; items: Expense[]; total: number }> {
+  const groups: Array<{ key: string; heading: string; items: Expense[]; total: number }> = [];
+  for (const expense of expenses) {
+    const key = dateKey(expense.expenseDate);
+    let group = groups.find((g) => g.key === key);
+    if (!group) {
+      group = { key, heading: formatDayHeading(expense.expenseDate), items: [], total: 0 };
+      groups.push(group);
+    }
+    group.items.push(expense);
+    group.total += Number(expense.amount);
+  }
+  return groups;
 }
 
 export function ExpensesTab({
@@ -141,6 +42,8 @@ export function ExpensesTab({
   memberNames,
   currency,
   currentUserId,
+  tripStartDate,
+  tripEndDate,
   onChange,
 }: {
   tripId: string;
@@ -148,21 +51,16 @@ export function ExpensesTab({
   memberNames: Record<string, string>;
   currency: string;
   currentUserId?: string;
+  tripStartDate?: string | null;
+  tripEndDate?: string | null;
   onChange: () => void;
 }) {
   const memberIds = Object.keys(memberNames);
+  const dayGroups = groupByDay(expenses);
+  // Bounds for the expense date pickers, so logged expenses stay within the trip's travel dates.
+  const { min: minExpenseDate, max: maxExpenseDate } = expenseDateBounds(tripStartDate, tripEndDate);
 
-  const [description, setDescription] = useState('');
-  const [amount, setAmount] = useState('');
-  const [paidById, setPaidById] = useState(currentUserId ?? memberIds[0] ?? '');
-  const [category, setCategory] = useState<string>(DEFAULT_EXPENSE_CATEGORY);
-  const [expenseDate, setExpenseDate] = useState(nowForInput());
-  const [amountMode, setAmountMode] = useState<AmountMode>('base');
-  const [servicePct, setServicePct] = useState('');
-  const [taxPct, setTaxPct] = useState('');
-  const [splitMode, setSplitMode] = useState<SplitMode>('even');
-  const [customAmounts, setCustomAmounts] = useState<Record<string, string>>({});
-  const [showSplitEditor, setShowSplitEditor] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -180,74 +78,11 @@ export function ExpensesTab({
   const [editCustomAmounts, setEditCustomAmounts] = useState<Record<string, string>>({});
   const [showEditSplitEditor, setShowEditSplitEditor] = useState(false);
 
-  const svcNum = Number(servicePct) || 0;
-  const taxNum = Number(taxPct) || 0;
-  /** (1 + service%)(1 + tax%), or 1 in 'total' mode where there's nothing to add. */
-  const multiplier = amountMode === 'base' ? (1 + svcNum / 100) * (1 + taxNum / 100) : 1;
-  /** The actual total to charge: base amount times multiplier in 'base' mode,
-   *  or just the amount as-is in 'total' mode (it already includes tax). */
-  const total = amountMode === 'base' ? computeTotal(Number(amount) || 0, svcNum, taxNum) : Number(amount) || 0;
-
   const editSvcNum = Number(editServicePct) || 0;
   const editTaxNum = Number(editTaxPct) || 0;
   const editMultiplier = editAmountMode === 'base' ? (1 + editSvcNum / 100) * (1 + editTaxNum / 100) : 1;
   const editTotal =
     editAmountMode === 'base' ? computeTotal(Number(editAmount) || 0, editSvcNum, editTaxNum) : Number(editAmount) || 0;
-
-  const resetAddForm = () => {
-    setDescription('');
-    setAmount('');
-    setAmountMode('base');
-    setServicePct('');
-    setTaxPct('');
-    setPaidById(currentUserId ?? memberIds[0] ?? '');
-    setCategory(DEFAULT_EXPENSE_CATEGORY);
-    setExpenseDate(nowForInput());
-    setSplitMode('even');
-    setCustomAmounts({});
-    setShowSplitEditor(false);
-  };
-
-  const handleAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    const parsed = Number(amount);
-    if (!description.trim() || !parsed || parsed <= 0) return;
-
-    const hasTax = amountMode === 'base' && (svcNum > 0 || taxNum > 0);
-    const finalTotal = Number(total.toFixed(2));
-    // Custom amounts are base-fare shares when tax applies (so members enter
-    // what they ordered, not a pre-computed taxed amount) — otherwise they're
-    // just the plain total, same as before tax support existed.
-    const baseForSplit = amountMode === 'base' ? parsed : finalTotal;
-
-    let splits: Array<{ userId: string; share: number }> | undefined;
-    if (showSplitEditor && splitMode === 'custom') {
-      if (Math.abs(baseForSplit - sumAmounts(customAmounts)) > 0.01) {
-        setError(hasTax ? 'Custom amounts must add up to the base fare.' : 'Custom amounts must add up to the total.');
-        return;
-      }
-      splits = toShares(customAmounts);
-    }
-
-    try {
-      await api.createExpense(tripId, {
-        description: description.trim(),
-        amount: finalTotal,
-        subtotal: hasTax ? parsed : undefined,
-        servicePct: hasTax && svcNum > 0 ? svcNum : undefined,
-        taxPct: hasTax && taxNum > 0 ? taxNum : undefined,
-        paidById,
-        category,
-        expenseDate: fromDatetimeLocalValue(expenseDate),
-        splits,
-      });
-      resetAddForm();
-      onChange();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not log expense');
-    }
-  };
 
   const toggleExpand = (expenseId: string) => {
     setExpandedId(expandedId === expenseId ? null : expenseId);
@@ -278,6 +113,17 @@ export function ExpensesTab({
     setError(null);
     const parsedAmount = Number(editAmount);
     if (!editDescription.trim() || !parsedAmount || parsedAmount <= 0) return;
+    // Only enforce trip-date bounds when the date was actually changed — an
+    // expense logged before the trip dates were set/narrowed shouldn't block
+    // unrelated edits.
+    const dateChanged = editExpenseDate !== toDatetimeLocalValue(expense.expenseDate);
+    if (
+      dateChanged &&
+      ((minExpenseDate && editExpenseDate < minExpenseDate) || (maxExpenseDate && editExpenseDate > maxExpenseDate))
+    ) {
+      setError('Expense date must fall within the trip dates.');
+      return;
+    }
 
     const hasTax = editAmountMode === 'base' && (editSvcNum > 0 || editTaxNum > 0);
     const newTotal = Number(editTotal.toFixed(2));
@@ -349,11 +195,24 @@ export function ExpensesTab({
 
   return (
     <div>
+      <div className="no-print" style={{ display: 'flex', marginBottom: 20 }}>
+        <button className="btn" onClick={() => setShowAddModal(true)}>
+          + Add expense
+        </button>
+      </div>
+      {error && <p style={{ color: 'var(--owe)', marginBottom: 16 }}>{error}</p>}
+
       {expenses.length === 0 ? (
         <p className="empty-state">No expenses logged yet.</p>
       ) : (
         <div>
-          {expenses.map((expense) => (
+          {dayGroups.map((group) => (
+            <div key={group.key} className="day-group">
+              <div className="day-group-header">
+                <span className="day-group-date">{group.heading}</span>
+                <span className="amount">{currency} {group.total.toFixed(2)}</span>
+              </div>
+              {group.items.map((expense) => (
             <div key={expense.id}>
               <div className="ledger-row" style={{ cursor: 'pointer' }} onClick={() => toggleExpand(expense.id)}>
                 <div className="row-main">
@@ -408,19 +267,19 @@ export function ExpensesTab({
                     expense.splits
                       .filter((s) => s.userId !== expense.paidById)
                       .map((s) => (
-                        <label className="split-item" key={s.userId}>
+                        <div className="split-item" key={s.userId}>
                           <span>
                             {memberNames[s.userId] ?? s.userId} owes {expense.currency} {s.amountOwed}
                           </span>
-                          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            {s.settled ? 'Settled' : 'Not settled'}
-                            <input
-                              type="checkbox"
-                              checked={s.settled}
-                              onChange={(e) => handleToggleSettled(expense, s.userId, e.target.checked)}
-                            />
-                          </span>
-                        </label>
+                          <button
+                            type="button"
+                            className={`settle-btn ${s.settled ? 'settle-btn-settled' : ''}`}
+                            aria-pressed={s.settled}
+                            onClick={() => handleToggleSettled(expense, s.userId, !s.settled)}
+                          >
+                            {s.settled ? '✓ Settled' : 'Mark settled'}
+                          </button>
+                        </div>
                       ))
                   )}
                 </div>
@@ -500,6 +359,8 @@ export function ExpensesTab({
                         type="datetime-local"
                         value={editExpenseDate}
                         onChange={(e) => setEditExpenseDate(e.target.value)}
+                        min={minExpenseDate}
+                        max={maxExpenseDate}
                       />
                     </label>
                   </div>
@@ -535,110 +396,30 @@ export function ExpensesTab({
                 </div>
               )}
             </div>
+              ))}
+            </div>
           ))}
         </div>
       )}
 
-      <form onSubmit={handleAdd} style={{ marginTop: 20 }}>
-        <div className="form-inline" style={{ marginTop: 0 }}>
-          <input
-            placeholder="Name"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-          <input
-            placeholder={amountMode === 'base' ? `Base fare (${currency})` : `Total (${currency})`}
-            inputMode="decimal"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            style={{ maxWidth: 140 }}
-          />
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
-            <input type="radio" checked={amountMode === 'base'} onChange={() => setAmountMode('base')} />
-            Base fare
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
-            <input type="radio" checked={amountMode === 'total'} onChange={() => setAmountMode('total')} />
-            Total (tax incl.)
-          </label>
-          {amountMode === 'base' && (
-            <>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
-                Service %
-                <input
-                  inputMode="decimal"
-                  value={servicePct}
-                  onChange={(e) => setServicePct(e.target.value)}
-                  style={{ maxWidth: 60 }}
-                />
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
-                Tax %
-                <input
-                  inputMode="decimal"
-                  value={taxPct}
-                  onChange={(e) => setTaxPct(e.target.value)}
-                  style={{ maxWidth: 60 }}
-                />
-              </label>
-            </>
-          )}
-          <button className="btn" type="submit">
-            Log expense
-          </button>
-        </div>
-        {amountMode === 'base' && Number(amount) > 0 && (
-          <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: '8px 0 0' }}>
-            Total (incl. tax): {currency} {total.toFixed(2)}
-          </p>
-        )}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 8 }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
-            Paid by
-            <select value={paidById} onChange={(e) => setPaidById(e.target.value)}>
-              {memberIds.map((id) => (
-                <option key={id} value={id}>{memberNames[id] ?? id}</option>
-              ))}
-            </select>
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
-            Category
-            <select value={category} onChange={(e) => setCategory(e.target.value)}>
-              {EXPENSE_CATEGORIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
-            When
-            <input type="datetime-local" value={expenseDate} onChange={(e) => setExpenseDate(e.target.value)} />
-          </label>
-        </div>
-        <button
-          type="button"
-          className="text-btn"
-          onClick={() => setShowSplitEditor((v) => !v)}
-          style={{ display: 'block', marginTop: 8 }}
-        >
-          {showSplitEditor ? 'Hide split options' : 'Split options (defaults to evenly)'}
-        </button>
-        {showSplitEditor && (
-          <SplitEditor
-            memberIds={memberIds}
-            memberNames={memberNames}
-            total={amountMode === 'base' ? Number(amount) || 0 : total}
-            taxMultiplier={multiplier}
-            currency={currency}
-            mode={splitMode}
-            onModeChange={setSplitMode}
-            amounts={customAmounts}
-            onAmountsChange={setCustomAmounts}
-          />
-        )}
-        {error && <p style={{ color: 'var(--owe)' }}>{error}</p>}
-      </form>
-
       <CategoryPieChart expenses={expenses} currency={currency} />
+
+      {showAddModal && (
+        <AddExpenseModal
+          tripId={tripId}
+          memberIds={memberIds}
+          memberNames={memberNames}
+          currency={currency}
+          currentUserId={currentUserId}
+          minExpenseDate={minExpenseDate}
+          maxExpenseDate={maxExpenseDate}
+          onClose={() => setShowAddModal(false)}
+          onSaved={() => {
+            setShowAddModal(false);
+            onChange();
+          }}
+        />
+      )}
     </div>
   );
 }

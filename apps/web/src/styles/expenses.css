@@ -1,6 +1,90 @@
 /* ExpensesTab: the split editor shown when logging or editing an expense.
  * Chart styles (pie, bar) live in charts.css — several tabs' charts share them. */
 
+/* AddExpenseModal: the "Log expense" form. */
+
+.expense-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.expense-form-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.field-label {
+  flex: 1;
+  min-width: 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.field-label select,
+.field-label input {
+  width: 100%;
+}
+
+.expense-amount-input {
+  flex: 1;
+  min-width: 140px;
+}
+
+.expense-total-preview {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.segmented-control {
+  display: inline-flex;
+  align-self: center;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.segmented-control button {
+  padding: 8px 12px;
+  font-size: 13px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  border: none;
+  border-right: 1px solid var(--rule);
+}
+
+.segmented-control button:last-child {
+  border-right: none;
+}
+
+.segmented-control button.active {
+  background: var(--route-soft);
+  color: var(--route);
+  font-weight: 500;
+}
+
+.day-group + .day-group {
+  margin-top: 8px;
+}
+
+.day-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 10px 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  border-bottom: 1px solid var(--rule);
+}
+
 .category-badge {
   font-size: 11px;
   color: var(--route);
@@ -26,6 +110,33 @@
   gap: 8px;
   font-size: 13px;
   color: var(--ink-soft);
+}
+
+/* Settle toggle: color + label say the state outright (amber "needs action"
+ * vs. green "done"), so nobody has to infer status from a bare checkbox. */
+.settle-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--owe);
+  background: var(--owe-soft);
+  color: var(--owe);
+  white-space: nowrap;
+}
+
+.settle-btn:hover {
+  opacity: 0.8;
+}
+
+.settle-btn-settled {
+  border-color: var(--route);
+  background: var(--route-soft);
+  color: var(--route);
 }
 
 .split-mode-row {
