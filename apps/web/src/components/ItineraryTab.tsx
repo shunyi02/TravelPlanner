@@ -485,22 +485,27 @@ export function ItineraryTab({
       {deleteError && <p style={{ color: 'var(--owe)', margin: '0 0 16px' }}>{deleteError}</p>}
       {moveError && <p style={{ color: 'var(--owe)', margin: '0 0 16px' }}>{moveError}</p>}
 
-      <div className="no-print" style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+      <div className="no-print" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <button className="btn" onClick={() => setShowAddModal(true)}>
           + Add
         </button>
         <button className="btn btn-outline" onClick={() => window.print()}>
           Export PDF
         </button>
-        {memberIds.length > 1 && (
-          <select value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value)} style={{ fontSize: 13 }}>
-            <option value="all">Show: everyone's plans</option>
-            {memberIds.map((id) => (
-              <option key={id} value={id}>Show: {memberNames[id] ?? id}'s plans</option>
-            ))}
-          </select>
-        )}
       </div>
+      {memberIds.length > 1 && (
+        <div className="filter-row no-print" style={{ marginBottom: 20 }}>
+          <span className="filter-row-label">Viewing</span>
+          <div className="filter-select-wrap">
+            <select value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value)}>
+              <option value="all">Everyone's plans</option>
+              {memberIds.map((id) => (
+                <option key={id} value={id}>{memberNames[id] ?? id}'s plans</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
 
       <SuggestedStopsPanel
         tripId={tripId}

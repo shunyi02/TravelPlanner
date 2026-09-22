@@ -271,7 +271,7 @@ export function ExpensesTab({
           )}
         </div>
         {expenses.length > 0 && (
-          <div className="expense-filter-row">
+          <div className="filter-row">
             <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
               <option value="all">All categories</option>
               {EXPENSE_CATEGORIES.map((c) => (
@@ -284,7 +284,7 @@ export function ExpensesTab({
                 <option key={id} value={id}>Paid by {memberNames[id] ?? id}</option>
               ))}
             </select>
-            <label className="expense-filter-checkbox">
+            <label className="filter-checkbox">
               <input type="checkbox" checked={unsettledOnly} onChange={(e) => setUnsettledOnly(e.target.checked)} />
               Unsettled only
             </label>

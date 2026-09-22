@@ -206,6 +206,81 @@ h1.page-title {
   box-shadow: var(--shadow-sm);
 }
 
+/* A row of small filter controls (selects, checkboxes) sitting under a
+ * tab's primary action buttons — used by Expenses and Itinerary. */
+.filter-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.filter-row select {
+  font-size: 13px;
+  padding: 6px 8px;
+}
+
+.filter-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.filter-row-label {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+/* A native <select> restyled as a pill, matching .segmented-control's
+ * language — a custom chevron via a border-triangle (not an image), so it
+ * still follows every theme's own --ink-soft instead of a baked-in color. */
+.filter-select-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.filter-select-wrap::after {
+  content: '';
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid var(--ink-soft);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.filter-select-wrap select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding: 8px 32px 8px 16px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.filter-select-wrap select:hover {
+  background: var(--route-soft);
+  color: var(--route);
+}
+
+.filter-select-wrap:has(select:hover)::after {
+  border-top-color: var(--route);
+}
+
 .form-inline {
   display: flex;
   gap: 8px;
