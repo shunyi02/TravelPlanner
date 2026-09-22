@@ -2,7 +2,15 @@ import { useEffect, useState } from 'react';
 import type { Balance, Settlement } from '@travel-planner/shared';
 import { api } from '../api';
 
-export function BalancesTab({ tripId, memberNames }: { tripId: string; memberNames: Record<string, string> }) {
+export function BalancesTab({
+  tripId,
+  memberNames,
+  currency,
+}: {
+  tripId: string;
+  memberNames: Record<string, string>;
+  currency: string;
+}) {
   const [balances, setBalances] = useState<Balance[]>([]);
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +40,7 @@ export function BalancesTab({ tripId, memberNames }: { tripId: string; memberNam
               <span className="row-title">{name(b.userId)}</span>
               <span className={`amount ${b.amount >= 0 ? 'owed-to-you' : 'you-owe'}`}>
                 {b.amount >= 0 ? 'is owed ' : 'owes '}
-                {Math.abs(b.amount).toFixed(2)}
+                {currency} {Math.abs(b.amount).toFixed(2)}
               </span>
             </div>
           ))}
@@ -43,7 +51,7 @@ export function BalancesTab({ tripId, memberNames }: { tripId: string; memberNam
         <div className="settlement-note">
           {settlements.map((s, i) => (
             <div key={i}>
-              {name(s.fromUserId)} pays {name(s.toUserId)} {s.amount.toFixed(2)}
+              {name(s.fromUserId)} pays {name(s.toUserId)} {currency} {s.amount.toFixed(2)}
             </div>
           ))}
         </div>

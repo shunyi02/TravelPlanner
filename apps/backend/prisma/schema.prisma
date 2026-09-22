@@ -136,6 +136,9 @@ model Expense {
    *  distinct from createdAt (when the row was inserted). Expenses are
    *  listed ordered by this field. */
   expenseDate DateTime       @default(now())
+  /** A photo of the receipt, as a data URL — same storage approach as
+   *  Trip.coverPhoto/User.avatarUrl (no separate file storage service). */
+  receiptPhoto String?
   paidBy      User           @relation("PaidBy", fields: [paidById], references: [id])
   paidById    String
   splits      ExpenseSplit[]

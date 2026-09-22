@@ -30,6 +30,11 @@ export class TripsController {
     return this.tripsService.getOneOrThrow(tripId, userId);
   }
 
+  @Post(':tripId/duplicate')
+  duplicate(@CurrentUser() userId: string, @Param('tripId') tripId: string) {
+    return this.tripsService.duplicate(tripId, userId);
+  }
+
   @Post(':tripId/members')
   addMember(
     @CurrentUser() userId: string,

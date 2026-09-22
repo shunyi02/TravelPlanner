@@ -66,6 +66,8 @@ export function TripsLandingPage() {
   const [showModal, setShowModal] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Trip | null>(null);
   const [view, setView] = useState<'trips' | 'history'>('trips');
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setError(null);
@@ -84,6 +86,19 @@ export function TripsLandingPage() {
     setShowModal(false);
     load();
     navigate(`/trips/${tripId}`);
+  };
+
+  const handleDuplicate = async (trip: Trip) => {
+    setDuplicatingId(trip.id);
+    setActionError(null);
+    try {
+      await api.duplicateTrip(trip.id);
+      load();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Failed to duplicate trip');
+    } finally {
+      setDuplicatingId(null);
+    }
   };
 
   const handleDelete = async () => {
@@ -147,6 +162,12 @@ export function TripsLandingPage() {
         )}
       </div>
 
+      {actionError && (
+        <p className="empty-state" style={{ color: 'var(--owe)', padding: '0 0 12px' }}>
+          {actionError}
+        </p>
+      )}
+
       {trips.length === 0 ? (
         <div className="empty-landing">
           <p className="empty-state">You haven't planned a trip yet.</p>
@@ -200,6 +221,20 @@ export function TripsLandingPage() {
                       <span className={`trip-card-status${status.active ? ' active' : ''}`}>{status.label}</span>
                     )}
                   </div>
+                </button>
+
+                <button
+                  type="button"
+                  className="trip-card-duplicate"
+                  aria-label={`Duplicate ${trip.name}`}
+                  title={`Duplicate ${trip.name}`}
+                  disabled={duplicatingId === trip.id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDuplicate(trip);
+                  }}
+                >
+                  {duplicatingId === trip.id ? '…' : '⧉'}
                 </button>
 
                 <button

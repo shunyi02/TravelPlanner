@@ -36,6 +36,40 @@ function groupByDay(
   return groups;
 }
 
+function csvCell(value: string): string {
+  return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+}
+
+/** Downloads the given expenses as a CSV: one row per expense, one column
+ *  listing who owes what and whether it's settled. */
+function exportExpensesCsv(expenses: Expense[], memberNames: Record<string, string>) {
+  const header = ['Date', 'Description', 'Category', 'Paid by', 'Amount', 'Currency', 'Splits'];
+  const rows = expenses.map((e) => {
+    const splits = e.splits
+      .filter((s) => s.userId !== e.paidById)
+      .map((s) => `${memberNames[s.userId] ?? s.userId}: ${s.amountOwed} (${s.settled ? 'settled' : 'unsettled'})`)
+      .join('; ');
+    return [
+      new Date(e.expenseDate).toISOString().slice(0, 10),
+      e.description,
+      e.category,
+      memberNames[e.paidById] ?? e.paidById,
+      e.amount,
+      e.currency,
+      splits,
+    ];
+  });
+  const csv = [header, ...rows].map((row) => row.map(csvCell).join(',')).join('\n');
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `expenses-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 export function ExpensesTab({
   tripId,
   expenses,
@@ -56,12 +90,24 @@ export function ExpensesTab({
   onChange: () => void;
 }) {
   const memberIds = Object.keys(memberNames);
-  const dayGroups = groupByDay(expenses);
   // Bounds for the expense date pickers, so logged expenses stay within the trip's travel dates.
   const { min: minExpenseDate, max: maxExpenseDate } = expenseDateBounds(tripStartDate, tripEndDate);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [filterCategory, setFilterCategory] = useState('all');
+  const [filterPaidBy, setFilterPaidBy] = useState('all');
+  const [unsettledOnly, setUnsettledOnly] = useState(false);
+
+  const filteredExpenses = expenses.filter((e) => {
+    if (filterCategory !== 'all' && e.category !== filterCategory) return false;
+    if (filterPaidBy !== 'all' && e.paidById !== filterPaidBy) return false;
+    if (unsettledOnly && !e.splits.some((s) => s.userId !== e.paidById && !s.settled)) return false;
+    return true;
+  });
+  const filtersActive = filterCategory !== 'all' || filterPaidBy !== 'all' || unsettledOnly;
+  const dayGroups = groupByDay(filteredExpenses);
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -77,6 +123,17 @@ export function ExpensesTab({
   const [initialEditSplitMode, setInitialEditSplitMode] = useState<SplitMode>('even');
   const [editCustomAmounts, setEditCustomAmounts] = useState<Record<string, string>>({});
   const [showEditSplitEditor, setShowEditSplitEditor] = useState(false);
+  const [editReceiptPhoto, setEditReceiptPhoto] = useState<string | null>(null);
+
+  const handleEditReceiptFile = (file: File | null) => {
+    if (!file) {
+      setEditReceiptPhoto(null);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setEditReceiptPhoto(reader.result as string);
+    reader.readAsDataURL(file);
+  };
 
   const editSvcNum = Number(editServicePct) || 0;
   const editTaxNum = Number(editTaxPct) || 0;
@@ -107,6 +164,7 @@ export function ExpensesTab({
     setInitialEditSplitMode(mode);
     setEditCustomAmounts(Object.fromEntries(expense.splits.map((s) => [s.userId, s.amountOwed])));
     setShowEditSplitEditor(mode === 'custom');
+    setEditReceiptPhoto(expense.receiptPhoto);
   };
 
   const handleSaveEdit = async (expense: Expense) => {
@@ -141,9 +199,11 @@ export function ExpensesTab({
       subtotal?: number | null;
       servicePct?: number | null;
       taxPct?: number | null;
+      receiptPhoto?: string | null;
       splits?: Array<{ userId: string; share: number }>;
     } = {};
     if (editDescription.trim() !== expense.description) data.description = editDescription.trim();
+    if (editReceiptPhoto !== expense.receiptPhoto) data.receiptPhoto = editReceiptPhoto;
     if (newTotal !== Number(expense.amount)) data.amount = newTotal;
     if (newSubtotal !== (expense.subtotal != null ? Number(expense.subtotal) : null)) data.subtotal = newSubtotal;
     if (newServicePct !== (expense.servicePct != null ? Number(expense.servicePct) : null)) data.servicePct = newServicePct;
@@ -195,15 +255,61 @@ export function ExpensesTab({
 
   return (
     <div>
-      <div className="no-print" style={{ display: 'flex', marginBottom: 20 }}>
-        <button className="btn" onClick={() => setShowAddModal(true)}>
-          + Add expense
-        </button>
+      <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn" onClick={() => setShowAddModal(true)}>
+            + Add expense
+          </button>
+          {expenses.length > 0 && (
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={() => exportExpensesCsv(filteredExpenses, memberNames)}
+            >
+              Export CSV
+            </button>
+          )}
+        </div>
+        {expenses.length > 0 && (
+          <div className="expense-filter-row">
+            <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
+              <option value="all">All categories</option>
+              {EXPENSE_CATEGORIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+            <select value={filterPaidBy} onChange={(e) => setFilterPaidBy(e.target.value)}>
+              <option value="all">Paid by anyone</option>
+              {memberIds.map((id) => (
+                <option key={id} value={id}>Paid by {memberNames[id] ?? id}</option>
+              ))}
+            </select>
+            <label className="expense-filter-checkbox">
+              <input type="checkbox" checked={unsettledOnly} onChange={(e) => setUnsettledOnly(e.target.checked)} />
+              Unsettled only
+            </label>
+            {filtersActive && (
+              <button
+                type="button"
+                className="text-btn"
+                onClick={() => {
+                  setFilterCategory('all');
+                  setFilterPaidBy('all');
+                  setUnsettledOnly(false);
+                }}
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+        )}
       </div>
       {error && <p style={{ color: 'var(--owe)', marginBottom: 16 }}>{error}</p>}
 
       {expenses.length === 0 ? (
         <p className="empty-state">No expenses logged yet.</p>
+      ) : filteredExpenses.length === 0 ? (
+        <p className="empty-state">No expenses match these filters.</p>
       ) : (
         <div>
           {dayGroups.map((group) => (
@@ -271,6 +377,12 @@ export function ExpensesTab({
                       {' · '}{formatDateTime(expense.expenseDate)}
                     </p>
 
+                    {expense.receiptPhoto && (
+                      <a href={expense.receiptPhoto} target="_blank" rel="noreferrer">
+                        <img className="receipt-photo-preview" src={expense.receiptPhoto} alt="Receipt" />
+                      </a>
+                    )}
+
                     <div className="expense-detail-amount">
                       <span className="amount">{expense.currency} {expense.amount}</span>
                       {expense.subtotal != null && (
@@ -331,6 +443,24 @@ export function ExpensesTab({
                         onChange={(e) => setEditDescription(e.target.value)}
                         placeholder="Name"
                       />
+
+                      <div className="receipt-photo-row">
+                        {editReceiptPhoto && <img className="receipt-photo-thumb" src={editReceiptPhoto} alt="" />}
+                        <label className="btn btn-outline" style={{ cursor: 'pointer' }}>
+                          {editReceiptPhoto ? 'Change receipt photo' : 'Add receipt photo'}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleEditReceiptFile(e.target.files?.[0] ?? null)}
+                            style={{ display: 'none' }}
+                          />
+                        </label>
+                        {editReceiptPhoto && (
+                          <button type="button" className="text-btn text-btn-danger" onClick={() => setEditReceiptPhoto(null)}>
+                            Remove
+                          </button>
+                        )}
+                      </div>
 
                       <div className="expense-form-row">
                         <input
@@ -448,7 +578,7 @@ export function ExpensesTab({
         </div>
       )}
 
-      <CategoryPieChart expenses={expenses} currency={currency} />
+      <CategoryPieChart expenses={filteredExpenses} currency={currency} />
 
       {showAddModal && (
         <AddExpenseModal

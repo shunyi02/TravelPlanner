@@ -1,6 +1,27 @@
 /* ExpensesTab: the split editor shown when logging or editing an expense.
  * Chart styles (pie, bar) live in charts.css — several tabs' charts share them. */
 
+.expense-filter-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.expense-filter-row select {
+  font-size: 13px;
+  padding: 6px 8px;
+}
+
+.expense-filter-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
 /* AddExpenseModal: the "Log expense" form. */
 
 .expense-form {
@@ -34,6 +55,30 @@
 .expense-amount-input {
   flex: 1;
   min-width: 140px;
+}
+
+.receipt-photo-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.receipt-photo-thumb {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  object-fit: cover;
+  border: 1px solid var(--rule);
+}
+
+.receipt-photo-preview {
+  display: block;
+  max-width: 100%;
+  max-height: 220px;
+  border-radius: 6px;
+  border: 1px solid var(--rule);
+  margin: 4px 0 12px;
+  object-fit: contain;
 }
 
 .expense-total-preview {

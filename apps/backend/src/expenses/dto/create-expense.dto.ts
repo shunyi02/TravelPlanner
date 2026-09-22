@@ -65,6 +65,11 @@ export class CreateExpenseDto {
   @IsDateString()
   expenseDate?: string;
 
+  /** A photo of the receipt, as a data URL (same pattern as Trip.coverPhoto). */
+  @IsOptional()
+  @IsString()
+  receiptPhoto?: string;
+
   /**
    * Who owes what share of this expense. If omitted, splits evenly across
    * all current trip members.

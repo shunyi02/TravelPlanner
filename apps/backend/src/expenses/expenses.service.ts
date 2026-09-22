@@ -36,6 +36,7 @@ export class ExpensesService {
         subtotal: dto.subtotal,
         servicePct: dto.servicePct,
         taxPct: dto.taxPct,
+        receiptPhoto: dto.receiptPhoto,
         paidById,
         splits: {
           create: amounts.map(({ userId: splitUserId, amount }) => ({
@@ -91,6 +92,7 @@ export class ExpensesService {
       subtotal: dto.subtotal,
       servicePct: dto.servicePct,
       taxPct: dto.taxPct,
+      receiptPhoto: dto.receiptPhoto,
     };
 
     if (splitInputs) {

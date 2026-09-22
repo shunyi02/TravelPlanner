@@ -45,8 +45,19 @@ export function AddExpenseModal({
   const [splitMode, setSplitMode] = useState<SplitMode>('even');
   const [customAmounts, setCustomAmounts] = useState<Record<string, string>>({});
   const [showSplitEditor, setShowSplitEditor] = useState(false);
+  const [receiptPhoto, setReceiptPhoto] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleReceiptFile = (file: File | null) => {
+    if (!file) {
+      setReceiptPhoto(null);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setReceiptPhoto(reader.result as string);
+    reader.readAsDataURL(file);
+  };
 
   const svcNum = Number(servicePct) || 0;
   const taxNum = Number(taxPct) || 0;
@@ -93,6 +104,7 @@ export function AddExpenseModal({
         paidById,
         category,
         expenseDate: fromDatetimeLocalValue(expenseDate),
+        receiptPhoto: receiptPhoto ?? undefined,
         splits,
       });
       onSaved();
@@ -108,6 +120,24 @@ export function AddExpenseModal({
         <h2 className="page-title" style={{ fontSize: 20 }}>Log expense</h2>
         <form onSubmit={handleAdd} className="expense-form">
           <input placeholder="Name" value={description} onChange={(e) => setDescription(e.target.value)} autoFocus />
+
+          <div className="receipt-photo-row">
+            {receiptPhoto && <img className="receipt-photo-thumb" src={receiptPhoto} alt="" />}
+            <label className="btn btn-outline" style={{ cursor: 'pointer' }}>
+              {receiptPhoto ? 'Change receipt photo' : 'Add receipt photo'}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => handleReceiptFile(e.target.files?.[0] ?? null)}
+                style={{ display: 'none' }}
+              />
+            </label>
+            {receiptPhoto && (
+              <button type="button" className="text-btn text-btn-danger" onClick={() => setReceiptPhoto(null)}>
+                Remove
+              </button>
+            )}
+          </div>
 
           <div className="expense-form-row">
             <input

@@ -36,6 +36,11 @@ export class UpdateExpenseDto {
   @IsDateString()
   expenseDate?: string;
 
+  /** Null clears the receipt photo. */
+  @IsOptional()
+  @IsString()
+  receiptPhoto?: string | null;
+
   /** Null clears it back to "no breakdown" (see CreateExpenseDto). */
   @IsOptional()
   @IsNumber()

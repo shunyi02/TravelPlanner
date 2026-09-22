@@ -107,6 +107,31 @@
   opacity: 1;
 }
 
+.trip-card-duplicate {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.trip-card:hover .trip-card-duplicate,
+.trip-card:focus-within .trip-card-duplicate,
+.trip-card-duplicate:focus {
+  opacity: 1;
+}
+
 .trip-card-name {
   font-family: var(--font-display);
   font-weight: 600;

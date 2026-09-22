@@ -3,7 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { randomBytes, createHash } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
-import { MailerService } from './mailer.service';
+import { MailerService } from '../mailer/mailer.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 

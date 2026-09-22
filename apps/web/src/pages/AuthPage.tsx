@@ -1,6 +1,65 @@
 import { useState } from 'react';
 import { api } from '../api';
 
+/** A reset-password link (from the reset email) lands here as `?token=...`.
+ *  Read once at module load — the value doesn't change during the page's life. */
+const resetToken = new URLSearchParams(window.location.search).get('token');
+
+function ResetPasswordForm() {
+  const [newPassword, setNewPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      await api.resetPassword(resetToken!, newPassword);
+      setDone(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not reset password');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="main" style={{ maxWidth: 360, margin: '80px auto' }}>
+      <div className="auth-brand">
+        <span className="top-bar-logo auth-logo-flipped" />
+        <span className="auth-brand-name">Cuti</span>
+      </div>
+      {done ? (
+        <>
+          <p style={{ marginTop: 20 }}>Password reset. You can log in with your new password now.</p>
+          <button className="btn" style={{ marginTop: 8 }} onClick={() => { window.location.href = '/'; }}>
+            Go to login
+          </button>
+        </>
+      ) : (
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 20 }}>
+          <p style={{ margin: 0, color: 'var(--ink-soft)', fontSize: 13 }}>Set a new password.</p>
+          <input
+            type="password"
+            placeholder="New password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            minLength={8}
+            required
+            autoFocus
+          />
+          {error && <p style={{ color: 'var(--owe)', margin: 0 }}>{error}</p>}
+          <button className="btn" type="submit" disabled={submitting}>
+            Reset password
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
 export function AuthPage({ onAuthed }: { onAuthed: () => void }) {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
@@ -26,6 +85,8 @@ export function AuthPage({ onAuthed }: { onAuthed: () => void }) {
       setSubmitting(false);
     }
   };
+
+  if (resetToken) return <ResetPasswordForm />;
 
   return (
     <div className="main" style={{ maxWidth: 360, margin: '80px auto' }}>

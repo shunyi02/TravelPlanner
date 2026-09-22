@@ -166,6 +166,7 @@ export interface Expense {
   subtotal: string | null;
   servicePct: string | null;
   taxPct: string | null;
+  receiptPhoto: string | null;
   paidById: string;
   splits: ExpenseSplit[];
   createdAt: string;
@@ -220,6 +221,7 @@ export const api = {
     },
   ) => request<Trip>(`/trips/${tripId}`, { method: 'PATCH', body: JSON.stringify(data) }),
   getTrip: (tripId: string) => request<TripDetail>(`/trips/${tripId}`),
+  duplicateTrip: (tripId: string) => request<Trip>(`/trips/${tripId}/duplicate`, { method: 'POST' }),
   reorderPlaces: (tripId: string, orderedPlaceIds: string[]) =>
     request<Place[]>(`/trips/${tripId}/places/reorder`, {
       method: 'PATCH',
@@ -237,6 +239,7 @@ export const api = {
       subtotal?: number;
       servicePct?: number;
       taxPct?: number;
+      receiptPhoto?: string;
       splits?: Array<{ userId: string; share: number }>;
     },
   ) => request<Expense>(`/trips/${tripId}/expenses`, { method: 'POST', body: JSON.stringify(data) }),
@@ -252,6 +255,7 @@ export const api = {
       subtotal?: number | null;
       servicePct?: number | null;
       taxPct?: number | null;
+      receiptPhoto?: string | null;
       splits?: Array<{ userId: string; share: number }>;
     },
   ) =>

@@ -1,5 +1,6 @@
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
+import { MailerService } from '../mailer/mailer.service';
 import { CreateTripDto } from './dto/create-trip.dto';
 import { CreatePlaceDto } from './dto/create-place.dto';
 import { UpdatePlaceDto } from './dto/update-place.dto';
@@ -13,6 +14,7 @@ export class TripsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly usersService: UsersService,
+    private readonly mailerService: MailerService,
   ) {}
 
   /** Creates a trip and makes the creator its owner. */
@@ -60,6 +62,72 @@ export class TripsService {
     return trip;
   }
 
+  /**
+   * Clones a trip's structure — members, itinerary places, accommodations —
+   * as a new trip owned by the requester. Expenses and pending invites are
+   * intentionally left behind: a duplicate is a fresh trip to plan, not a
+   * copy of what was already spent or who was mid-invite.
+   */
+  async duplicate(tripId: string, requesterId: string) {
+    const trip = await this.prisma.trip.findUnique({
+      where: { id: tripId },
+      include: { members: true, places: true, accommodations: true },
+    });
+    if (!trip) throw new NotFoundException('Trip not found');
+    if (!trip.members.some((m) => m.userId === requesterId)) {
+      throw new ForbiddenException('Not a member of this trip');
+    }
+
+    const memberIds = new Set(trip.members.map((m) => m.userId));
+    memberIds.add(requesterId);
+
+    return this.prisma.trip.create({
+      data: {
+        name: `${trip.name} (copy)`,
+        startDate: trip.startDate,
+        endDate: trip.endDate,
+        coverPhoto: trip.coverPhoto,
+        currency: trip.currency,
+        budget: trip.budget,
+        destinationName: trip.destinationName,
+        destinationLat: trip.destinationLat,
+        destinationLng: trip.destinationLng,
+        members: {
+          create: [...memberIds].map((userId) => ({
+            userId,
+            role: userId === requesterId ? 'owner' : 'member',
+          })),
+        },
+        places: {
+          create: trip.places.map((p) => ({
+            type: p.type,
+            name: p.name,
+            lat: p.lat,
+            lng: p.lng,
+            visitDate: p.visitDate,
+            order: p.order,
+            notes: p.notes,
+            departureTime: p.departureTime,
+            arrivalTime: p.arrivalTime,
+            departureAirport: p.departureAirport,
+            arrivalAirport: p.arrivalAirport,
+            checkIn: p.checkIn,
+            checkOut: p.checkOut,
+          })),
+        },
+        accommodations: {
+          create: trip.accommodations.map((a) => ({
+            name: a.name,
+            checkInDate: a.checkInDate,
+            checkOutDate: a.checkOutDate,
+            notes: a.notes,
+          })),
+        },
+      },
+      include: { members: true },
+    });
+  }
+
   async addMember(tripId: string, requesterId: string, newUserId: string) {
     await this.assertMember(tripId, requesterId);
     return this.prisma.tripMember.create({
@@ -88,11 +156,22 @@ export class TripsService {
       });
     }
 
-    return this.prisma.tripInvite.upsert({
+    const invite = await this.prisma.tripInvite.upsert({
       where: { tripId_email: { tripId, email } },
       create: { tripId, email, invitedBy: requesterId },
       update: {},
     });
+
+    // Best-effort: a stalled mail provider shouldn't fail the invite itself.
+    const [trip, inviter] = await Promise.all([
+      this.prisma.trip.findUnique({ where: { id: tripId }, select: { name: true } }),
+      this.usersService.findById(requesterId),
+    ]);
+    if (trip && inviter) {
+      this.mailerService.sendInviteEmail(email, trip.name, inviter.name).catch(() => {});
+    }
+
+    return invite;
   }
 
   /**
