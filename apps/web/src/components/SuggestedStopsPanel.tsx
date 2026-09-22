@@ -12,21 +12,61 @@ interface Suggestion {
 }
 
 const SEARCH_RADIUS_KM = 10;
-const RESULT_LIMIT = 40;
+const RESULT_LIMIT = 60;
 
-/** Wikidata types that plausibly mean "somewhere a tourist would go" — kept
- *  broad on purpose (the sitelink-count sort below is what actually keeps
- *  quality high, not this list). */
-const ATTRACTION_TYPES = [
-  'Q570116', // tourist attraction
-  'Q4989906', // monument
-  'Q33506', // museum
-  'Q16560', // palace
-  'Q16970', // church building
-  'Q23413', // castle
-  'Q839954', // archaeological site
-  'Q174782', // town square
-  'Q22698', // park
+type CategoryId = 'landmarks' | 'leisure' | 'shopping' | 'city-walk';
+
+/** Each category maps to its own Wikidata wdt:P31 types — the sitelink-count
+ *  sort below is what keeps quality high within a category, not this list.
+ *  "Landmarks" covers historical/scenic spots plus modern landmark shapes a
+ *  monument-only list would miss (Shibuya Crossing is an "intersection",
+ *  Shibuya Sky is an "observation deck", neither a monument or museum). */
+const CATEGORIES: Array<{ id: CategoryId; label: string; types: string[] }> = [
+  {
+    id: 'landmarks',
+    label: 'Landmarks',
+    types: [
+      'Q570116', // tourist attraction
+      'Q174782', // town square
+      'Q285783', // intersection
+      'Q177305', // observation deck
+      'Q2319498', // architectural landmark
+    ],
+  },
+  {
+    id: 'leisure',
+    label: 'Leisure',
+    types: [
+      'Q22698', // park
+      'Q1107656', // garden
+      'Q167346', // botanical garden
+      'Q40080', // beach
+      'Q194195', // amusement park
+      'Q43501', // zoo
+    ],
+  },
+  {
+    id: 'shopping',
+    label: 'Shopping',
+    types: [
+      'Q11315', // shopping center
+      'Q216107', // department store
+      'Q21000333', // shopping street
+      'Q27095213', // shopping district
+      'Q330284', // marketplace
+    ],
+  },
+  {
+    id: 'city-walk',
+    label: 'City walk',
+    types: [
+      'Q62685721', // pedestrian street
+      'Q15243209', // historic district
+      'Q174782', // town square
+      'Q1962840', // night market
+      'Q21000333', // shopping street (walkable arcades like Takeshita/Nakamise)
+    ],
+  },
 ];
 
 /**
@@ -46,7 +86,7 @@ const ATTRACTION_TYPES = [
  * degrades gracefully for a small destination with few notable entries —
  * there's no hard cutoff, just best-first.
  */
-async function fetchSuggestions(lat: number, lng: number): Promise<Suggestion[]> {
+async function fetchSuggestions(lat: number, lng: number, types: string[]): Promise<Suggestion[]> {
   const point = `Point(${lng} ${lat})`;
   const query = `
     PREFIX wd: <http://www.wikidata.org/entity/>
@@ -62,7 +102,7 @@ async function fetchSuggestions(lat: number, lng: number): Promise<Suggestion[]>
         bd:serviceParam wikibase:radius "${SEARCH_RADIUS_KM}" .
       }
       ?place wdt:P31 ?type .
-      VALUES ?type { ${ATTRACTION_TYPES.map((q) => `wd:${q}`).join(' ')} }
+      VALUES ?type { ${types.map((q) => `wd:${q}`).join(' ')} }
       ?place wikibase:sitelinks ?sitelinks .
       OPTIONAL { ?place wdt:P18 ?image }
       SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
@@ -122,6 +162,7 @@ export function SuggestedStopsPanel({
   const [searchQuery, setSearchQuery] = useState(trip.destinationName ?? '');
   const [searchLat, setSearchLat] = useState<number | undefined>(trip.destinationLat ?? undefined);
   const [searchLng, setSearchLng] = useState<number | undefined>(trip.destinationLng ?? undefined);
+  const [category, setCategory] = useState<CategoryId>('landmarks');
   const [suggestions, setSuggestions] = useState<Suggestion[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -136,7 +177,8 @@ export function SuggestedStopsPanel({
     setSuggestions(null);
     setAddedIds(new Set());
     try {
-      const results = await fetchSuggestions(searchLat, searchLng);
+      const types = CATEGORIES.find((c) => c.id === category)!.types;
+      const results = await fetchSuggestions(searchLat, searchLng, types);
       setSuggestions(results.filter((s) => !existingLower.has(s.name.toLowerCase())));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load suggestions');
@@ -183,6 +225,18 @@ export function SuggestedStopsPanel({
         >
           {loading ? 'Finding places…' : '✨ Suggest places to visit'}
         </button>
+      </div>
+      <div className="segmented-control" style={{ marginTop: 8 }}>
+        {CATEGORIES.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            className={category === c.id ? 'active' : ''}
+            onClick={() => setCategory(c.id)}
+          >
+            {c.label}
+          </button>
+        ))}
       </div>
       {error && <p style={{ color: 'var(--owe)', margin: '8px 0 0' }}>{error}</p>}
       {suggestions && (
