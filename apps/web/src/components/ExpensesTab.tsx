@@ -221,19 +221,21 @@ export function ExpensesTab({
                     <span className="category-badge">{expense.category}</span>
                     {' · paid by '}{memberNames[expense.paidById] ?? 'someone'}
                     {' · '}{formatDateTime(expense.expenseDate)}
-                    {expense.subtotal != null && (
-                      <>
-                        {' · '}{expense.currency} {expense.subtotal}
-                        {expense.servicePct != null && ` +${expense.servicePct}% service`}
-                        {expense.taxPct != null && ` +${expense.taxPct}% tax`}
-                      </>
-                    )}
                   </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span className="amount">
-                    {expense.currency} {expense.amount}
-                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                    <span className="amount">
+                      {expense.currency} {expense.amount}
+                    </span>
+                    {expense.subtotal != null && (
+                      <span className="amount-note">
+                        {expense.currency} {expense.subtotal} base
+                        {expense.servicePct != null && ` + ${expense.servicePct}% svc`}
+                        {expense.taxPct != null && ` + ${expense.taxPct}% tax`}
+                      </span>
+                    )}
+                  </div>
                   <div className="ledger-row-actions">
                     <button
                       type="button"
@@ -260,138 +262,182 @@ export function ExpensesTab({
               </div>
 
               {expandedId === expense.id && editingId !== expense.id && (
-                <div className="split-breakdown">
-                  {expense.splits.filter((s) => s.userId !== expense.paidById).length === 0 ? (
-                    <p className="split-item">Nobody else owes anything on this one.</p>
-                  ) : (
-                    expense.splits
-                      .filter((s) => s.userId !== expense.paidById)
-                      .map((s) => (
-                        <div className="split-item" key={s.userId}>
-                          <span>
-                            {memberNames[s.userId] ?? s.userId} owes {expense.currency} {s.amountOwed}
-                          </span>
-                          <button
-                            type="button"
-                            className={`settle-btn ${s.settled ? 'settle-btn-settled' : ''}`}
-                            aria-pressed={s.settled}
-                            onClick={() => handleToggleSettled(expense, s.userId, !s.settled)}
-                          >
-                            {s.settled ? '✓ Settled' : 'Mark settled'}
-                          </button>
-                        </div>
-                      ))
-                  )}
+                <div className="modal-backdrop" onClick={() => setExpandedId(null)}>
+                  <div className="modal" onClick={(e) => e.stopPropagation()}>
+                    <h2 className="page-title" style={{ fontSize: 20 }}>{expense.description}</h2>
+                    <p className="expense-detail-meta">
+                      <span className="category-badge">{expense.category}</span>
+                      {' · paid by '}{memberNames[expense.paidById] ?? 'someone'}
+                      {' · '}{formatDateTime(expense.expenseDate)}
+                    </p>
+
+                    <div className="expense-detail-amount">
+                      <span className="amount">{expense.currency} {expense.amount}</span>
+                      {expense.subtotal != null && (
+                        <span className="amount-note">
+                          {expense.currency} {expense.subtotal} base
+                          {expense.servicePct != null && ` + ${expense.servicePct}% svc`}
+                          {expense.taxPct != null && ` + ${expense.taxPct}% tax`}
+                        </span>
+                      )}
+                    </div>
+
+                    {expense.splits.filter((s) => s.userId !== expense.paidById).length === 0 ? (
+                      <p className="split-item">Nobody else owes anything on this one.</p>
+                    ) : (
+                      <div className="split-breakdown">
+                        {expense.splits
+                          .filter((s) => s.userId !== expense.paidById)
+                          .map((s) => (
+                            <div className="split-item" key={s.userId}>
+                              <span>
+                                {memberNames[s.userId] ?? s.userId} owes {expense.currency} {s.amountOwed}
+                              </span>
+                              <button
+                                type="button"
+                                className={`settle-btn ${s.settled ? 'settle-btn-settled' : ''}`}
+                                aria-pressed={s.settled}
+                                onClick={() => handleToggleSettled(expense, s.userId, !s.settled)}
+                              >
+                                {s.settled ? '✓ Settled' : 'Mark settled'}
+                              </button>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+                      <button type="button" className="text-btn text-btn-danger" onClick={() => handleDelete(expense)}>
+                        Delete
+                      </button>
+                      <button type="button" className="btn btn-outline" onClick={() => startEdit(expense)}>
+                        Edit
+                      </button>
+                      <button type="button" className="btn" onClick={() => setExpandedId(null)}>
+                        Close
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
 
               {editingId === expense.id && (
-                <div className="split-breakdown">
-                  <input
-                    value={editDescription}
-                    onChange={(e) => setEditDescription(e.target.value)}
-                    placeholder="Name"
-                  />
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    <input
-                      inputMode="decimal"
-                      value={editAmount}
-                      onChange={(e) => setEditAmount(e.target.value)}
-                      placeholder={editAmountMode === 'base' ? `Base fare (${currency})` : `Total (${currency})`}
-                      style={{ maxWidth: 140 }}
-                    />
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
-                      <input type="radio" checked={editAmountMode === 'base'} onChange={() => setEditAmountMode('base')} />
-                      Base fare
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
-                      <input type="radio" checked={editAmountMode === 'total'} onChange={() => setEditAmountMode('total')} />
-                      Total (tax incl.)
-                    </label>
-                    {editAmountMode === 'base' && (
-                      <>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
-                          Service %
-                          <input
-                            inputMode="decimal"
-                            value={editServicePct}
-                            onChange={(e) => setEditServicePct(e.target.value)}
-                            style={{ maxWidth: 60 }}
-                          />
-                        </label>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
-                          Tax %
-                          <input
-                            inputMode="decimal"
-                            value={editTaxPct}
-                            onChange={(e) => setEditTaxPct(e.target.value)}
-                            style={{ maxWidth: 60 }}
-                          />
-                        </label>
-                      </>
-                    )}
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
-                      Paid by
-                      <select value={editPaidById} onChange={(e) => setEditPaidById(e.target.value)}>
-                        {memberIds.map((id) => (
-                          <option key={id} value={id}>{memberNames[id] ?? id}</option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-                  {editAmountMode === 'base' && Number(editAmount) > 0 && (
-                    <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: 0 }}>
-                      Total (incl. tax): {currency} {editTotal.toFixed(2)}
-                    </p>
-                  )}
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
-                      Category
-                      <select value={editCategory} onChange={(e) => setEditCategory(e.target.value)}>
-                        {EXPENSE_CATEGORIES.map((c) => (
-                          <option key={c} value={c}>{c}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-soft)' }}>
-                      When
+                <div className="modal-backdrop" onClick={() => setEditingId(null)}>
+                  <div className="modal" onClick={(e) => e.stopPropagation()}>
+                    <h2 className="page-title" style={{ fontSize: 20 }}>Edit expense</h2>
+                    <div className="expense-form">
                       <input
-                        type="datetime-local"
-                        value={editExpenseDate}
-                        onChange={(e) => setEditExpenseDate(e.target.value)}
-                        min={minExpenseDate}
-                        max={maxExpenseDate}
+                        value={editDescription}
+                        onChange={(e) => setEditDescription(e.target.value)}
+                        placeholder="Name"
                       />
-                    </label>
-                  </div>
-                  <button
-                    type="button"
-                    className="text-btn"
-                    onClick={() => setShowEditSplitEditor((v) => !v)}
-                    style={{ alignSelf: 'flex-start' }}
-                  >
-                    {showEditSplitEditor ? 'Hide split options' : 'Split options'}
-                  </button>
-                  {showEditSplitEditor && (
-                    <SplitEditor
-                      memberIds={memberIds}
-                      memberNames={memberNames}
-                      total={editAmountMode === 'base' ? Number(editAmount) || 0 : editTotal}
-                      taxMultiplier={editMultiplier}
-                      currency={currency}
-                      mode={editSplitMode}
-                      onModeChange={setEditSplitMode}
-                      amounts={editCustomAmounts}
-                      onAmountsChange={setEditCustomAmounts}
-                    />
-                  )}
-                  <div className="row-actions">
-                    <button type="button" className="btn" onClick={() => handleSaveEdit(expense)}>
-                      Save
-                    </button>
-                    <button type="button" className="btn btn-outline" onClick={() => setEditingId(null)}>
-                      Cancel
-                    </button>
+
+                      <div className="expense-form-row">
+                        <input
+                          placeholder={editAmountMode === 'base' ? `Base fare (${currency})` : `Total (${currency})`}
+                          inputMode="decimal"
+                          value={editAmount}
+                          onChange={(e) => setEditAmount(e.target.value)}
+                          className="expense-amount-input"
+                        />
+                        <div className="segmented-control">
+                          <button
+                            type="button"
+                            className={editAmountMode === 'base' ? 'active' : ''}
+                            onClick={() => setEditAmountMode('base')}
+                          >
+                            Base fare
+                          </button>
+                          <button
+                            type="button"
+                            className={editAmountMode === 'total' ? 'active' : ''}
+                            onClick={() => setEditAmountMode('total')}
+                          >
+                            Total (tax incl.)
+                          </button>
+                        </div>
+                      </div>
+
+                      {editAmountMode === 'base' && (
+                        <div className="expense-form-row">
+                          <label className="field-label">
+                            Service %
+                            <input inputMode="decimal" value={editServicePct} onChange={(e) => setEditServicePct(e.target.value)} />
+                          </label>
+                          <label className="field-label">
+                            Tax %
+                            <input inputMode="decimal" value={editTaxPct} onChange={(e) => setEditTaxPct(e.target.value)} />
+                          </label>
+                        </div>
+                      )}
+
+                      {editAmountMode === 'base' && Number(editAmount) > 0 && (
+                        <p className="expense-total-preview">Total (incl. tax): {currency} {editTotal.toFixed(2)}</p>
+                      )}
+
+                      <div className="expense-form-row">
+                        <label className="field-label">
+                          Paid by
+                          <select value={editPaidById} onChange={(e) => setEditPaidById(e.target.value)}>
+                            {memberIds.map((id) => (
+                              <option key={id} value={id}>{memberNames[id] ?? id}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="field-label">
+                          Category
+                          <select value={editCategory} onChange={(e) => setEditCategory(e.target.value)}>
+                            {EXPENSE_CATEGORIES.map((c) => (
+                              <option key={c} value={c}>{c}</option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+
+                      <label className="field-label">
+                        When
+                        <input
+                          type="datetime-local"
+                          value={editExpenseDate}
+                          onChange={(e) => setEditExpenseDate(e.target.value)}
+                          min={minExpenseDate}
+                          max={maxExpenseDate}
+                        />
+                      </label>
+
+                      <button
+                        type="button"
+                        className="text-btn"
+                        onClick={() => setShowEditSplitEditor((v) => !v)}
+                        style={{ alignSelf: 'flex-start' }}
+                      >
+                        {showEditSplitEditor ? 'Hide split options' : 'Split options'}
+                      </button>
+                      {showEditSplitEditor && (
+                        <SplitEditor
+                          memberIds={memberIds}
+                          memberNames={memberNames}
+                          total={editAmountMode === 'base' ? Number(editAmount) || 0 : editTotal}
+                          taxMultiplier={editMultiplier}
+                          currency={currency}
+                          mode={editSplitMode}
+                          onModeChange={setEditSplitMode}
+                          amounts={editCustomAmounts}
+                          onAmountsChange={setEditCustomAmounts}
+                        />
+                      )}
+
+                      {error && <p style={{ color: 'var(--owe)', margin: 0 }}>{error}</p>}
+
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+                        <button type="button" className="btn btn-outline" onClick={() => setEditingId(null)}>
+                          Cancel
+                        </button>
+                        <button type="button" className="btn" onClick={() => handleSaveEdit(expense)}>
+                          Save
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

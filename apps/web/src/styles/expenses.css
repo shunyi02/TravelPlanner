@@ -70,6 +70,35 @@
   font-weight: 500;
 }
 
+.amount-note {
+  font-size: 11px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+/* Expense detail popup (opened by clicking a logged expense). */
+
+.expense-detail-meta {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin: 4px 0 16px;
+}
+
+.expense-detail-amount {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 0;
+  margin-bottom: 12px;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+
+.expense-detail-amount .amount {
+  font-size: 22px;
+  font-weight: 600;
+}
+
 .day-group + .day-group {
   margin-top: 8px;
 }
