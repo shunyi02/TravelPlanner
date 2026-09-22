@@ -73,7 +73,15 @@ export function TripDetailPage() {
         </button>
       </div>
 
-      {tab === 'itinerary' && <ItineraryTab tripId={tripId} trip={trip} places={trip.places} onChange={handleChange} />}
+      {tab === 'itinerary' && (
+        <ItineraryTab
+          tripId={tripId}
+          trip={trip}
+          places={trip.places}
+          memberNames={memberNames}
+          onChange={handleChange}
+        />
+      )}
       {tab === 'expenses' && (
         <ExpensesTab
           tripId={tripId}

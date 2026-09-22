@@ -50,7 +50,7 @@ export class TripsService {
       where: { id: tripId },
       include: {
         members: { include: { user: true } },
-        places: { orderBy: { order: 'asc' } },
+        places: { orderBy: { order: 'asc' }, include: { assignments: true } },
         accommodations: { orderBy: { checkInDate: 'asc' } },
         invites: { orderBy: { createdAt: 'asc' } },
       },
@@ -210,6 +210,8 @@ export class TripsService {
 
   async addPlace(tripId: string, userId: string, dto: CreatePlaceDto) {
     await this.assertMember(tripId, userId);
+    if (dto.assigneeIds?.length) await this.assertValidAssignees(tripId, dto.assigneeIds);
+
     return this.prisma.place.create({
       data: {
         tripId,
@@ -226,7 +228,11 @@ export class TripsService {
         arrivalAirport: dto.arrivalAirport,
         checkIn: dto.checkIn ? new Date(dto.checkIn) : undefined,
         checkOut: dto.checkOut ? new Date(dto.checkOut) : undefined,
+        assignments: dto.assigneeIds?.length
+          ? { create: dto.assigneeIds.map((assigneeId) => ({ userId: assigneeId })) }
+          : undefined,
       },
+      include: { assignments: true },
     });
   }
 
@@ -235,6 +241,35 @@ export class TripsService {
     const place = await this.prisma.place.findUnique({ where: { id: placeId } });
     if (!place || place.tripId !== tripId) {
       throw new NotFoundException('Place not found');
+    }
+    if (dto.assigneeIds?.length) await this.assertValidAssignees(tripId, dto.assigneeIds);
+
+    if (dto.assigneeIds) {
+      const [, updated] = await this.prisma.$transaction([
+        this.prisma.placeAssignment.deleteMany({ where: { placeId } }),
+        this.prisma.place.update({
+          where: { id: placeId },
+          data: {
+            type: dto.type,
+            name: dto.name,
+            lat: dto.lat,
+            lng: dto.lng,
+            visitDate: dto.visitDate ? new Date(dto.visitDate) : undefined,
+            notes: dto.notes,
+            departureTime: dto.departureTime ? new Date(dto.departureTime) : undefined,
+            arrivalTime: dto.arrivalTime ? new Date(dto.arrivalTime) : undefined,
+            departureAirport: dto.departureAirport,
+            arrivalAirport: dto.arrivalAirport,
+            checkIn: dto.checkIn ? new Date(dto.checkIn) : undefined,
+            checkOut: dto.checkOut ? new Date(dto.checkOut) : undefined,
+            assignments: dto.assigneeIds.length
+              ? { create: dto.assigneeIds.map((assigneeId) => ({ userId: assigneeId })) }
+              : undefined,
+          },
+          include: { assignments: true },
+        }),
+      ]);
+      return updated;
     }
 
     return this.prisma.place.update({
@@ -253,6 +288,7 @@ export class TripsService {
         checkIn: dto.checkIn ? new Date(dto.checkIn) : undefined,
         checkOut: dto.checkOut ? new Date(dto.checkOut) : undefined,
       },
+      include: { assignments: true },
     });
   }
 
@@ -291,7 +327,11 @@ export class TripsService {
       ),
     );
 
-    return this.prisma.place.findMany({ where: { tripId }, orderBy: { order: 'asc' } });
+    return this.prisma.place.findMany({
+      where: { tripId },
+      orderBy: { order: 'asc' },
+      include: { assignments: true },
+    });
   }
 
   private async assertMember(tripId: string, userId: string) {
@@ -299,6 +339,16 @@ export class TripsService {
       where: { tripId_userId: { tripId, userId } },
     });
     if (!membership) throw new ForbiddenException('Not a member of this trip');
+  }
+
+  private async assertValidAssignees(tripId: string, assigneeIds: string[]) {
+    const members = await this.prisma.tripMember.findMany({ where: { tripId } });
+    const validIds = new Set(members.map((m) => m.userId));
+    for (const id of assigneeIds) {
+      if (!validIds.has(id)) {
+        throw new BadRequestException(`Assignee ${id} is not a member of this trip`);
+      }
+    }
   }
 
   private async assertOwner(tripId: string, userId: string) {

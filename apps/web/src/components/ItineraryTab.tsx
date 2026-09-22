@@ -122,13 +122,16 @@ export function ItineraryTab({
   tripId,
   trip,
   places,
+  memberNames,
   onChange,
 }: {
   tripId: string;
   trip: TripDetail;
   places: Place[];
+  memberNames: Record<string, string>;
   onChange: () => void;
 }) {
+  const memberIds = Object.keys(memberNames);
   const [startDate, setStartDate] = useState(trip.startDate?.slice(0, 10) ?? '');
   const [endDate, setEndDate] = useState(trip.endDate?.slice(0, 10) ?? '');
   const [dateError, setDateError] = useState<string | null>(null);
@@ -141,6 +144,11 @@ export function ItineraryTab({
   const [moveError, setMoveError] = useState<string | null>(null);
   const [view, setView] = useState<'overview' | string>('overview');
   const [weather, setWeather] = useState<Map<string, DayForecast>>(new Map());
+  const [assigneeFilter, setAssigneeFilter] = useState('all');
+  const [assigningDay, setAssigningDay] = useState<string | null>(null);
+  const [dayAssigneeIds, setDayAssigneeIds] = useState<string[]>([]);
+  const [assigningBusy, setAssigningBusy] = useState(false);
+  const [assignError, setAssignError] = useState<string | null>(null);
 
   const handleSaveDates = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -217,6 +225,43 @@ export function ItineraryTab({
     }
   };
 
+  const openAssignDay = (day: string) => {
+    setAssigningDay(day);
+    setDayAssigneeIds([]);
+    setAssignError(null);
+  };
+
+  /** Items on `day` not yet tied to a specific sub-group — what "Split this
+   *  day" bulk-assigns. Already-assigned items are left alone, so bulk-
+   *  assigning one group's newly-added stops never clobbers another group's
+   *  stops already tagged for the same day. */
+  const unassignedOnDay = (day: string) =>
+    places.filter((p) => dayKeysFor(p).includes(day) && p.assignments.length === 0);
+
+  /** Bulk-assigns every not-yet-assigned item scheduled on `assigningDay` to
+   *  the chosen members — e.g. "day 3: 8 people go to Macao" without tagging
+   *  each item one by one. Add the day's items for one group, split the day
+   *  (tags all of them), then add the next group's items and split again. */
+  const handleAssignDay = async () => {
+    if (!assigningDay) return;
+    const items = unassignedOnDay(assigningDay);
+    if (items.length === 0) {
+      setAssigningDay(null);
+      return;
+    }
+    setAssigningBusy(true);
+    setAssignError(null);
+    try {
+      await Promise.all(items.map((p) => api.updatePlace(tripId, p.id, { assigneeIds: dayAssigneeIds })));
+      setAssigningDay(null);
+      onChange();
+    } catch (err) {
+      setAssignError(err instanceof Error ? err.message : 'Could not assign this day');
+    } finally {
+      setAssigningBusy(false);
+    }
+  };
+
   const days = startDate && endDate ? daysBetween(startDate, endDate) : [];
 
   useEffect(() => {
@@ -234,10 +279,16 @@ export function ItineraryTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trip.destinationLat, trip.destinationLng, startDate, endDate]);
   const currentDay = view !== 'overview' && days.includes(view) ? view : null;
+  // A place with no assignments is for everyone; otherwise only shown to (or
+  // filtered to) the members it's assigned to.
+  const visiblePlaces =
+    assigneeFilter === 'all'
+      ? places
+      : places.filter((p) => p.assignments.length === 0 || p.assignments.some((a) => a.userId === assigneeFilter));
   const daySet = new Set(days);
   const byDay = new Map<string, Place[]>();
   const unscheduled: Place[] = [];
-  for (const p of places) {
+  for (const p of visiblePlaces) {
     const keys = dayKeysFor(p).filter((k) => daySet.has(k));
     if (keys.length > 0) {
       for (const key of keys) {
@@ -264,12 +315,12 @@ export function ItineraryTab({
   /** The whole trip's located stops/hotels, in visit order, for the overview map
    *  when no trip dates are set yet (nothing is day-bucketed, so nothing counts
    *  as "unscheduled" either). */
-  const routeStops: RouteStop[] = toRouteStops(places);
+  const routeStops: RouteStop[] = toRouteStops(visiblePlaces);
 
   /** Same, but for the day-bucketed overview map: excludes places sitting in the
    *  "Unscheduled" list, which has no day and so shouldn't plot on the map. */
   const unscheduledIds = new Set(unscheduled.map((p) => p.id));
-  const scheduledRouteStops: RouteStop[] = toRouteStops(places.filter((p) => !unscheduledIds.has(p.id)));
+  const scheduledRouteStops: RouteStop[] = toRouteStops(visiblePlaces.filter((p) => !unscheduledIds.has(p.id)));
 
   const renderRow = (place: Place, opts?: { day?: string; index?: number; draggable?: boolean }) => {
     const subtitle = placeSubtitle(place, opts?.day);
@@ -292,6 +343,11 @@ export function ItineraryTab({
             {place.type === 'FLIGHT' ? '✈ ' : place.type === 'HOTEL' ? '🏨 ' : ''}
             {place.name}
           </span>
+          {place.assignments.length > 0 && (
+            <span className="category-badge" title="Only for these members">
+              {place.assignments.map((a) => memberNames[a.userId] ?? a.userId).join(', ')}
+            </span>
+          )}
           {subtitle && (
             <span
               className="row-sub"
@@ -332,13 +388,21 @@ export function ItineraryTab({
       {deleteError && <p style={{ color: 'var(--owe)', margin: '0 0 16px' }}>{deleteError}</p>}
       {moveError && <p style={{ color: 'var(--owe)', margin: '0 0 16px' }}>{moveError}</p>}
 
-      <div className="no-print" style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+      <div className="no-print" style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
         <button className="btn" onClick={() => setShowAddModal(true)}>
           + Add
         </button>
         <button className="btn btn-outline" onClick={() => window.print()}>
           Export PDF
         </button>
+        {memberIds.length > 1 && (
+          <select value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value)} style={{ fontSize: 13 }}>
+            <option value="all">Show: everyone's plans</option>
+            {memberIds.map((id) => (
+              <option key={id} value={id}>Show: {memberNames[id] ?? id}'s plans</option>
+            ))}
+          </select>
+        )}
       </div>
 
       <SuggestedStopsPanel
@@ -353,8 +417,10 @@ export function ItineraryTab({
           <RouteMap stops={routeStops} />
           {places.length === 0 ? (
             <p className="empty-state">No stops yet. Set trip dates above to plan day by day.</p>
+          ) : visiblePlaces.length === 0 ? (
+            <p className="empty-state">No stops for this filter.</p>
           ) : (
-            <div>{places.map((place, index) => renderRow(place, { index }))}</div>
+            <div>{visiblePlaces.map((place, index) => renderRow(place, { index }))}</div>
           )}
         </>
       ) : (
@@ -378,9 +444,16 @@ export function ItineraryTab({
                   <div>
                     {days.map((day) => (
                       <div key={day} style={{ marginBottom: 20 }}>
-                        <h3 style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 600 }}>
-                          {formatDay(day)} <DayWeather forecast={weather.get(day)} />
-                        </h3>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>
+                            {formatDay(day)} <DayWeather forecast={weather.get(day)} />
+                          </h3>
+                          {memberIds.length > 1 && unassignedOnDay(day).length > 0 && (
+                            <button type="button" className="text-btn no-print" onClick={() => openAssignDay(day)}>
+                              Split this day…
+                            </button>
+                          )}
+                        </div>
                         <div
                           onDragOver={(e) => {
                             e.preventDefault();
@@ -422,9 +495,16 @@ export function ItineraryTab({
                 </>
               ) : (
                 <>
-                  <h3 style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 600 }}>
-                    {formatDay(currentDay)} <DayWeather forecast={weather.get(currentDay)} />
-                  </h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                    <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>
+                      {formatDay(currentDay)} <DayWeather forecast={weather.get(currentDay)} />
+                    </h3>
+                    {memberIds.length > 1 && unassignedOnDay(currentDay).length > 0 && (
+                      <button type="button" className="text-btn no-print" onClick={() => openAssignDay(currentDay)}>
+                        Split this day…
+                      </button>
+                    )}
+                  </div>
                   <RouteMap stops={toRouteStops(byDay.get(currentDay) ?? [], currentDay)} />
                   <div style={{ borderTop: '1px solid var(--rule)', paddingTop: 4 }}>
                     {(byDay.get(currentDay) ?? []).length === 0 ? (
@@ -447,6 +527,8 @@ export function ItineraryTab({
           tripEndDate={endDate || undefined}
           defaultDay={editingPlace ? undefined : currentDay ?? undefined}
           editPlace={editingPlace ?? undefined}
+          memberIds={memberIds}
+          memberNames={memberNames}
           onClose={() => {
             setShowAddModal(false);
             setEditingPlace(null);
@@ -457,6 +539,49 @@ export function ItineraryTab({
             onChange();
           }}
         />
+      )}
+
+      {assigningDay && (
+        <div className="modal-backdrop" onClick={() => setAssigningDay(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2 className="page-title" style={{ fontSize: 20 }}>Split {formatDay(assigningDay)}</h2>
+            <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: '4px 0 0' }}>
+              Assigns {unassignedOnDay(assigningDay).length} not-yet-assigned item
+              {unassignedOnDay(assigningDay).length === 1 ? '' : 's'} on this day to whoever you pick below.
+              Items already assigned to a group are left alone.
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 12 }}>
+              {memberIds.map((id) => (
+                <label key={id} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }}>
+                  <input
+                    type="checkbox"
+                    checked={dayAssigneeIds.includes(id)}
+                    onChange={() =>
+                      setDayAssigneeIds((prev) =>
+                        prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+                      )
+                    }
+                  />
+                  {memberNames[id] ?? id}
+                </label>
+              ))}
+            </div>
+            {assignError && <p style={{ color: 'var(--owe)', margin: '12px 0 0' }}>{assignError}</p>}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+              <button type="button" className="btn btn-outline" onClick={() => setAssigningDay(null)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn"
+                disabled={assigningBusy || dayAssigneeIds.length === 0}
+                onClick={handleAssignDay}
+              >
+                {assigningBusy ? 'Applying…' : 'Apply'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

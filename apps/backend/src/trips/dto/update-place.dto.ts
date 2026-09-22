@@ -1,4 +1,4 @@
-import { IsEnum, IsISO8601, IsNumber, IsOptional, IsString, MinLength } from 'class-validator';
+import { ArrayUnique, IsArray, IsEnum, IsISO8601, IsNumber, IsOptional, IsString, MinLength } from 'class-validator';
 import { PlaceType } from './create-place.dto';
 
 export class UpdatePlaceDto {
@@ -50,4 +50,12 @@ export class UpdatePlaceDto {
   @IsOptional()
   @IsISO8601()
   checkOut?: string;
+
+  /** If provided (including []), replaces this item's assignees entirely.
+   *  Omitted leaves them unchanged. Empty means "everyone". */
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsString({ each: true })
+  assigneeIds?: string[];
 }

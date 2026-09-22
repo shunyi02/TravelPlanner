@@ -123,6 +123,8 @@ export interface Place {
   arrivalAirport: string | null;
   checkIn: string | null;
   checkOut: string | null;
+  /** Which trip members this item is for. Empty means everyone. */
+  assignments: Array<{ userId: string }>;
 }
 
 export interface TripInvite {
@@ -304,6 +306,8 @@ export const api = {
       arrivalAirport?: string;
       checkIn?: string;
       checkOut?: string;
+      /** Trip member IDs this item is for. Omitted/empty means everyone. */
+      assigneeIds?: string[];
     },
   ) => request<Place>(`/trips/${tripId}/places`, { method: 'POST', body: JSON.stringify(data) }),
   updatePlace: (
@@ -322,6 +326,8 @@ export const api = {
       arrivalAirport: string;
       checkIn: string;
       checkOut: string;
+      /** If provided (including []), replaces this item's assignees entirely. */
+      assigneeIds: string[];
     }>,
   ) => request<Place>(`/trips/${tripId}/places/${placeId}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deleteTrip: (tripId: string) =>

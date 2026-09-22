@@ -20,8 +20,10 @@ function makeDeps(overrides: { prisma?: Record<string, any>; usersService?: Reco
           where.tripId_userId.userId === OWNER_ID ? { tripId: TRIP_ID, userId: OWNER_ID, role: 'owner' } : null,
         ),
       ),
+      findMany: mockFn().mockResolvedValue([{ userId: OWNER_ID }, { userId: 'member-2' }]),
       create: mockFn().mockImplementation(({ data }: any) => Promise.resolve({ ...data })),
     },
+    $transaction: mockFn().mockImplementation((ops: Promise<unknown>[]) => Promise.all(ops)),
     ...overrides.prisma,
   };
   const usersService = {
@@ -216,5 +218,105 @@ describe('TripsService.duplicate', () => {
     expect(data.places.create).toHaveLength(1);
     expect(data.places.create[0].name).toBe('Shibuya');
     expect(data.accommodations.create).toHaveLength(1);
+  });
+});
+
+describe('TripsService.addPlace', () => {
+  it('creates a place with no assignees (visible to everyone) when none are given', async () => {
+    const create = mockFn().mockImplementation((args: any) => Promise.resolve({ id: 'place-1', ...args.data }));
+    const { service, prisma } = makeDeps({ prisma: { place: { create } } });
+
+    await service.addPlace(TRIP_ID, OWNER_ID, { type: 'STOP', name: 'Beach' } as any);
+
+    expect(create.mock.calls[0][0].data.assignments).toBeUndefined();
+    expect(prisma.tripMember.findMany).not.toHaveBeenCalled();
+  });
+
+  it('creates a place scoped to a subset of members', async () => {
+    const create = mockFn().mockImplementation((args: any) => Promise.resolve({ id: 'place-1', ...args.data }));
+    const { service } = makeDeps({ prisma: { place: { create } } });
+
+    await service.addPlace(TRIP_ID, OWNER_ID, { type: 'STOP', name: 'Beach', assigneeIds: ['member-2'] } as any);
+
+    expect(create.mock.calls[0][0].data.assignments).toEqual({ create: [{ userId: 'member-2' }] });
+  });
+
+  it('rejects an assignee who is not a member of the trip', async () => {
+    const { service } = makeDeps();
+
+    await expect(
+      service.addPlace(TRIP_ID, OWNER_ID, { type: 'STOP', name: 'Beach', assigneeIds: ['outsider'] } as any),
+    ).rejects.toThrow(BadRequestException);
+  });
+});
+
+describe('TripsService.updatePlace', () => {
+  function makeExistingPlace(overrides: Record<string, any> = {}) {
+    return { id: 'place-1', tripId: TRIP_ID, name: 'Beach', ...overrides };
+  }
+
+  it('leaves assignments untouched when assigneeIds is omitted', async () => {
+    const update = mockFn().mockImplementation((args: any) => Promise.resolve({ id: 'place-1', ...args.data }));
+    const { service, prisma } = makeDeps({
+      prisma: { place: { findUnique: mockFn().mockResolvedValue(makeExistingPlace()), update } },
+    });
+
+    await service.updatePlace(TRIP_ID, OWNER_ID, 'place-1', { name: 'Beach Club' } as any);
+
+    expect(update).toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('replaces assignments when assigneeIds is given, deleting old ones first', async () => {
+    const deleteMany = mockFn().mockResolvedValue({ count: 1 });
+    const update = mockFn().mockImplementation((args: any) => Promise.resolve({ id: 'place-1', ...args.data }));
+    const { service, prisma } = makeDeps({
+      prisma: {
+        place: { findUnique: mockFn().mockResolvedValue(makeExistingPlace()), update },
+        placeAssignment: { deleteMany },
+      },
+    });
+
+    await service.updatePlace(TRIP_ID, OWNER_ID, 'place-1', { assigneeIds: ['member-2'] } as any);
+
+    expect(deleteMany).toHaveBeenCalledWith({ where: { placeId: 'place-1' } });
+    expect(update.mock.calls[0][0].data.assignments).toEqual({ create: [{ userId: 'member-2' }] });
+    expect(prisma.$transaction).toHaveBeenCalled();
+  });
+
+  it('clears assignments back to everyone when given an empty array', async () => {
+    const deleteMany = mockFn().mockResolvedValue({ count: 2 });
+    const update = mockFn().mockImplementation((args: any) => Promise.resolve({ id: 'place-1', ...args.data }));
+    const { service } = makeDeps({
+      prisma: {
+        place: { findUnique: mockFn().mockResolvedValue(makeExistingPlace()), update },
+        placeAssignment: { deleteMany },
+      },
+    });
+
+    await service.updatePlace(TRIP_ID, OWNER_ID, 'place-1', { assigneeIds: [] } as any);
+
+    expect(deleteMany).toHaveBeenCalledWith({ where: { placeId: 'place-1' } });
+    expect(update.mock.calls[0][0].data.assignments).toBeUndefined();
+  });
+
+  it('rejects an assignee who is not a member of the trip', async () => {
+    const { service } = makeDeps({
+      prisma: { place: { findUnique: mockFn().mockResolvedValue(makeExistingPlace()) } },
+    });
+
+    await expect(
+      service.updatePlace(TRIP_ID, OWNER_ID, 'place-1', { assigneeIds: ['outsider'] } as any),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('404s when the place belongs to a different trip', async () => {
+    const { service } = makeDeps({
+      prisma: { place: { findUnique: mockFn().mockResolvedValue(makeExistingPlace({ tripId: 'other-trip' })) } },
+    });
+
+    await expect(service.updatePlace(TRIP_ID, OWNER_ID, 'place-1', { name: 'x' } as any)).rejects.toThrow(
+      'Place not found',
+    );
   });
 });

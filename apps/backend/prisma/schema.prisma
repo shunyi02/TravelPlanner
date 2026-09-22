@@ -20,6 +20,7 @@ model User {
   trips         TripMember[]
   expensesPaid  Expense[]           @relation("PaidBy")
   splits        ExpenseSplit[]
+  placeAssignments PlaceAssignment[]
   refreshTokens RefreshToken[]
   resetTokens   PasswordResetToken[]
   createdAt     DateTime            @default(now())
@@ -102,6 +103,21 @@ model Place {
   // hotel-only
   checkIn   DateTime?
   checkOut  DateTime?
+  /** Which trip members this item is for — empty means everyone (the
+   *  default). Same shape as ExpenseSplit: a subset-of-members join table,
+   *  used here for splitting a large group's itinerary across sub-groups
+   *  instead of splitting who owes what. */
+  assignments PlaceAssignment[]
+}
+
+model PlaceAssignment {
+  id      String @id @default(uuid())
+  place   Place  @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  placeId String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId  String
+
+  @@unique([placeId, userId])
 }
 
 model Accommodation {

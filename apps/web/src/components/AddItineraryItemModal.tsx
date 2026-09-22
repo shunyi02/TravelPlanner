@@ -36,6 +36,8 @@ export function AddItineraryItemModal({
   tripEndDate,
   defaultDay,
   editPlace,
+  memberIds,
+  memberNames,
   onClose,
   onSaved,
 }: {
@@ -47,6 +49,10 @@ export function AddItineraryItemModal({
   defaultDay?: string;
   /** When set, the modal edits this existing place instead of creating a new one. */
   editPlace?: Place;
+  /** Trip members, for the "who's this for" picker — lets a large group split
+   *  its itinerary across sub-groups instead of everyone seeing everything. */
+  memberIds: string[];
+  memberNames: Record<string, string>;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -85,8 +91,10 @@ export function AddItineraryItemModal({
   const [checkOut, setCheckOut] = useState(
     editPlace?.checkOut ? toDatetimeLocal(editPlace.checkOut) : defaultDay ? dayAt(nextDay(defaultDay), 11) : '',
   );
+  const [assigneeIds, setAssigneeIds] = useState<string[]>(editPlace?.assignments.map((a) => a.userId) ?? []);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isEveryone = assigneeIds.length === 0;
 
   // datetime-local needs "YYYY-MM-DDTHH:mm" bounds, not just a date
   const dtMin = tripStartDate ? `${tripStartDate}T00:00` : undefined;
@@ -112,6 +120,7 @@ export function AddItineraryItemModal({
           arrivalTime: arrivalTime || undefined,
           departureAirport: departureAirport || undefined,
           arrivalAirport: arrivalAirport || undefined,
+          assigneeIds,
         };
         if (editPlace) {
           await api.updatePlace(tripId, editPlace.id, flightData);
@@ -126,6 +135,7 @@ export function AddItineraryItemModal({
               // swapped: return leg goes arrival -> departure
               departureAirport: arrivalAirport || undefined,
               arrivalAirport: departureAirport || undefined,
+              assigneeIds,
             });
           }
         }
@@ -140,6 +150,7 @@ export function AddItineraryItemModal({
             checkIn: checkIn || undefined,
             checkOut: checkOut || undefined,
           }),
+          assigneeIds,
         };
         if (editPlace) {
           await api.updatePlace(tripId, editPlace.id, data);
@@ -370,6 +381,32 @@ export function AddItineraryItemModal({
                 />
               </label>
             </>
+          )}
+
+          {memberIds.length > 1 && (
+            <div style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
+              Who's this for
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 4 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <input type="checkbox" checked={isEveryone} onChange={() => setAssigneeIds([])} />
+                  Everyone
+                </label>
+                {memberIds.map((id) => (
+                  <label key={id} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <input
+                      type="checkbox"
+                      checked={assigneeIds.includes(id)}
+                      onChange={() =>
+                        setAssigneeIds((prev) =>
+                          prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+                        )
+                      }
+                    />
+                    {memberNames[id] ?? id}
+                  </label>
+                ))}
+              </div>
+            </div>
           )}
 
           {error && <p style={{ color: 'var(--owe)', margin: 0 }}>{error}</p>}
