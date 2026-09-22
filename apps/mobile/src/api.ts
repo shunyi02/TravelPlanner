@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import type { Balance, Settlement } from '@travel-planner/shared';
 
@@ -5,6 +6,25 @@ const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 const ACCESS_TOKEN_KEY = 'accessToken';
 const REFRESH_TOKEN_KEY = 'refreshToken';
+
+/** expo-secure-store has no web implementation — there's no OS keychain to
+ *  back it in a browser — so it throws on every call there. Fall back to
+ *  localStorage on web; native platforms keep using the real keychain via
+ *  SecureStore. Not a security-equivalent swap (localStorage isn't
+ *  encrypted at rest), but matches what a browser can actually offer, and
+ *  only ever applies when running the web target. */
+const tokenStorage =
+  Platform.OS === 'web'
+    ? {
+        getItemAsync: async (key: string) => window.localStorage.getItem(key),
+        setItemAsync: async (key: string, value: string) => {
+          window.localStorage.setItem(key, value);
+        },
+        deleteItemAsync: async (key: string) => {
+          window.localStorage.removeItem(key);
+        },
+      }
+    : SecureStore;
 
 let accessToken: string | null = null;
 let refreshToken: string | null = null;
@@ -15,23 +35,23 @@ export function setSessionExpiredHandler(handler: () => void) {
 }
 
 export async function initAuth(): Promise<boolean> {
-  accessToken = await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
-  refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+  accessToken = await tokenStorage.getItemAsync(ACCESS_TOKEN_KEY);
+  refreshToken = await tokenStorage.getItemAsync(REFRESH_TOKEN_KEY);
   return accessToken !== null;
 }
 
 async function persistTokens(tokens: { accessToken: string; refreshToken: string }) {
   accessToken = tokens.accessToken;
   refreshToken = tokens.refreshToken;
-  await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, tokens.accessToken);
-  await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, tokens.refreshToken);
+  await tokenStorage.setItemAsync(ACCESS_TOKEN_KEY, tokens.accessToken);
+  await tokenStorage.setItemAsync(REFRESH_TOKEN_KEY, tokens.refreshToken);
 }
 
 async function clearTokens() {
   accessToken = null;
   refreshToken = null;
-  await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
-  await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+  await tokenStorage.deleteItemAsync(ACCESS_TOKEN_KEY);
+  await tokenStorage.deleteItemAsync(REFRESH_TOKEN_KEY);
 }
 
 export function isLoggedIn(): boolean {
