@@ -181,7 +181,7 @@ export function TripsLandingPage() {
         </div>
       ) : (
         <>
-          <div className="tab-row no-print" style={{ justifyContent: 'center' }}>
+          <div className="tab-row no-print" style={{ margin: '0 auto 24px' }}>
             <button className={view === 'trips' ? 'active' : ''} onClick={() => setView('trips')}>
               Trips
             </button>

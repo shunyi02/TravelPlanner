@@ -66,7 +66,7 @@
 .receipt-photo-thumb {
   width: 40px;
   height: 40px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   object-fit: cover;
   border: 1px solid var(--rule);
 }
@@ -75,7 +75,7 @@
   display: block;
   max-width: 100%;
   max-height: 220px;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--rule);
   margin: 4px 0 12px;
   object-fit: contain;
@@ -87,33 +87,7 @@
   margin: 0;
 }
 
-.segmented-control {
-  display: inline-flex;
-  align-self: center;
-  border: 1px solid var(--rule);
-  border-radius: 6px;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-
-.segmented-control button {
-  padding: 8px 12px;
-  font-size: 13px;
-  background: var(--surface);
-  color: var(--ink-soft);
-  border: none;
-  border-right: 1px solid var(--rule);
-}
-
-.segmented-control button:last-child {
-  border-right: none;
-}
-
-.segmented-control button.active {
-  background: var(--route-soft);
-  color: var(--route);
-  font-weight: 500;
-}
+/* .segmented-control itself now lives in base.css as a shared primitive. */
 
 .amount-note {
   font-size: 11px;
@@ -144,15 +118,22 @@
   font-weight: 600;
 }
 
+.day-group {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 4px 16px;
+}
+
 .day-group + .day-group {
-  margin-top: 8px;
+  margin-top: 12px;
 }
 
 .day-group-header {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  padding: 10px 0 4px;
+  padding: 12px 0 8px;
   font-size: 13px;
   font-weight: 600;
   color: var(--ink-soft);
@@ -164,7 +145,7 @@
   color: var(--route);
   background: var(--route-soft);
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   margin-right: 4px;
 }
 
@@ -194,7 +175,7 @@
   align-items: center;
   gap: 4px;
   padding: 5px 12px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   font-size: 12px;
   font-weight: 500;
   border: 1px solid var(--owe);
@@ -241,7 +222,7 @@
   width: 90px;
   padding: 6px 8px;
   border: 1px solid var(--rule);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 .split-remaining {

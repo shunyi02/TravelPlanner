@@ -194,7 +194,7 @@ export function ReportTab({
 
       <p className="sidebar-section-label">By member</p>
       {error && <p className="empty-state">Couldn't load balances: {error}</p>}
-      <div>
+      <div className="card">
         {memberIds.map((id) => {
           const paid = paidByMember.get(id) ?? 0;
           const paidCount = paidCountByMember.get(id) ?? 0;

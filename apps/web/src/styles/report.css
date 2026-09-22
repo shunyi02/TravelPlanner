@@ -27,9 +27,11 @@
 }
 
 .report-card {
-  margin-top: 24px;
-  padding-top: 20px;
-  border-top: 1px solid var(--rule);
+  margin-top: 16px;
+  padding: 20px 16px;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
 }
 
 .report-budget-bar-track {

@@ -34,7 +34,7 @@ export function BalancesTab({
       {balances.length === 0 ? (
         <p className="empty-state">No expenses to settle yet.</p>
       ) : (
-        <div>
+        <div className="card">
           {balances.map((b) => (
             <div className="ledger-row" key={b.userId}>
               <span className="row-title">{name(b.userId)}</span>

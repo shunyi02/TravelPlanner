@@ -7,22 +7,30 @@
 
 .tab-row {
   display: flex;
-  gap: 24px;
-  border-bottom: 1px solid var(--rule);
+  gap: 2px;
+  width: fit-content;
+  max-width: 100%;
+  background: var(--bg);
+  border-radius: var(--radius-pill);
+  padding: 3px;
   margin-bottom: 24px;
+  overflow-x: auto;
 }
 
 .tab-row button {
   background: none;
   border: none;
-  padding: 8px 0;
+  padding: 8px 16px;
   color: var(--ink-soft);
   font-weight: 500;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .tab-row button.active {
   color: var(--ink);
-  border-bottom-color: var(--route);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
 }

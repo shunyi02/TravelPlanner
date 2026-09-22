@@ -420,7 +420,7 @@ export function ItineraryTab({
           ) : visiblePlaces.length === 0 ? (
             <p className="empty-state">No stops for this filter.</p>
           ) : (
-            <div>{visiblePlaces.map((place, index) => renderRow(place, { index }))}</div>
+            <div className="card">{visiblePlaces.map((place, index) => renderRow(place, { index }))}</div>
           )}
         </>
       ) : (
@@ -455,6 +455,7 @@ export function ItineraryTab({
                           )}
                         </div>
                         <div
+                          className="card"
                           onDragOver={(e) => {
                             e.preventDefault();
                             setDragOverDay(day);
@@ -466,8 +467,6 @@ export function ItineraryTab({
                             if (dragPlace) handleMoveToDay(dragPlace.id, dragPlace.sourceDay, day);
                           }}
                           style={{
-                            borderTop: '1px solid var(--rule)',
-                            paddingTop: 4,
                             minHeight: 8,
                             background: dragOverDay === day ? 'var(--route-soft)' : undefined,
                           }}
@@ -486,7 +485,7 @@ export function ItineraryTab({
                         <h3 style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 600, color: 'var(--ink-soft)' }}>
                           Unscheduled
                         </h3>
-                        <div style={{ borderTop: '1px solid var(--rule)', paddingTop: 4 }}>
+                        <div className="card">
                           {unscheduled.map((place) => renderRow(place, { draggable: true }))}
                         </div>
                       </div>
@@ -506,7 +505,7 @@ export function ItineraryTab({
                     )}
                   </div>
                   <RouteMap stops={toRouteStops(byDay.get(currentDay) ?? [], currentDay)} />
-                  <div style={{ borderTop: '1px solid var(--rule)', paddingTop: 4 }}>
+                  <div className="card">
                     {(byDay.get(currentDay) ?? []).length === 0 ? (
                       <p className="empty-state" style={{ padding: '8px 0' }}>No stops planned.</p>
                     ) : (

@@ -29,17 +29,18 @@
 .trip-card {
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--rule);
-  border-radius: 8px;
+  border: none;
+  border-radius: var(--radius-lg);
   background: var(--surface);
+  box-shadow: var(--shadow-sm);
   position: relative;
   overflow: hidden;
-  transition: border-color 0.15s ease;
+  transition: box-shadow 0.15s ease;
 }
 
 .trip-card:hover,
 .trip-card:focus-within {
-  border-color: var(--route);
+  box-shadow: var(--shadow-md);
 }
 
 .trip-card-body {
@@ -148,7 +149,7 @@
   align-self: flex-start;
   margin-top: 6px;
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: var(--route-soft);
   color: var(--route);
   font-size: 12px;
@@ -164,9 +165,15 @@
   align-items: center;
   justify-content: center;
   color: var(--route);
-  border-style: dashed;
+  border: 2px dashed var(--rule);
+  box-shadow: none;
   min-height: 168px;
   font-weight: 500;
+}
+
+.trip-card-add:hover {
+  box-shadow: none;
+  border-color: var(--route);
 }
 
 .empty-landing {
@@ -177,10 +184,11 @@
 }
 
 .trip-skeleton {
-  border: 1px solid var(--rule);
-  border-radius: 8px;
+  border: none;
+  border-radius: var(--radius-lg);
   overflow: hidden;
   background: var(--surface);
+  box-shadow: var(--shadow-sm);
 }
 
 .trip-skeleton-strip {
