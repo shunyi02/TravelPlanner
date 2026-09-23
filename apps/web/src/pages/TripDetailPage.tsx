@@ -3,13 +3,14 @@ import { useParams } from 'react-router-dom';
 import { api, type TripDetail as TripDetailType, type Expense } from '../api';
 import { useAuth } from '../authContext';
 import { ItineraryTab } from '../components/ItineraryTab';
+import { BookingsTab } from '../components/BookingsTab';
 import { ExpensesTab } from '../components/ExpensesTab';
 import { BalancesTab } from '../components/BalancesTab';
 import { ReportTab } from '../components/ReportTab';
 import { TripHero } from '../components/TripHero';
 import { notifyTripChanged, onTripChanged } from '../tripEvents';
 
-type Tab = 'itinerary' | 'expenses' | 'balances' | 'report';
+type Tab = 'itinerary' | 'bookings' | 'expenses' | 'balances' | 'report';
 
 export function TripDetailPage() {
   const { tripId } = useParams<{ tripId: string }>();
@@ -65,6 +66,9 @@ export function TripDetailPage() {
         <button className={tab === 'itinerary' ? 'active' : ''} onClick={() => setTab('itinerary')}>
           Itinerary
         </button>
+        <button className={tab === 'bookings' ? 'active' : ''} onClick={() => setTab('bookings')}>
+          Bookings
+        </button>
         <button className={tab === 'expenses' ? 'active' : ''} onClick={() => setTab('expenses')}>
           Expenses
         </button>
@@ -85,6 +89,7 @@ export function TripDetailPage() {
           onChange={handleChange}
         />
       )}
+      {tab === 'bookings' && <BookingsTab places={trip.places} memberNames={memberNames} />}
       {tab === 'expenses' && (
         <ExpensesTab
           tripId={tripId}

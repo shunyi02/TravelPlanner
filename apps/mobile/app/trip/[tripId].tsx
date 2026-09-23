@@ -4,6 +4,7 @@ import { useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router
 import { api, type TripDetail, type Expense } from '../../src/api';
 import { useAuth } from '../../src/authContext';
 import { ItineraryTab } from '../../src/components/ItineraryTab';
+import { BookingsTab } from '../../src/components/BookingsTab';
 import { ExpensesTab } from '../../src/components/ExpensesTab';
 import { BalancesTab } from '../../src/components/BalancesTab';
 import { MembersTab } from '../../src/components/MembersTab';
@@ -11,7 +12,7 @@ import { ReportTab } from '../../src/components/ReportTab';
 import { TripHero } from '../../src/components/TripHero';
 import { useTheme, type ThemeColors } from '../../src/theme';
 
-type Tab = 'itinerary' | 'expenses' | 'balances' | 'report' | 'members';
+type Tab = 'itinerary' | 'bookings' | 'expenses' | 'balances' | 'report' | 'members';
 
 export default function TripDetailScreen() {
   const colors = useTheme();
@@ -98,8 +99,9 @@ export default function TripDetailScreen() {
       )}
       {currencyError && <Text style={{ color: colors.owe, marginBottom: 12 }}>{currencyError}</Text>}
 
-      <View style={styles.tabRow}>
-        {(['itinerary', 'expenses', 'balances', 'report', 'members'] as const).map((t) => (
+      {/* Six tabs overflow a phone's width, so the row scrolls sideways. */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabScroll} contentContainerStyle={styles.tabRow}>
+        {(['itinerary', 'bookings', 'expenses', 'balances', 'report', 'members'] as const).map((t) => (
           <Pressable key={t} style={styles.tabButton} onPress={() => setTab(t)}>
             <Text style={[styles.tabLabel, tab === t && styles.tabLabelActive]}>
               {t[0].toUpperCase() + t.slice(1)}
@@ -107,9 +109,10 @@ export default function TripDetailScreen() {
             {tab === t && <View style={styles.tabUnderline} />}
           </Pressable>
         ))}
-      </View>
+      </ScrollView>
 
       {tab === 'itinerary' && <ItineraryTab tripId={tripId} trip={trip} places={trip.places} onChange={load} />}
+      {tab === 'bookings' && <BookingsTab places={trip.places} memberNames={memberNames} />}
       {tab === 'expenses' && (
         <ExpensesTab
           tripId={tripId}
@@ -134,12 +137,15 @@ function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   empty: { color: colors.inkSoft, padding: 20 },
-  tabRow: {
-    flexDirection: 'row',
-    gap: 24,
+  tabScroll: {
+    flexGrow: 0,
     borderBottomWidth: 1,
     borderBottomColor: colors.rule,
     marginBottom: 20,
+  },
+  tabRow: {
+    flexDirection: 'row',
+    gap: 24,
   },
   tabButton: { paddingBottom: 10 },
   tabLabel: { color: colors.inkSoft, fontWeight: '500' },
