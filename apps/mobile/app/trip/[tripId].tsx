@@ -8,6 +8,7 @@ import { ExpensesTab } from '../../src/components/ExpensesTab';
 import { BalancesTab } from '../../src/components/BalancesTab';
 import { MembersTab } from '../../src/components/MembersTab';
 import { ReportTab } from '../../src/components/ReportTab';
+import { TripHero } from '../../src/components/TripHero';
 import { useTheme, type ThemeColors } from '../../src/theme';
 
 type Tab = 'itinerary' | 'expenses' | 'balances' | 'report' | 'members';
@@ -74,7 +75,9 @@ export default function TripDetailScreen() {
   const isOwner = trip.members.find((m) => m.userId === currentUser?.id)?.role === 'owner';
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ padding: 20 }}>
+    <ScrollView style={styles.container}>
+      {tab === 'itinerary' && <TripHero trip={trip} />}
+      <View style={{ padding: 20 }}>
       {isOwner ? (
         <View style={styles.currencyRow}>
           <TextInput
@@ -122,6 +125,7 @@ export default function TripDetailScreen() {
         <ReportTab tripId={tripId} trip={trip} expenses={expenses} memberNames={memberNames} onChange={load} />
       )}
       {tab === 'members' && <MembersTab tripId={tripId} trip={trip} isOwner={isOwner} onChange={load} />}
+      </View>
     </ScrollView>
   );
 }
