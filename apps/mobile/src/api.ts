@@ -1,30 +1,10 @@
-import { Platform } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
 import type { Balance, Settlement } from '@travel-planner/shared';
+import { storage as tokenStorage } from './storage';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 const ACCESS_TOKEN_KEY = 'accessToken';
 const REFRESH_TOKEN_KEY = 'refreshToken';
-
-/** expo-secure-store has no web implementation — there's no OS keychain to
- *  back it in a browser — so it throws on every call there. Fall back to
- *  localStorage on web; native platforms keep using the real keychain via
- *  SecureStore. Not a security-equivalent swap (localStorage isn't
- *  encrypted at rest), but matches what a browser can actually offer, and
- *  only ever applies when running the web target. */
-const tokenStorage =
-  Platform.OS === 'web'
-    ? {
-        getItemAsync: async (key: string) => window.localStorage.getItem(key),
-        setItemAsync: async (key: string, value: string) => {
-          window.localStorage.setItem(key, value);
-        },
-        deleteItemAsync: async (key: string) => {
-          window.localStorage.removeItem(key);
-        },
-      }
-    : SecureStore;
 
 let accessToken: string | null = null;
 let refreshToken: string | null = null;
@@ -118,6 +98,10 @@ export interface Trip {
   endDate: string | null;
   coverPhoto: string | null;
   currency: string;
+  budget: string | null;
+  destinationName: string | null;
+  destinationLat: number | null;
+  destinationLng: number | null;
 }
 
 export type PlaceType = 'STOP' | 'HOTEL' | 'FLIGHT';
@@ -138,6 +122,8 @@ export interface Place {
   arrivalAirport: string | null;
   checkIn: string | null;
   checkOut: string | null;
+  /** Which trip members this item is for. Empty means everyone. */
+  assignments: Array<{ userId: string }>;
 }
 
 export interface TripInvite {
@@ -147,7 +133,12 @@ export interface TripInvite {
 }
 
 export interface TripDetail extends Trip {
-  members: Array<{ userId: string; role: string; user: { name: string; email: string; isPlaceholder: boolean } }>;
+  members: Array<{
+    userId: string;
+    role: string;
+    coverPhoto: string | null;
+    user: { name: string; email: string; isPlaceholder: boolean };
+  }>;
   places: Place[];
   invites: TripInvite[];
 }
@@ -156,6 +147,7 @@ export interface CurrentUser {
   id: string;
   email: string;
   name: string;
+  avatarUrl: string | null;
 }
 
 export interface ExpenseSplit {
@@ -170,6 +162,12 @@ export interface Expense {
   description: string;
   amount: string;
   currency: string;
+  category: string;
+  expenseDate: string;
+  subtotal: string | null;
+  servicePct: string | null;
+  taxPct: string | null;
+  receiptPhoto: string | null;
   paidById: string;
   splits: ExpenseSplit[];
   createdAt: string;
@@ -207,10 +205,35 @@ export const api = {
       body: JSON.stringify({ token, newPassword }),
     }),
   getMe: () => request<CurrentUser>('/auth/me'),
+  updateProfile: (data: { name?: string; avatarUrl?: string }) =>
+    request<CurrentUser>('/auth/me', { method: 'PATCH', body: JSON.stringify(data) }),
   listTrips: () => request<Trip[]>('/trips'),
-  createTrip: (data: { name: string; startDate?: string; endDate?: string; coverPhoto?: string; currency?: string }) =>
-    request<TripDetail>('/trips', { method: 'POST', body: JSON.stringify(data) }),
+  createTrip: (data: {
+    name: string;
+    startDate?: string;
+    endDate?: string;
+    coverPhoto?: string;
+    currency?: string;
+    budget?: number;
+    destinationName?: string;
+    destinationLat?: number;
+    destinationLng?: number;
+  }) => request<TripDetail>('/trips', { method: 'POST', body: JSON.stringify(data) }),
+  updateTrip: (
+    tripId: string,
+    data: {
+      startDate?: string;
+      endDate?: string;
+      currency?: string;
+      budget?: number | null;
+      destinationName?: string;
+      destinationLat?: number;
+      destinationLng?: number;
+    },
+  ) => request<Trip>(`/trips/${tripId}`, { method: 'PATCH', body: JSON.stringify(data) }),
   getTrip: (tripId: string) => request<TripDetail>(`/trips/${tripId}`),
+  duplicateTrip: (tripId: string) => request<Trip>(`/trips/${tripId}/duplicate`, { method: 'POST' }),
+  deleteTrip: (tripId: string) => request<void>(`/trips/${tripId}`, { method: 'DELETE' }),
   addPlace: (
     tripId: string,
     data: {
@@ -226,6 +249,8 @@ export const api = {
       arrivalAirport?: string;
       checkIn?: string;
       checkOut?: string;
+      /** Trip member IDs this item is for. Omitted/empty means everyone. */
+      assigneeIds?: string[];
     },
   ) => request<Place>(`/trips/${tripId}/places`, { method: 'POST', body: JSON.stringify(data) }),
   updatePlace: (
@@ -244,6 +269,8 @@ export const api = {
       arrivalAirport: string;
       checkIn: string;
       checkOut: string;
+      /** If provided (including []), replaces this item's assignees entirely. */
+      assigneeIds: string[];
     }>,
   ) => request<Place>(`/trips/${tripId}/places/${placeId}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deletePlace: (tripId: string, placeId: string) =>
@@ -260,6 +287,12 @@ export const api = {
       description: string;
       amount: number;
       paidById?: string;
+      category?: string;
+      expenseDate?: string;
+      subtotal?: number;
+      servicePct?: number;
+      taxPct?: number;
+      receiptPhoto?: string;
       splits?: Array<{ userId: string; share: number }>;
     },
   ) => request<Expense>(`/trips/${tripId}/expenses`, { method: 'POST', body: JSON.stringify(data) }),
@@ -270,6 +303,12 @@ export const api = {
       description?: string;
       amount?: number;
       paidById?: string;
+      category?: string;
+      expenseDate?: string;
+      subtotal?: number | null;
+      servicePct?: number | null;
+      taxPct?: number | null;
+      receiptPhoto?: string | null;
       splits?: Array<{ userId: string; share: number }>;
     },
   ) =>
@@ -303,6 +342,4 @@ export const api = {
     }),
   cancelInvite: (tripId: string, inviteId: string) =>
     request<void>(`/trips/${tripId}/invites/${inviteId}`, { method: 'DELETE' }),
-  updateTrip: (tripId: string, data: { startDate?: string; endDate?: string; currency?: string }) =>
-  request<Trip>(`/trips/${tripId}`, { method: 'PATCH', body: JSON.stringify(data) }),
 };

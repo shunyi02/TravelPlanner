@@ -7,11 +7,14 @@ import { ItineraryTab } from '../../src/components/ItineraryTab';
 import { ExpensesTab } from '../../src/components/ExpensesTab';
 import { BalancesTab } from '../../src/components/BalancesTab';
 import { MembersTab } from '../../src/components/MembersTab';
-import { colors } from '../../src/theme';
+import { ReportTab } from '../../src/components/ReportTab';
+import { useTheme, type ThemeColors } from '../../src/theme';
 
-type Tab = 'itinerary' | 'expenses' | 'balances' | 'members';
+type Tab = 'itinerary' | 'expenses' | 'balances' | 'report' | 'members';
 
 export default function TripDetailScreen() {
+  const colors = useTheme();
+  const styles = createStyles(colors);
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const navigation = useNavigation();
   const { currentUser } = useAuth();
@@ -93,7 +96,7 @@ export default function TripDetailScreen() {
       {currencyError && <Text style={{ color: colors.owe, marginBottom: 12 }}>{currencyError}</Text>}
 
       <View style={styles.tabRow}>
-        {(['itinerary', 'expenses', 'balances', 'members'] as const).map((t) => (
+        {(['itinerary', 'expenses', 'balances', 'report', 'members'] as const).map((t) => (
           <Pressable key={t} style={styles.tabButton} onPress={() => setTab(t)}>
             <Text style={[styles.tabLabel, tab === t && styles.tabLabelActive]}>
               {t[0].toUpperCase() + t.slice(1)}
@@ -115,12 +118,16 @@ export default function TripDetailScreen() {
         />
       )}
       {tab === 'balances' && <BalancesTab tripId={tripId} memberNames={memberNames} />}
+      {tab === 'report' && (
+        <ReportTab tripId={tripId} trip={trip} expenses={expenses} memberNames={memberNames} onChange={load} />
+      )}
       {tab === 'members' && <MembersTab tripId={tripId} trip={trip} isOwner={isOwner} onChange={load} />}
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   empty: { color: colors.inkSoft, padding: 20 },
   tabRow: {
@@ -158,4 +165,5 @@ const styles = StyleSheet.create({
   },
   currencySaveButtonText: { color: '#fff', fontWeight: '600' },
   currencyReadOnly: { color: colors.inkSoft, marginBottom: 16 },
-});
+  });
+}

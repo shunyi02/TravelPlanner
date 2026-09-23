@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Image, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { api } from '../api';
-import { colors } from '../theme';
+import { useTheme, type ThemeColors } from '../theme';
 
 export function AddTripModal({
   visible,
@@ -13,6 +13,8 @@ export function AddTripModal({
   onClose: () => void;
   onCreated: (tripId: string) => void;
 }) {
+  const colors = useTheme();
+  const styles = createStyles(colors);
   const [name, setName] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -123,20 +125,22 @@ export function AddTripModal({
   );
 }
 
-const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(31,42,36,0.45)', justifyContent: 'center', padding: 24 },
-  sheet: { backgroundColor: colors.surface, borderRadius: 8, padding: 20, gap: 12 },
-  title: { fontSize: 20, fontWeight: '600', color: colors.ink },
-  preview: { width: '100%', height: 140, borderRadius: 6 },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.rule,
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: colors.surface,
-    color: colors.ink,
-  },
-  button: { backgroundColor: colors.route, borderRadius: 6, paddingVertical: 10, paddingHorizontal: 14, alignItems: 'center' },
-  buttonText: { color: '#fff', fontWeight: '600' },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    backdrop: { flex: 1, backgroundColor: 'rgba(31,42,36,0.45)', justifyContent: 'center', padding: 24 },
+    sheet: { backgroundColor: colors.surface, borderRadius: 8, padding: 20, gap: 12 },
+    title: { fontSize: 20, fontWeight: '600', color: colors.ink },
+    preview: { width: '100%', height: 140, borderRadius: 6 },
+    input: {
+      borderWidth: 1,
+      borderColor: colors.rule,
+      borderRadius: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      backgroundColor: colors.surface,
+      color: colors.ink,
+    },
+    button: { backgroundColor: colors.route, borderRadius: 6, paddingVertical: 10, paddingHorizontal: 14, alignItems: 'center' },
+    buttonText: { color: '#fff', fontWeight: '600' },
+  });
+}

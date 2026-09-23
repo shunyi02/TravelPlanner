@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { Balance, Settlement } from '@travel-planner/shared';
 import { api } from '../api';
-import { colors } from '../theme';
+import { useTheme, type ThemeColors } from '../theme';
 
 export function BalancesTab({ tripId, memberNames }: { tripId: string; memberNames: Record<string, string> }) {
+  const colors = useTheme();
+  const styles = createStyles(colors);
   const [balances, setBalances] = useState<Balance[]>([]);
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -52,25 +54,27 @@ export function BalancesTab({ tripId, memberNames }: { tripId: string; memberNam
   );
 }
 
-const styles = StyleSheet.create({
-  empty: { color: colors.inkSoft, paddingVertical: 16 },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.rule,
-  },
-  rowTitle: { fontSize: 15, fontWeight: '500', color: colors.ink },
-  amount: { fontVariant: ['tabular-nums'] },
-  settlementNote: {
-    backgroundColor: colors.ledgerSoft,
-    borderWidth: 1,
-    borderColor: colors.rule,
-    borderRadius: 6,
-    padding: 14,
-    marginTop: 12,
-    gap: 4,
-  },
-  settlementLine: { color: colors.ink },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    empty: { color: colors.inkSoft, paddingVertical: 16 },
+    row: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingVertical: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.rule,
+    },
+    rowTitle: { fontSize: 15, fontWeight: '500', color: colors.ink },
+    amount: { fontVariant: ['tabular-nums'] },
+    settlementNote: {
+      backgroundColor: colors.ledgerSoft,
+      borderWidth: 1,
+      borderColor: colors.rule,
+      borderRadius: 6,
+      padding: 14,
+      marginTop: 12,
+      gap: 4,
+    },
+    settlementLine: { color: colors.ink },
+  });
+}

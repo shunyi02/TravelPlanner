@@ -3,12 +3,21 @@ import { ActivityIndicator, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { colors } from '../src/theme';
+import { ThemeProvider, useTheme } from '../src/theme';
 import { api, initAuth, setSessionExpiredHandler, type CurrentUser } from '../src/api';
 import { AuthScreen } from '../src/components/AuthScreen';
 import { AuthContext } from '../src/authContext';
 
 export default function RootLayout() {
+  return (
+    <ThemeProvider>
+      <RootLayoutInner />
+    </ThemeProvider>
+  );
+}
+
+function RootLayoutInner() {
+  const colors = useTheme();
   const [checking, setChecking] = useState(true);
   const [authed, setAuthed] = useState(false);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
@@ -60,7 +69,7 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <AuthContext.Provider value={{ logout, currentUser }}>
+      <AuthContext.Provider value={{ logout, currentUser, setCurrentUser }}>
         <StatusBar style="dark" />
         <Stack
           screenOptions={{
@@ -72,6 +81,8 @@ export default function RootLayout() {
         >
           <Stack.Screen name="index" options={{ title: 'Travel Planner' }} />
           <Stack.Screen name="trip/[tripId]" options={{ title: '' }} />
+          <Stack.Screen name="profile" options={{ title: 'Profile' }} />
+          <Stack.Screen name="settings" options={{ title: 'Settings' }} />
         </Stack>
       </AuthContext.Provider>
     </SafeAreaProvider>

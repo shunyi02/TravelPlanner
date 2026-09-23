@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { EXPENSE_CATEGORIES, DEFAULT_EXPENSE_CATEGORY } from '@travel-planner/shared';
 import type { Expense } from '../api';
 import { api } from '../api';
-import { colors } from '../theme';
+import { useTheme, type ThemeColors } from '../theme';
 
 type SplitMode = 'even' | 'custom';
 
@@ -48,6 +49,8 @@ function SplitEditor({
   amounts: Record<string, string>;
   onAmountsChange: (amounts: Record<string, string>) => void;
 }) {
+  const colors = useTheme();
+  const styles = createStyles(colors);
   const diff = total - sumAmounts(amounts);
   const balanced = Math.abs(diff) < 0.01;
 
@@ -106,6 +109,8 @@ function PayerPicker({
   value: string;
   onChange: (userId: string) => void;
 }) {
+  const colors = useTheme();
+  const styles = createStyles(colors);
   return (
     <View>
       <Text style={styles.payerLabel}>Paid by</Text>
@@ -119,6 +124,27 @@ function PayerPicker({
             <Text style={[styles.payerChipText, value === id && styles.payerChipTextActive]}>
               {memberNames[id] ?? id}
             </Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function CategoryPicker({ value, onChange }: { value: string; onChange: (category: string) => void }) {
+  const colors = useTheme();
+  const styles = createStyles(colors);
+  return (
+    <View>
+      <Text style={styles.payerLabel}>Category</Text>
+      <View style={styles.payerRow}>
+        {EXPENSE_CATEGORIES.map((cat) => (
+          <Pressable
+            key={cat}
+            style={[styles.payerChip, value === cat && styles.payerChipActive]}
+            onPress={() => onChange(cat)}
+          >
+            <Text style={[styles.payerChipText, value === cat && styles.payerChipTextActive]}>{cat}</Text>
           </Pressable>
         ))}
       </View>
@@ -141,11 +167,14 @@ export function ExpensesTab({
   currentUserId?: string;
   onChange: () => void;
 }) {
+  const colors = useTheme();
+  const styles = createStyles(colors);
   const memberIds = Object.keys(memberNames);
 
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [paidById, setPaidById] = useState(currentUserId ?? memberIds[0] ?? '');
+  const [category, setCategory] = useState<string>(DEFAULT_EXPENSE_CATEGORY);
   const [splitMode, setSplitMode] = useState<SplitMode>('even');
   const [customAmounts, setCustomAmounts] = useState<Record<string, string>>({});
   const [showSplitEditor, setShowSplitEditor] = useState(false);
@@ -156,6 +185,7 @@ export function ExpensesTab({
   const [editDescription, setEditDescription] = useState('');
   const [editAmount, setEditAmount] = useState('');
   const [editPaidById, setEditPaidById] = useState('');
+  const [editCategory, setEditCategory] = useState<string>(DEFAULT_EXPENSE_CATEGORY);
   const [editSplitMode, setEditSplitMode] = useState<SplitMode>('even');
   const [initialEditSplitMode, setInitialEditSplitMode] = useState<SplitMode>('even');
   const [editCustomAmounts, setEditCustomAmounts] = useState<Record<string, string>>({});
@@ -165,6 +195,7 @@ export function ExpensesTab({
     setDescription('');
     setAmount('');
     setPaidById(currentUserId ?? memberIds[0] ?? '');
+    setCategory(DEFAULT_EXPENSE_CATEGORY);
     setSplitMode('even');
     setCustomAmounts({});
     setShowSplitEditor(false);
@@ -185,7 +216,7 @@ export function ExpensesTab({
     }
 
     try {
-      await api.createExpense(tripId, { description: description.trim(), amount: parsed, paidById, splits });
+      await api.createExpense(tripId, { description: description.trim(), amount: parsed, paidById, category, splits });
       resetAddForm();
       onChange();
     } catch (err) {
@@ -206,6 +237,7 @@ export function ExpensesTab({
     setEditDescription(expense.description);
     setEditAmount(expense.amount);
     setEditPaidById(expense.paidById);
+    setEditCategory(expense.category);
     const mode: SplitMode = looksEven(expense, memberIds) ? 'even' : 'custom';
     setEditSplitMode(mode);
     setInitialEditSplitMode(mode);
@@ -222,11 +254,13 @@ export function ExpensesTab({
       description?: string;
       amount?: number;
       paidById?: string;
+      category?: string;
       splits?: Array<{ userId: string; share: number }>;
     } = {};
     if (editDescription.trim() !== expense.description) data.description = editDescription.trim();
     if (parsedAmount !== Number(expense.amount)) data.amount = parsedAmount;
     if (editPaidById !== expense.paidById) data.paidById = editPaidById;
+    if (editCategory !== expense.category) data.category = editCategory;
 
     if (showEditSplitEditor && editSplitMode === 'custom') {
       if (Math.abs(parsedAmount - sumAmounts(editCustomAmounts)) > 0.01) {
@@ -285,7 +319,12 @@ export function ExpensesTab({
             <Pressable style={styles.row} onPress={() => toggleExpand(expense.id)}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.rowTitle}>{expense.description}</Text>
-                <Text style={styles.rowSub}>paid by {memberNames[expense.paidById] ?? 'someone'}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                  <Text style={styles.rowSub}>paid by {memberNames[expense.paidById] ?? 'someone'}</Text>
+                  <View style={styles.categoryChip}>
+                    <Text style={styles.categoryChipText}>{expense.category}</Text>
+                  </View>
+                </View>
               </View>
               <Text style={styles.amount}>
                 {expense.currency} {expense.amount}
@@ -343,6 +382,7 @@ export function ExpensesTab({
                   onChangeText={setEditAmount}
                 />
                 <PayerPicker memberIds={memberIds} memberNames={memberNames} value={editPaidById} onChange={setEditPaidById} />
+                <CategoryPicker value={editCategory} onChange={setEditCategory} />
                 <Pressable onPress={() => setShowEditSplitEditor((v) => !v)}>
                   <Text style={styles.textBtn}>{showEditSplitEditor ? 'Hide split options' : 'Split options'}</Text>
                 </Pressable>
@@ -390,6 +430,7 @@ export function ExpensesTab({
           />
         </View>
         <PayerPicker memberIds={memberIds} memberNames={memberNames} value={paidById} onChange={setPaidById} />
+        <CategoryPicker value={category} onChange={setCategory} />
         <Pressable onPress={() => setShowSplitEditor((v) => !v)} style={{ marginTop: 8 }}>
           <Text style={styles.textBtn}>
             {showSplitEditor ? 'Hide split options' : 'Split options (defaults to evenly)'}
@@ -415,84 +456,93 @@ export function ExpensesTab({
   );
 }
 
-const styles = StyleSheet.create({
-  empty: { color: colors.inkSoft, paddingVertical: 16 },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.rule,
-  },
-  rowTitle: { fontSize: 15, fontWeight: '500', color: colors.ink },
-  rowSub: { fontSize: 12, color: colors.inkSoft, marginTop: 2 },
-  amount: { fontVariant: ['tabular-nums'], color: colors.ink },
-  breakdown: {
-    paddingLeft: 12,
-    borderLeftWidth: 2,
-    borderLeftColor: colors.rule,
-    marginVertical: 8,
-    gap: 8,
-  },
-  splitItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
-  splitItemLabel: { fontSize: 13, color: colors.inkSoft, flex: 1 },
-  rowActions: { flexDirection: 'row', gap: 16, marginTop: 4 },
-  textBtn: { color: colors.route, fontSize: 13, fontWeight: '500' },
-  form: { flexDirection: 'row', gap: 8 },
-  payerLabel: { fontSize: 12, color: colors.inkSoft, marginTop: 10, marginBottom: 6 },
-  payerRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  payerChip: {
-    borderWidth: 1,
-    borderColor: colors.rule,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  payerChipActive: { backgroundColor: colors.route, borderColor: colors.route },
-  payerChipText: { fontSize: 13, color: colors.ink },
-  payerChipTextActive: { color: '#fff' },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.rule,
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: colors.surface,
-    color: colors.ink,
-  },
-  button: {
-    backgroundColor: colors.route,
-    borderRadius: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  buttonOutline: {
-    borderRadius: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  buttonText: { color: '#fff', fontWeight: '600' },
-  splitModeRow: { flexDirection: 'row', gap: 16, marginTop: 8 },
-  splitModeOption: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  splitModeLabel: { fontSize: 13, color: colors.inkSoft },
-  radio: { width: 14, height: 14, borderRadius: 7, borderWidth: 1, borderColor: colors.rule },
-  radioActive: { backgroundColor: colors.route, borderColor: colors.route },
-  customSplitRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  customSplitLabel: { fontSize: 13, color: colors.ink },
-  customSplitInput: {
-    borderWidth: 1,
-    borderColor: colors.rule,
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    width: 90,
-    backgroundColor: colors.surface,
-    color: colors.ink,
-  },
-  splitRemaining: { fontSize: 12 },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    empty: { color: colors.inkSoft, paddingVertical: 16 },
+    row: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.rule,
+    },
+    rowTitle: { fontSize: 15, fontWeight: '500', color: colors.ink },
+    rowSub: { fontSize: 12, color: colors.inkSoft },
+    categoryChip: {
+      backgroundColor: colors.ledgerSoft,
+      borderRadius: 4,
+      paddingHorizontal: 6,
+      paddingVertical: 1,
+    },
+    categoryChipText: { fontSize: 11, color: colors.inkSoft },
+    amount: { fontVariant: ['tabular-nums'], color: colors.ink },
+    breakdown: {
+      paddingLeft: 12,
+      borderLeftWidth: 2,
+      borderLeftColor: colors.rule,
+      marginVertical: 8,
+      gap: 8,
+    },
+    splitItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+    splitItemLabel: { fontSize: 13, color: colors.inkSoft, flex: 1 },
+    rowActions: { flexDirection: 'row', gap: 16, marginTop: 4 },
+    textBtn: { color: colors.route, fontSize: 13, fontWeight: '500' },
+    form: { flexDirection: 'row', gap: 8 },
+    payerLabel: { fontSize: 12, color: colors.inkSoft, marginTop: 10, marginBottom: 6 },
+    payerRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    payerChip: {
+      borderWidth: 1,
+      borderColor: colors.rule,
+      borderRadius: 14,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+    },
+    payerChipActive: { backgroundColor: colors.route, borderColor: colors.route },
+    payerChipText: { fontSize: 13, color: colors.ink },
+    payerChipTextActive: { color: '#fff' },
+    input: {
+      borderWidth: 1,
+      borderColor: colors.rule,
+      borderRadius: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      backgroundColor: colors.surface,
+      color: colors.ink,
+    },
+    button: {
+      backgroundColor: colors.route,
+      borderRadius: 6,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      alignItems: 'center',
+      marginTop: 10,
+    },
+    buttonOutline: {
+      borderRadius: 6,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      alignItems: 'center',
+      marginTop: 10,
+    },
+    buttonText: { color: '#fff', fontWeight: '600' },
+    splitModeRow: { flexDirection: 'row', gap: 16, marginTop: 8 },
+    splitModeOption: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    splitModeLabel: { fontSize: 13, color: colors.inkSoft },
+    radio: { width: 14, height: 14, borderRadius: 7, borderWidth: 1, borderColor: colors.rule },
+    radioActive: { backgroundColor: colors.route, borderColor: colors.route },
+    customSplitRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    customSplitLabel: { fontSize: 13, color: colors.ink },
+    customSplitInput: {
+      borderWidth: 1,
+      borderColor: colors.rule,
+      borderRadius: 4,
+      paddingHorizontal: 8,
+      paddingVertical: 6,
+      width: 90,
+      backgroundColor: colors.surface,
+      color: colors.ink,
+    },
+    splitRemaining: { fontSize: 12 },
+  });
+}

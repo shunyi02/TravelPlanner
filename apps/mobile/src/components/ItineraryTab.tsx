@@ -2,14 +2,14 @@ import { useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { Place, PlaceType, TripDetail } from '../api';
 import { api } from '../api';
-import { colors } from '../theme';
-
-interface NominatimResult {
-  place_id: number;
-  display_name: string;
-  lat: string;
-  lon: string;
-}
+import { useTheme, type ThemeColors } from '../theme';
+import { DayWeather } from './DayWeather';
+import type { DayForecast } from '../weather';
+import { fetchWeather } from '../weather';
+import { RouteMap, type RouteStop } from './RouteMap';
+import { SuggestedStopsPanel } from './SuggestedStopsPanel';
+import { LocationSearchField } from './LocationSearchField';
+import { AirportField } from './AirportField';
 
 function daysBetween(start: string, end: string): string[] {
   const days: string[] = [];
@@ -105,6 +105,30 @@ function sortTimeForDay(place: Place, day?: string): number {
   return place.visitDate ? new Date(place.visitDate).getTime() : 0;
 }
 
+/** Located stops/hotels from `list`, bucketed by day (each place's own first
+ *  day key, "" if unscheduled) and colored one hue per day. Simplified from
+ *  the web app's version: no per-traveler split-line sub-grouping, since
+ *  mobile has no per-day tab to make that extra detail worth the complexity. */
+function toRouteStops(list: Place[]): RouteStop[] {
+  const located = list.filter((p): p is Place & { lat: number; lng: number } => p.lat != null && p.lng != null);
+
+  const byDay = new Map<string, typeof located>();
+  for (const p of located) {
+    const d = dayKeysFor(p)[0] ?? '';
+    if (!byDay.has(d)) byDay.set(d, []);
+    byDay.get(d)!.push(p);
+  }
+
+  const result: RouteStop[] = [];
+  for (const [d, bucket] of byDay) {
+    const sorted = [...bucket].sort((a, b) => sortTimeForDay(a, d) - sortTimeForDay(b, d));
+    sorted.forEach((p, i) => {
+      result.push({ id: p.id, name: p.name, lat: p.lat, lng: p.lng, order: i + 1, colorGroup: d });
+    });
+  }
+  return result;
+}
+
 /** ISO datetime -> "YYYY-MM-DD HH:mm" in local time, for the plain-text date/time
  *  fields below (no native date picker is installed in this app). */
 function toLocalInput(iso: string): string {
@@ -142,6 +166,8 @@ function PlaceEditor({
   onCancel?: () => void;
   onSaved: () => void;
 }) {
+  const colors = useTheme();
+  const styles = createStyles(colors);
   const [type, setType] = useState<PlaceType>(initial?.type ?? 'STOP');
   const [name, setName] = useState(initial?.name ?? '');
   const [notes, setNotes] = useState(initial?.notes ?? '');
@@ -159,43 +185,8 @@ function PlaceEditor({
   const [locationQuery, setLocationQuery] = useState(initial?.type === 'STOP' ? initial.name : '');
   const [lat, setLat] = useState<number | undefined>(initial?.lat ?? undefined);
   const [lng, setLng] = useState<number | undefined>(initial?.lng ?? undefined);
-  const [locationResults, setLocationResults] = useState<NominatimResult[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [touchedLocation, setTouchedLocation] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Debounced Nominatim (OpenStreetMap) search — free, no API key.
-  // Rate-limited to ~1req/s per their usage policy, so wait for typing to pause.
-  useEffect(() => {
-    if (!touchedLocation || type !== 'STOP' || locationQuery.trim().length < 3) {
-      setLocationResults([]);
-      return;
-    }
-    const handle = setTimeout(async () => {
-      setSearching(true);
-      try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(locationQuery)}`,
-        );
-        const data: NominatimResult[] = await res.json();
-        setLocationResults(data);
-      } catch {
-        setLocationResults([]);
-      } finally {
-        setSearching(false);
-      }
-    }, 400);
-    return () => clearTimeout(handle);
-  }, [locationQuery, type, touchedLocation]);
-
-  const pickLocation = (result: NominatimResult) => {
-    setName(result.display_name.split(',')[0]);
-    setLat(parseFloat(result.lat));
-    setLng(parseFloat(result.lon));
-    setLocationQuery(result.display_name);
-    setLocationResults([]);
-  };
 
   const handleSave = async () => {
     setError(null);
@@ -246,32 +237,24 @@ function PlaceEditor({
       </View>
 
       {type === 'STOP' ? (
-        <View>
-          <TextInput
-            style={styles.input}
-            placeholder="Search a place…"
-            placeholderTextColor={colors.inkSoft}
-            value={locationQuery}
-            onChangeText={(v) => {
-              setTouchedLocation(true);
-              setLocationQuery(v);
-              setName(v);
-              setLat(undefined);
-              setLng(undefined);
-            }}
-          />
-          {searching && <Text style={styles.hint}>Searching…</Text>}
-          {locationResults.map((r) => (
-            <Pressable key={r.place_id} onPress={() => pickLocation(r)} style={styles.resultRow}>
-              <Text style={styles.resultText}>{r.display_name}</Text>
-            </Pressable>
-          ))}
-          {lat !== undefined && lng !== undefined && (
-            <Text style={[styles.hint, { color: colors.route }]}>
-              📍 {lat.toFixed(5)}, {lng.toFixed(5)}
-            </Text>
-          )}
-        </View>
+        <LocationSearchField
+          query={locationQuery}
+          onQueryChange={(v) => {
+            setLocationQuery(v);
+            setName(v);
+            setLat(undefined);
+            setLng(undefined);
+          }}
+          onPick={(result) => {
+            setName(result.name);
+            setLat(result.lat);
+            setLng(result.lng);
+            setLocationQuery(result.displayName);
+          }}
+          lat={lat}
+          lng={lng}
+          placeholder="Search a place…"
+        />
       ) : (
         <TextInput
           style={styles.input}
@@ -322,20 +305,12 @@ function PlaceEditor({
 
       {type === 'FLIGHT' && (
         <>
-          <TextInput
-            style={styles.input}
-            placeholder="Departure airport"
-            placeholderTextColor={colors.inkSoft}
-            value={departureAirport}
-            onChangeText={setDepartureAirport}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Arrival airport"
-            placeholderTextColor={colors.inkSoft}
-            value={arrivalAirport}
-            onChangeText={setArrivalAirport}
-          />
+          <View style={{ marginBottom: 8 }}>
+            <AirportField value={departureAirport} onChange={setDepartureAirport} placeholder="Departure airport" />
+          </View>
+          <View style={{ marginBottom: 8 }}>
+            <AirportField value={arrivalAirport} onChange={setArrivalAirport} placeholder="Arrival airport" />
+          </View>
           <TextInput
             style={styles.input}
             placeholder="Departure (YYYY-MM-DD HH:mm)"
@@ -380,6 +355,8 @@ export function ItineraryTab({
   places: Place[];
   onChange: () => void;
 }) {
+  const colors = useTheme();
+  const styles = createStyles(colors);
   const [startDate, setStartDate] = useState(trip.startDate?.slice(0, 10) ?? '');
   const [endDate, setEndDate] = useState(trip.endDate?.slice(0, 10) ?? '');
   const [dateError, setDateError] = useState<string | null>(null);
@@ -388,8 +365,23 @@ export function ItineraryTab({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [weather, setWeather] = useState<Map<string, DayForecast>>(new Map());
 
   const days = startDate && endDate ? daysBetween(startDate, endDate) : [];
+
+  useEffect(() => {
+    if (trip.destinationLat == null || trip.destinationLng == null || days.length === 0) {
+      setWeather(new Map());
+      return;
+    }
+    let cancelled = false;
+    fetchWeather(trip.destinationLat, trip.destinationLng, days[0], days[days.length - 1]).then((result) => {
+      if (!cancelled) setWeather(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [trip.destinationLat, trip.destinationLng, startDate, endDate]);
 
   const daySet = new Set(days);
   const byDay = new Map<string, Place[]>();
@@ -408,6 +400,8 @@ export function ItineraryTab({
   for (const [day, dayPlaces] of byDay) {
     dayPlaces.sort((a, b) => sortTimeForDay(a, day) - sortTimeForDay(b, day));
   }
+
+  const routeStops = toRouteStops(places);
 
   const handleSaveDates = async () => {
     setDateError(null);
@@ -524,6 +518,15 @@ export function ItineraryTab({
       {dateError ? <Text style={{ color: colors.owe, marginBottom: 16 }}>{dateError}</Text> : null}
       {deleteError ? <Text style={{ color: colors.owe, marginBottom: 16 }}>{deleteError}</Text> : null}
 
+      <SuggestedStopsPanel
+        tripId={tripId}
+        trip={trip}
+        existingPlaceNames={places.map((p) => p.name)}
+        onAdded={onChange}
+      />
+
+      <RouteMap stops={routeStops} />
+
       <Pressable
         style={[styles.buttonOutline, { alignSelf: 'flex-start', marginBottom: 16 }]}
         onPress={() => setShowAddForm(!showAddForm)}
@@ -552,7 +555,9 @@ export function ItineraryTab({
         <View>
           {days.map((day) => (
             <View key={day} style={{ marginBottom: 20 }}>
-              <Text style={styles.dayHeader}>{formatDay(day)}</Text>
+              <Text style={styles.dayHeader}>
+                {formatDay(day)} <DayWeather forecast={weather.get(day)} compact />
+              </Text>
               {(byDay.get(day) ?? []).length === 0 ? (
                 <Text style={styles.empty}>No stops planned.</Text>
               ) : (
@@ -573,77 +578,79 @@ export function ItineraryTab({
   );
 }
 
-const styles = StyleSheet.create({
-  dateForm: { flexDirection: 'row', gap: 8, marginBottom: 16 },
-  empty: { color: colors.inkSoft, paddingVertical: 16 },
-  dayHeader: { fontSize: 15, fontWeight: '600', color: colors.ink, marginBottom: 8 },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.rule,
-    gap: 8,
-  },
-  stopIndex: { color: colors.inkSoft, fontSize: 12, width: 18 },
-  rowTitle: { fontSize: 15, fontWeight: '500', color: colors.ink },
-  rowSub: { fontSize: 12, color: colors.inkSoft, marginTop: 2 },
-  rowActions: { flexDirection: 'row', gap: 16, paddingVertical: 8, paddingLeft: 12 },
-  textBtn: { color: colors.route, fontSize: 13, fontWeight: '500' },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.rule,
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: colors.surface,
-    color: colors.ink,
-    marginBottom: 8,
-  },
-  button: {
-    backgroundColor: colors.route,
-    borderRadius: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  buttonOutline: {
-    borderWidth: 1,
-    borderColor: colors.route,
-    borderRadius: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  buttonText: { color: '#fff', fontWeight: '600' },
-  editor: {
-    borderWidth: 1,
-    borderColor: colors.rule,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-    backgroundColor: colors.surface,
-  },
-  typeRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
-  typeButton: {
-    borderWidth: 1,
-    borderColor: colors.rule,
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  typeButtonActive: { backgroundColor: colors.route, borderColor: colors.route },
-  typeButtonText: { fontSize: 12, color: colors.ink },
-  typeButtonTextActive: { color: '#fff' },
-  hint: { fontSize: 12, color: colors.inkSoft, marginTop: -4, marginBottom: 8 },
-  resultRow: {
-    borderWidth: 1,
-    borderColor: colors.rule,
-    borderTopWidth: 0,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  resultText: { fontSize: 13, color: colors.ink },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    dateForm: { flexDirection: 'row', gap: 8, marginBottom: 16 },
+    empty: { color: colors.inkSoft, paddingVertical: 16 },
+    dayHeader: { fontSize: 15, fontWeight: '600', color: colors.ink, marginBottom: 8 },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.rule,
+      gap: 8,
+    },
+    stopIndex: { color: colors.inkSoft, fontSize: 12, width: 18 },
+    rowTitle: { fontSize: 15, fontWeight: '500', color: colors.ink },
+    rowSub: { fontSize: 12, color: colors.inkSoft, marginTop: 2 },
+    rowActions: { flexDirection: 'row', gap: 16, paddingVertical: 8, paddingLeft: 12 },
+    textBtn: { color: colors.route, fontSize: 13, fontWeight: '500' },
+    input: {
+      borderWidth: 1,
+      borderColor: colors.rule,
+      borderRadius: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      backgroundColor: colors.surface,
+      color: colors.ink,
+      marginBottom: 8,
+    },
+    button: {
+      backgroundColor: colors.route,
+      borderRadius: 6,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    buttonOutline: {
+      borderWidth: 1,
+      borderColor: colors.route,
+      borderRadius: 6,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    buttonText: { color: '#fff', fontWeight: '600' },
+    editor: {
+      borderWidth: 1,
+      borderColor: colors.rule,
+      borderRadius: 8,
+      padding: 12,
+      marginBottom: 16,
+      backgroundColor: colors.surface,
+    },
+    typeRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
+    typeButton: {
+      borderWidth: 1,
+      borderColor: colors.rule,
+      borderRadius: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+    },
+    typeButtonActive: { backgroundColor: colors.route, borderColor: colors.route },
+    typeButtonText: { fontSize: 12, color: colors.ink },
+    typeButtonTextActive: { color: '#fff' },
+    hint: { fontSize: 12, color: colors.inkSoft, marginTop: -4, marginBottom: 8 },
+    resultRow: {
+      borderWidth: 1,
+      borderColor: colors.rule,
+      borderTopWidth: 0,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+    },
+    resultText: { fontSize: 13, color: colors.ink },
+  });
+}

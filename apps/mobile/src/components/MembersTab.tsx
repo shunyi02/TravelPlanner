@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { TripDetail } from '../api';
 import { api } from '../api';
-import { colors } from '../theme';
+import { useTheme, type ThemeColors } from '../theme';
 
 export function MembersTab({
   tripId,
@@ -15,6 +15,8 @@ export function MembersTab({
   isOwner: boolean;
   onChange: () => void;
 }) {
+  const colors = useTheme();
+  const styles = createStyles(colors);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [saving, setSaving] = useState(false);
@@ -114,7 +116,8 @@ export function MembersTab({
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -152,4 +155,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   buttonText: { color: '#fff', fontWeight: '600' },
-});
+  });
+}
