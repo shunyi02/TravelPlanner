@@ -51,8 +51,9 @@ export function TripDetailPage() {
 
   return (
     <div className="main">
-      <h1 className="page-title">{trip.name}</h1>
-      {(trip.startDate || trip.endDate) && (
+      {/* The itinerary tab carries its own hero with the trip name and dates. */}
+      {tab !== 'itinerary' && <h1 className="page-title">{trip.name}</h1>}
+      {tab !== 'itinerary' && (trip.startDate || trip.endDate) && (
         <p className="trip-dates">
           {trip.startDate?.slice(0, 10)} {trip.endDate ? `– ${trip.endDate.slice(0, 10)}` : ''}
         </p>

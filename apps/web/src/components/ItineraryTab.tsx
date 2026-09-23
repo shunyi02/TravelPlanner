@@ -41,6 +41,48 @@ function formatDay(iso: string) {
   });
 }
 
+/** "8/27" — the big numeral on each day card. */
+function formatShortDate(day: string): string {
+  const d = new Date(day + 'T00:00:00Z');
+  return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`;
+}
+
+function formatWeekday(day: string): string {
+  return new Date(day + 'T00:00:00Z').toLocaleDateString(undefined, { weekday: 'short', timeZone: 'UTC' });
+}
+
+/** "27 AUG" — the hero eyebrow's date range. */
+function formatEyebrowDate(day: string): string {
+  const d = new Date(day + 'T00:00:00Z');
+  const month = d.toLocaleDateString('en', { month: 'short', timeZone: 'UTC' }).toUpperCase();
+  return `${String(d.getUTCDate()).padStart(2, '0')} ${month}`;
+}
+
+/** Hero badge: where today sits relative to the trip. */
+function tripStatus(days: string[]): string | null {
+  if (days.length === 0) return null;
+  const today = new Date().toISOString().slice(0, 10);
+  if (today < days[0]) return 'Upcoming';
+  if (today > days[days.length - 1]) return 'Completed';
+  return 'On the road';
+}
+
+/** One-line heads-up for the selected day: rain (WMO codes 51+) wins, else a
+ *  quick shape-of-the-day summary. */
+function dayTip(dayPlaces: Place[], forecast?: DayForecast): { label: string; text: string } | null {
+  if (forecast && forecast.code >= 51) {
+    return { label: 'Rain tip', text: 'Showers forecast — keep an indoor backup for outdoor stops.' };
+  }
+  if (dayPlaces.length === 0) return { label: 'Free day', text: 'Nothing planned yet — add a stop or keep it slow.' };
+  const first = dayPlaces[0];
+  const time = first.type === 'HOTEL' ? null : formatTime(first.type === 'FLIGHT' ? first.departureTime : first.visitDate);
+  const count = `${dayPlaces.length} stop${dayPlaces.length === 1 ? '' : 's'}`;
+  return {
+    label: 'Today',
+    text: `${count} planned${time ? `, starting ${time} at ${first.name}` : ''}.`,
+  };
+}
+
 function formatTime(iso?: string | null): string {
   if (!iso) return '';
   return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
@@ -160,6 +202,30 @@ export function ItineraryTab({
   const [dayAssigneeIds, setDayAssigneeIds] = useState<string[]>([]);
   const [assigningBusy, setAssigningBusy] = useState(false);
   const [assignError, setAssignError] = useState<string | null>(null);
+  // Check-off state is a personal, on-the-road convenience, so it lives in
+  // this browser only rather than on the shared trip.
+  const doneKey = `itinerary-done:${tripId}`;
+  const [doneIds, setDoneIds] = useState<Set<string>>(() => {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(doneKey) ?? '[]'));
+    } catch {
+      return new Set();
+    }
+  });
+
+  const toggleDone = (id: string) => {
+    setDoneIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      try {
+        localStorage.setItem(doneKey, JSON.stringify([...next]));
+      } catch {
+        // Storage blocked (private mode) — keep the in-memory state.
+      }
+      return next;
+    });
+  };
 
   const handleSaveDates = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -427,7 +493,16 @@ export function ItineraryTab({
         onDragEnd={() => setDragPlace(null)}
         style={opts?.draggable ? { cursor: 'grab', opacity: dragPlace?.id === place.id ? 0.5 : 1 } : undefined}
       >
-        <div className="row-main">
+        <div className={`row-main${doneIds.has(place.id) ? ' is-done' : ''}`}>
+          <button
+            type="button"
+            className="stop-check no-print"
+            aria-pressed={doneIds.has(place.id)}
+            aria-label={doneIds.has(place.id) ? `Mark ${place.name} not done` : `Mark ${place.name} done`}
+            onClick={() => toggleDone(place.id)}
+          >
+            {doneIds.has(place.id) ? '✓' : ''}
+          </button>
           {opts?.index !== undefined && <span className="stop-index">{opts.index + 1}</span>}
           {colorGroupByPlaceId.has(place.id) && (
             <span
@@ -471,8 +546,44 @@ export function ItineraryTab({
     );
   };
 
+  const doneCount = places.filter((p) => doneIds.has(p.id)).length;
+  const status = tripStatus(days);
+  const eyebrowPlace = (trip.destinationName ?? '').split(',')[0].toUpperCase();
+  const eyebrowDates = days.length > 0 ? `${formatEyebrowDate(days[0])} — ${formatEyebrowDate(days[days.length - 1])}` : '';
+
   return (
     <div>
+      <section className="itin-hero">
+        <div className="itin-hero-top">
+          <p className="itin-hero-eyebrow">{[eyebrowPlace, eyebrowDates].filter(Boolean).join(' · ')}</p>
+          {status && <span className="itin-hero-badge">{status}</span>}
+        </div>
+        <h1 className="itin-hero-title">{trip.name}</h1>
+        <p className="itin-hero-sub">
+          {[trip.destinationName, 'Tap to check off each stop', 'Map follows the day'].filter(Boolean).join(' · ')}
+        </p>
+        <div className="itin-hero-stats">
+          <div className="itin-stat">
+            <span className="itin-stat-value">
+              {doneCount} / {places.length}
+            </span>
+            <span className="itin-stat-label">Stops checked</span>
+          </div>
+          {days.length > 0 && (
+            <div className="itin-stat">
+              <span className="itin-stat-value">
+                {days.length} DAY{days.length === 1 ? '' : 'S'}
+              </span>
+              <span className="itin-stat-label">Main itinerary</span>
+            </div>
+          )}
+          <div className="itin-stat">
+            <span className="itin-stat-value">{trip.currency}</span>
+            <span className="itin-stat-label">Trip currency</span>
+          </div>
+        </div>
+      </section>
+
       <form className="form-inline no-print" onSubmit={handleSaveDates} style={{ marginBottom: 24 }}>
         <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
         <span>to</span>
@@ -529,16 +640,50 @@ export function ItineraryTab({
         (() => {
           return (
             <>
-              <div className="tab-row no-print" style={{ marginBottom: 16 }}>
-                <button className={currentDay === null ? 'active' : ''} onClick={() => setView('overview')}>
-                  Overview
+              <div className="itin-route-head">
+                <h2 className="itin-route-title">{currentDay ? 'Today’s route' : 'All days'}</h2>
+                {currentDay && (
+                  <span className="itin-route-meta">
+                    DAY {days.indexOf(currentDay) + 1} / {formatWeekday(currentDay).toUpperCase()}
+                  </span>
+                )}
+              </div>
+              <div className="day-cards no-print">
+                <button
+                  type="button"
+                  className={`day-card${currentDay === null ? ' active' : ''}`}
+                  onClick={() => setView('overview')}
+                >
+                  <span className="day-card-date">All</span>
+                  <span className="day-card-sub">Overview · {days.length} days</span>
                 </button>
-                {days.map((day) => (
-                  <button key={day} className={currentDay === day ? 'active' : ''} onClick={() => setView(day)}>
-                    {formatDay(day)} <DayWeather forecast={weather.get(day)} compact />
+                {days.map((day, i) => (
+                  <button
+                    key={day}
+                    type="button"
+                    className={`day-card${currentDay === day ? ' active' : ''}`}
+                    onClick={() => setView(day)}
+                  >
+                    <span className="day-card-date">
+                      {formatShortDate(day)} <DayWeather forecast={weather.get(day)} compact />
+                    </span>
+                    <span className="day-card-sub">
+                      {formatWeekday(day)} · Day {i + 1}
+                    </span>
                   </button>
                 ))}
               </div>
+              {currentDay &&
+                (() => {
+                  const tip = dayTip(byDay.get(currentDay) ?? [], weather.get(currentDay));
+                  return (
+                    tip && (
+                      <div className="itin-tip">
+                        <strong>{tip.label}:</strong> {tip.text}
+                      </div>
+                    )
+                  );
+                })()}
 
               {currentDay === null ? (
                 <>
