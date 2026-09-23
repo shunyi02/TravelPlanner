@@ -2,8 +2,17 @@
  * itinerary's language — Georgia section titles, monospace times, --hero ink
  * and --highlight accents — so it follows the app theme. */
 
+/* Flights and hotels side by side when the page is wide enough. */
+.bookings {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr));
+  gap: 0 32px;
+  align-items: start;
+}
+
 .booking-section {
   margin-bottom: 28px;
+  min-width: 0;
 }
 
 .booking-section-head {

@@ -52,15 +52,8 @@ export function TripDetailPage() {
   const memberNames = Object.fromEntries(trip.members.map((m) => [m.userId, m.user.name]));
 
   return (
-    <div className="main">
-      {/* On the itinerary tab the hero carries the trip name and dates. */}
-      {tab === 'itinerary' && <TripHero trip={trip} />}
-      {tab !== 'itinerary' && <h1 className="page-title">{trip.name}</h1>}
-      {tab !== 'itinerary' && (trip.startDate || trip.endDate) && (
-        <p className="trip-dates">
-          {trip.startDate?.slice(0, 10)} {trip.endDate ? `– ${trip.endDate.slice(0, 10)}` : ''}
-        </p>
-      )}
+    <div className="main main-wide">
+      <TripHero trip={trip} />
 
       <div className="tab-row no-print">
         <button className={tab === 'itinerary' ? 'active' : ''} onClick={() => setTab('itinerary')}>

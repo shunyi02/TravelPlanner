@@ -1,10 +1,5 @@
 /* TripDetailPage: the trip header and its section tab row. */
 
-.trip-dates {
-  color: var(--ink-soft);
-  margin: 0 0 32px;
-}
-
 .tab-row {
   display: flex;
   gap: 2px;

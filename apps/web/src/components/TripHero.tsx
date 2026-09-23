@@ -23,7 +23,7 @@ function tripStatus(start: string | null, end: string | null): string | null {
   return 'Wrapped up';
 }
 
-/** Dark banner at the top of the itinerary: dates, title, and three stat cards.
+/** Dark banner at the top of every trip tab: dates, title, and three stat cards.
  *  Mirrors the mobile app's TripHero (apps/mobile/src/components/TripHero.tsx). */
 export function TripHero({ trip }: { trip: TripDetail }) {
   const stops = trip.places.filter((p) => p.type === 'STOP').length;

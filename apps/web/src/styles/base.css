@@ -97,6 +97,11 @@ input:disabled {
   }
 }
 
+/* Data-heavy pages (trip detail) use the full width beside the sidebar. */
+.main-wide {
+  max-width: 1280px;
+}
+
 .main-centered {
   max-width: 900px;
   margin: 0 auto;

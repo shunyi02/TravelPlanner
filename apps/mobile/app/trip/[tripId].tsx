@@ -77,7 +77,7 @@ export default function TripDetailScreen() {
 
   return (
     <ScrollView style={styles.container}>
-      {tab === 'itinerary' && <TripHero trip={trip} />}
+      <TripHero trip={trip} />
       <View style={{ padding: 20 }}>
       {isOwner ? (
         <View style={styles.currencyRow}>
