@@ -51,22 +51,6 @@ function formatWeekday(day: string): string {
   return new Date(day + 'T00:00:00Z').toLocaleDateString(undefined, { weekday: 'short', timeZone: 'UTC' });
 }
 
-/** "27 AUG" — the hero eyebrow's date range. */
-function formatEyebrowDate(day: string): string {
-  const d = new Date(day + 'T00:00:00Z');
-  const month = d.toLocaleDateString('en', { month: 'short', timeZone: 'UTC' }).toUpperCase();
-  return `${String(d.getUTCDate()).padStart(2, '0')} ${month}`;
-}
-
-/** Hero badge: where today sits relative to the trip. */
-function tripStatus(days: string[]): string | null {
-  if (days.length === 0) return null;
-  const today = new Date().toISOString().slice(0, 10);
-  if (today < days[0]) return 'Upcoming';
-  if (today > days[days.length - 1]) return 'Completed';
-  return 'On the road';
-}
-
 /** One-line heads-up for the selected day: rain (WMO codes 51+) wins, else a
  *  quick shape-of-the-day summary. */
 function dayTip(dayPlaces: Place[], forecast?: DayForecast): { label: string; text: string } | null {
@@ -546,44 +530,8 @@ export function ItineraryTab({
     );
   };
 
-  const doneCount = places.filter((p) => doneIds.has(p.id)).length;
-  const status = tripStatus(days);
-  const eyebrowPlace = (trip.destinationName ?? '').split(',')[0].toUpperCase();
-  const eyebrowDates = days.length > 0 ? `${formatEyebrowDate(days[0])} — ${formatEyebrowDate(days[days.length - 1])}` : '';
-
   return (
     <div>
-      <section className="itin-hero">
-        <div className="itin-hero-top">
-          <p className="itin-hero-eyebrow">{[eyebrowPlace, eyebrowDates].filter(Boolean).join(' · ')}</p>
-          {status && <span className="itin-hero-badge">{status}</span>}
-        </div>
-        <h1 className="itin-hero-title">{trip.name}</h1>
-        <p className="itin-hero-sub">
-          {[trip.destinationName, 'Tap to check off each stop', 'Map follows the day'].filter(Boolean).join(' · ')}
-        </p>
-        <div className="itin-hero-stats">
-          <div className="itin-stat">
-            <span className="itin-stat-value">
-              {doneCount} / {places.length}
-            </span>
-            <span className="itin-stat-label">Stops checked</span>
-          </div>
-          {days.length > 0 && (
-            <div className="itin-stat">
-              <span className="itin-stat-value">
-                {days.length} DAY{days.length === 1 ? '' : 'S'}
-              </span>
-              <span className="itin-stat-label">Main itinerary</span>
-            </div>
-          )}
-          <div className="itin-stat">
-            <span className="itin-stat-value">{trip.currency}</span>
-            <span className="itin-stat-label">Trip currency</span>
-          </div>
-        </div>
-      </section>
-
       <form className="form-inline no-print" onSubmit={handleSaveDates} style={{ marginBottom: 24 }}>
         <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
         <span>to</span>

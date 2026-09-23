@@ -10,6 +10,9 @@
   --ledger-soft: #fbf0df;
   --owe: #e0483b;
   --owe-soft: #fceae8;
+  /* Trip hero banner and its warm accent (selected day, badge). */
+  --hero: #11302a;
+  --highlight: #ecb34f;
 
   /* Renders as true SF Pro on macOS/iOS/Safari; Inter (already loaded, the
    * closest open substitute) is the fallback everywhere else. Display and
