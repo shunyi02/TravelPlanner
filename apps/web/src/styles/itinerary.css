@@ -279,3 +279,243 @@
   font-size: 12px;
   align-self: flex-start;
 }
+
+/* Trip hero (TripHero) + itinerary day picker. Mirrors the mobile app's
+ * TripHero: dark themed banner (--hero), gold accent (--highlight), serif
+ * title and monospace eyebrow/stats using system fonts only. */
+
+.itin-hero {
+  --hero-ink: #f6f0e1;
+  --hero-soft: rgba(246, 240, 225, 0.72);
+
+  position: relative;
+  overflow: hidden;
+  background: var(--hero);
+  color: var(--hero-ink);
+  border-radius: var(--radius-lg);
+  padding: 24px 24px 28px;
+  margin-bottom: 24px;
+}
+
+/* The thin gold arc sweeping in from the top-right corner. */
+.itin-hero::before {
+  content: '';
+  position: absolute;
+  width: 460px;
+  height: 460px;
+  top: -240px;
+  right: -180px;
+  border: 1px solid var(--highlight);
+  opacity: 0.55;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.itin-hero > * {
+  position: relative;
+}
+
+.itin-hero-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.itin-hero-eyebrow,
+.itin-hero-stat-value,
+.itin-route-meta,
+.day-card-date {
+  font-family: ui-monospace, Menlo, monospace;
+}
+
+.itin-hero-eyebrow {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 2px;
+  color: var(--hero-soft);
+  white-space: pre;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.itin-hero-badge {
+  flex-shrink: 0;
+  background: var(--highlight);
+  color: var(--hero);
+  font-weight: 700;
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+}
+
+.itin-hero-title,
+.itin-route-title {
+  font-family: Georgia, serif;
+  font-weight: 700;
+}
+
+h1.itin-hero-title {
+  margin: 36px 0 0;
+  font-size: 40px;
+  line-height: 48px;
+  color: var(--hero-ink);
+}
+
+.itin-hero-sub {
+  margin: 8px 0 0;
+  font-size: 15px;
+  color: var(--hero-soft);
+  white-space: pre-wrap;
+}
+
+.itin-hero-stats {
+  display: flex;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.itin-hero-stat {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-md);
+}
+
+.itin-hero-stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--highlight);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.itin-hero-stat-label {
+  font-size: 12px;
+  margin-top: 6px;
+  color: var(--hero-soft);
+}
+
+.itin-route-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 28px 0 14px;
+}
+
+.itin-route-title {
+  margin: 0;
+  font-size: 26px;
+  color: var(--hero);
+}
+
+.itin-route-meta {
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  color: #c0553a;
+}
+
+.day-cards {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 2px 2px 8px;
+  margin-bottom: 16px;
+  scroll-snap-type: x proximity;
+}
+
+.day-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-width: 140px;
+  padding: 14px 18px;
+  text-align: left;
+  background: #fdf9f0;
+  border: 1.5px solid #e6dcc8;
+  border-radius: var(--radius-lg);
+  scroll-snap-align: start;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.day-card.active {
+  background: var(--highlight);
+  border-color: var(--highlight);
+  box-shadow: 0 6px 16px rgba(236, 179, 79, 0.35);
+}
+
+.day-card-date {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--hero);
+}
+
+.day-card-sub {
+  font-size: 13px;
+  color: #8a7f6c;
+}
+
+.day-card.active .day-card-sub {
+  color: #5c4a22;
+}
+
+.itin-tip {
+  background: #e6efe9;
+  border-left: 4px solid #5d8c6b;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  color: #26382f;
+}
+
+.itin-tip strong {
+  color: var(--hero);
+}
+
+.stop-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-right: 10px;
+  flex-shrink: 0;
+  align-self: center;
+  padding: 0;
+  border: 1.5px solid #b7ab94;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--hero);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.stop-check[aria-pressed='true'] {
+  background: var(--highlight);
+  border-color: var(--highlight);
+}
+
+.row-main.is-done .row-title {
+  text-decoration: line-through;
+  color: var(--ink-soft);
+}
+
+/* Phones: full-bleed like the mobile app — cancel .main's 24px padding. */
+@media (max-width: 720px) {
+  .itin-hero {
+    margin: -24px -24px 24px;
+    border-radius: 0;
+    padding: 24px 20px 28px;
+  }
+}

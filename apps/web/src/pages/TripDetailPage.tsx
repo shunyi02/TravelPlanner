@@ -6,6 +6,7 @@ import { ItineraryTab } from '../components/ItineraryTab';
 import { ExpensesTab } from '../components/ExpensesTab';
 import { BalancesTab } from '../components/BalancesTab';
 import { ReportTab } from '../components/ReportTab';
+import { TripHero } from '../components/TripHero';
 import { notifyTripChanged, onTripChanged } from '../tripEvents';
 
 type Tab = 'itinerary' | 'expenses' | 'balances' | 'report';
@@ -51,8 +52,10 @@ export function TripDetailPage() {
 
   return (
     <div className="main">
-      <h1 className="page-title">{trip.name}</h1>
-      {(trip.startDate || trip.endDate) && (
+      {/* On the itinerary tab the hero carries the trip name and dates. */}
+      {tab === 'itinerary' && <TripHero trip={trip} />}
+      {tab !== 'itinerary' && <h1 className="page-title">{trip.name}</h1>}
+      {tab !== 'itinerary' && (trip.startDate || trip.endDate) && (
         <p className="trip-dates">
           {trip.startDate?.slice(0, 10)} {trip.endDate ? `– ${trip.endDate.slice(0, 10)}` : ''}
         </p>

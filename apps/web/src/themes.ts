@@ -20,6 +20,8 @@ export const THEMES: Theme[] = [
       '--ledger-soft': '#f6efe0',
       '--owe': '#9c4a3c',
       '--owe-soft': '#f5e8e5',
+      '--hero': '#11302a',
+      '--highlight': '#ecb34f',
     },
   },
   {
@@ -37,6 +39,8 @@ export const THEMES: Theme[] = [
       '--ledger-soft': '#f5eede',
       '--owe': '#a4433a',
       '--owe-soft': '#f5e6e4',
+      '--hero': '#12283d',
+      '--highlight': '#ecb34f',
     },
   },
   {
@@ -54,6 +58,8 @@ export const THEMES: Theme[] = [
       '--ledger-soft': '#f5efe0',
       '--owe': '#a23f4e',
       '--owe-soft': '#f5e3e6',
+      '--hero': '#281a33',
+      '--highlight': '#e9b457',
     },
   },
   {
@@ -71,6 +77,8 @@ export const THEMES: Theme[] = [
       '--ledger-soft': '#f0eddb',
       '--owe': '#9c3c3c',
       '--owe-soft': '#f4e0e0',
+      '--hero': '#35211a',
+      '--highlight': '#e9b457',
     },
   },
 ];
