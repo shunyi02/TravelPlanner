@@ -152,6 +152,11 @@ function parseLocalInput(raw: string): string | undefined {
 
 type PlaceInput = Parameters<typeof api.addPlace>[1];
 
+/** Name for a flight the user left unnamed, e.g. "SIN → NRT". */
+function flightLabel(from: string, to: string): string {
+  return from || to ? `${from || '?'} → ${to || '?'}` : 'Flight';
+}
+
 /** Add/edit form for a single itinerary item. Used both for creating a new
  *  place (no `initial`) and editing an existing one (`initial` set, type
  *  switchable). */
@@ -190,13 +195,17 @@ function PlaceEditor({
 
   const handleSave = async () => {
     setError(null);
-    if (!name.trim()) {
+    // Flights name themselves from their airports; stops and hotels need a name.
+    if (type !== 'FLIGHT' && !name.trim()) {
       setError('Name is required');
       return;
     }
     setSaving(true);
     try {
-      const payload: PlaceInput = { type, name: name.trim() };
+      const payload: PlaceInput = {
+        type,
+        name: name.trim() || flightLabel(departureAirport.trim(), arrivalAirport.trim()),
+      };
       if (type === 'STOP') {
         payload.visitDate = parseLocalInput(visitDateTime);
         payload.lat = lat;
@@ -258,7 +267,7 @@ function PlaceEditor({
       ) : (
         <TextInput
           style={styles.input}
-          placeholder="Name"
+          placeholder={type === 'FLIGHT' ? 'Flight number or airline (optional)' : 'Name'}
           placeholderTextColor={colors.inkSoft}
           value={name}
           onChangeText={setName}

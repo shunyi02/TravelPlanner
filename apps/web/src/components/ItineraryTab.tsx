@@ -468,25 +468,34 @@ export function ItineraryTab({
     const onCurrentDayTab = currentDay !== null && opts?.day === currentDay;
     const colorGroupByPlaceId = onCurrentDayTab ? dayColorGroupByPlaceId : overviewColorGroupByPlaceId;
     const routeColors = onCurrentDayTab ? dayColors : overviewColors;
+    const isStop = place.type === 'STOP';
+    // Flights and hotels are pinned to their booked times, so only stops move between days.
+    const draggable = isStop && opts?.draggable;
     return (
       <div
         className="ledger-row"
         key={place.id}
-        draggable={opts?.draggable}
+        draggable={draggable}
         onDragStart={() => setDragPlace({ id: place.id, sourceDay: opts?.day })}
         onDragEnd={() => setDragPlace(null)}
-        style={opts?.draggable ? { cursor: 'grab', opacity: dragPlace?.id === place.id ? 0.5 : 1 } : undefined}
+        style={draggable ? { cursor: 'grab', opacity: dragPlace?.id === place.id ? 0.5 : 1 } : undefined}
       >
-        <div className={`row-main${doneIds.has(place.id) ? ' is-done' : ''}`}>
-          <button
-            type="button"
-            className="stop-check no-print"
-            aria-pressed={doneIds.has(place.id)}
-            aria-label={doneIds.has(place.id) ? `Mark ${place.name} not done` : `Mark ${place.name} done`}
-            onClick={() => toggleDone(place.id)}
-          >
-            {doneIds.has(place.id) ? '✓' : ''}
-          </button>
+        <div className={`row-main${!isStop ? ' is-booking' : doneIds.has(place.id) ? ' is-done' : ''}`}>
+          {/* Only stops get checked off; flights and hotels are fixed bookings.
+              The spacer keeps their titles aligned with the stops'. */}
+          {isStop ? (
+            <button
+              type="button"
+              className="stop-check no-print"
+              aria-pressed={doneIds.has(place.id)}
+              aria-label={doneIds.has(place.id) ? `Mark ${place.name} not done` : `Mark ${place.name} done`}
+              onClick={() => toggleDone(place.id)}
+            >
+              {doneIds.has(place.id) ? '✓' : ''}
+            </button>
+          ) : (
+            <span className="stop-check-spacer no-print" aria-hidden="true" />
+          )}
           {opts?.index !== undefined && <span className="stop-index">{opts.index + 1}</span>}
           {colorGroupByPlaceId.has(place.id) && (
             <span

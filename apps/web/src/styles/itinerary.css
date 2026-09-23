@@ -506,6 +506,18 @@ h1.itin-hero-title {
   border-color: var(--highlight);
 }
 
+.stop-check-spacer {
+  width: 20px;
+  margin-right: 10px;
+  flex-shrink: 0;
+}
+
+/* Flights and hotels: fixed bookings, greyed so the movable stops stand out. */
+.row-main.is-booking .row-title,
+.row-main.is-booking .row-sub {
+  color: var(--ink-soft);
+}
+
 .row-main.is-done .row-title {
   text-decoration: line-through;
   color: var(--ink-soft);

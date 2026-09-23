@@ -11,6 +11,11 @@ const PLACE_TYPE_INFO: Record<PlaceType, { label: string; icon: string; hint: st
   FLIGHT: { label: 'Flight', icon: '✈️', hint: 'A flight leg, one-way or round trip' },
 };
 
+/** Name for a flight the user left unnamed, e.g. "SIN → NRT". */
+function flightLabel(from: string, to: string): string {
+  return from || to ? `${from || '?'} → ${to || '?'}` : 'Flight';
+}
+
 /** "YYYY-MM-DD" + hour/minute -> a datetime-local value on that day. */
 function dayAt(day: string, hour: number, minute = 0): string {
   return `${day}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
@@ -108,14 +113,15 @@ export function AddItineraryItemModal({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!type || !name.trim()) return;
+    // Flights name themselves from their airports; stops and hotels need a place.
+    if (!type || (type !== 'FLIGHT' && !name.trim())) return;
     setSaving(true);
     setError(null);
     try {
       if (type === 'FLIGHT') {
         const flightData = {
           type,
-          name: name.trim(),
+          name: name.trim() || flightLabel(departureAirport, arrivalAirport),
           departureTime: departureTime || undefined,
           arrivalTime: arrivalTime || undefined,
           departureAirport: departureAirport || undefined,
@@ -129,7 +135,7 @@ export function AddItineraryItemModal({
           if (tripType === 'ROUND_TRIP') {
             await api.addPlace(tripId, {
               type,
-              name: `${name.trim()} (return)`,
+              name: name.trim() ? `${name.trim()} (return)` : flightLabel(arrivalAirport, departureAirport),
               departureTime: returnDepartureTime || undefined,
               arrivalTime: returnArrivalTime || undefined,
               // swapped: return leg goes arrival -> departure
@@ -235,7 +241,12 @@ export function AddItineraryItemModal({
               autoFocus
             />
           ) : (
-            <input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} autoFocus required />
+            <input
+              placeholder="Flight number or airline (optional)"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoFocus
+            />
           )}
 
           {type === 'STOP' && (
