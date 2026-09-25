@@ -25,7 +25,7 @@ function ResetPasswordForm() {
   };
 
   return (
-    <div className="main auth-page">
+    <main className="main auth-page">
       <div className="auth-brand">
         <span className="top-bar-logo" />
         <span className="auth-brand-name">Cuti</span>
@@ -58,7 +58,7 @@ function ResetPasswordForm() {
           </button>
         </form>
       )}
-    </div>
+    </main>
   );
 }
 
@@ -118,7 +118,7 @@ export function AuthPage({
   if (resetToken) return <ResetPasswordForm />;
 
   return (
-    <div className="main auth-page">
+    <main className="main auth-page">
       {onBack && (
         <button type="button" className="back-link auth-back" onClick={onBack}>
           ← Back
@@ -181,6 +181,6 @@ export function AuthPage({
           </button>
         )}
       </div>
-    </div>
+    </main>
   );
 }

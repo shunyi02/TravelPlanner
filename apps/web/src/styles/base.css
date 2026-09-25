@@ -28,6 +28,14 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 1px rgba(0, 0, 0, 0.03);
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.06);
 
+  /* Stacking order, lowest to highest. Leaflet maps are isolated (see
+   * .leaflet-container), so their internal layers never compete with these. */
+  --z-dropdown: 10;
+  --z-topbar: 50;
+  --z-menu: 60;
+  --z-modal: 2000;
+  --z-skip-link: 2100;
+
   /* Tokens derived per mode (the palette itself lives in themes.ts). */
   color-scheme: light;
   --on-route: #ffffff; /* label color on a solid --route fill */
@@ -50,9 +58,14 @@
 }
 
 html,
-body,
-#root {
+body {
   height: 100%;
+}
+
+/* min-height, not height: a fixed-height #root ends at the first screen, and
+ * the sticky .top-bar (whose containing block it is) scrolled away with it. */
+#root {
+  min-height: 100%;
 }
 
 /* Flex column so TopBar takes its natural height and .app-shell (or
@@ -129,6 +142,23 @@ input:disabled {
   margin: 0 auto;
 }
 
+/* Even out multi-line headings; avoid a lone last word in paragraphs. */
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+/* Keep each map's internal pane z-indexes (400-1000) inside the map, so a
+ * dropdown (e.g. a location search list over its preview map) stays on top. */
+.leaflet-container {
+  isolation: isolate;
+}
+
 h1.page-title {
   font-family: var(--font-display);
   font-size: 32px;
@@ -159,6 +189,8 @@ h1.page-title {
 }
 
 .btn {
+  display: inline-block; /* also used on <a>/<Link> */
+  text-decoration: none;
   padding: 9px 18px;
   border-radius: var(--radius-pill);
   border: none;
@@ -485,4 +517,15 @@ label.btn {
     max-width: none;
     padding: 0;
   }
+}
+
+/* NotFoundPage. */
+.not-found {
+  padding-top: 64px;
+}
+
+.not-found-body {
+  max-width: 46ch;
+  margin: 8px 0 24px;
+  color: var(--ink-soft);
 }

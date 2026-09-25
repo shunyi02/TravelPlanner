@@ -8,10 +8,44 @@
   min-height: 0;
 }
 
+/* Pages without the sidebar (profile, settings). */
+.app-shell-full {
+  grid-template-columns: 1fr;
+}
+
 @media (max-width: 720px) {
   .app-shell {
     grid-template-columns: 1fr;
   }
+}
+
+/* The routed page area; min-width lets wide tables/maps shrink in the grid. */
+.app-main {
+  min-width: 0;
+}
+
+.app-main:focus {
+  outline: none;
+}
+
+/* Hidden until a keyboard user tabs to it, then jumps focus past the top bar
+ * and sidebar to the page content. */
+.skip-link {
+  position: absolute;
+  left: 16px;
+  top: -60px;
+  z-index: var(--z-skip-link);
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: var(--shadow-md);
+}
+
+.skip-link:focus {
+  top: 12px;
 }
 
 .top-bar {
@@ -22,7 +56,7 @@
   border-bottom: 1px solid var(--rule);
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: var(--z-topbar);
   background: var(--surface-glass);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
@@ -187,7 +221,7 @@
   border-radius: var(--radius-md);
   padding: 6px;
   box-shadow: var(--shadow-md);
-  z-index: 60;
+  z-index: var(--z-menu);
 }
 
 .top-bar-profile-menu-item {

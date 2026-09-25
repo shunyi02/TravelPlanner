@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, type Trip } from '../api';
 import { AddTripModal } from '../components/AddTripModal';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 const DAY_MS = 86_400_000;
 
@@ -266,35 +267,11 @@ export function TripsLandingPage() {
       )}
 
       {confirmDelete && (
-        <div
-          className="modal-backdrop"
-          onClick={() => setConfirmDelete(null)}
-        >
-          <div
-            className="modal"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p>
-              Delete "{confirmDelete.name}"? This can't be undone.
-            </p>
-
-            <div className="form-actions">
-              <button
-                className="btn btn-outline"
-                onClick={() => setConfirmDelete(null)}
-              >
-                Cancel
-              </button>
-
-              <button
-                className="btn btn-danger"
-                onClick={handleDelete}
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          message={`Delete "${confirmDelete.name}"? This can't be undone.`}
+          onConfirm={handleDelete}
+          onCancel={() => setConfirmDelete(null)}
+        />
       )}
 
       {showModal && (

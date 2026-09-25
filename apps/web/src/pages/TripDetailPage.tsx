@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { api, type TripDetail as TripDetailType, type Expense } from '../api';
 import { useAuth } from '../authContext';
 import { ItineraryTab } from '../components/ItineraryTab';
@@ -46,8 +46,26 @@ export function TripDetailPage() {
   }, [load, tripId]);
 
   if (!tripId) return null;
-  if (error) return <div className="main"><p className="empty-state">Couldn't load trip: {error}</p></div>;
-  if (!trip) return <div className="main"><p className="empty-state">Loading…</p></div>;
+  if (error) {
+    return (
+      <div className="main">
+        <p className="form-error spaced-below">Couldn't load this trip: {error}</p>
+        <Link to="/" className="btn btn-outline">
+          Back to your trips
+        </Link>
+      </div>
+    );
+  }
+  if (!trip) {
+    // Same shape as the loaded page (hero banner, tab row, content) so nothing jumps.
+    return (
+      <div className="main main-wide" aria-busy="true" aria-label="Loading trip">
+        <div className="trip-skeleton-hero" />
+        <div className="trip-skeleton-tabs" />
+        <div className="trip-skeleton-body" />
+      </div>
+    );
+  }
 
   const memberNames = Object.fromEntries(trip.members.map((m) => [m.userId, m.user.name]));
 

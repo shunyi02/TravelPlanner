@@ -8,6 +8,7 @@ import { SuggestedStopsPanel } from './SuggestedStopsPanel';
 import type { DayForecast } from '../weather';
 import { fetchWeather } from '../weather';
 import { PLACE_ICONS } from '../placeIcons';
+import { ConfirmDialog } from './ConfirmDialog';
 
 function daysBetween(start: string, end: string): string[] {
   const days: string[] = [];
@@ -177,6 +178,7 @@ export function ItineraryTab({
   const [editingPlace, setEditingPlace] = useState<Place | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [confirmRemove, setConfirmRemove] = useState<Place | null>(null);
   const [dragPlace, setDragPlace] = useState<{ id: string; sourceDay?: string } | null>(null);
   const [dragOverDay, setDragOverDay] = useState<string | null>(null);
   const [moveError, setMoveError] = useState<string | null>(null);
@@ -227,7 +229,7 @@ export function ItineraryTab({
   };
 
   const handleDelete = async (place: Place) => {
-    if (!confirm(`Remove "${place.name}" from the itinerary?`)) return;
+    setConfirmRemove(null);
     setDeleteError(null);
     setDeletingId(place.id);
     try {
@@ -531,7 +533,7 @@ export function ItineraryTab({
           <button
             type="button"
             className="text-btn text-btn-danger"
-            onClick={() => handleDelete(place)}
+            onClick={() => setConfirmRemove(place)}
             disabled={deletingId === place.id}
           >
             {deletingId === place.id ? 'Removing…' : 'Remove'}
@@ -787,6 +789,14 @@ export function ItineraryTab({
             </div>
           </div>
         </div>
+      )}
+      {confirmRemove && (
+        <ConfirmDialog
+          message={`Remove "${confirmRemove.name}" from the itinerary?`}
+          confirmLabel="Remove"
+          onConfirm={() => handleDelete(confirmRemove)}
+          onCancel={() => setConfirmRemove(null)}
+        />
       )}
     </div>
   );

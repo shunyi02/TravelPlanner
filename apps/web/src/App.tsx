@@ -5,6 +5,7 @@ import { TripsLandingPage } from './pages/TripsLandingPage';
 import { TripDetailPage } from './pages/TripDetailPage';
 import { AuthPage } from './pages/AuthPage';
 import { LandingPage } from './pages/LandingPage';
+import { NotFoundPage } from './pages/NotFoundPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { SettingsPage } from './pages/SettingsPage';
 import { api, getResetToken, isLoggedIn, setSessionExpiredHandler, type CurrentUser } from './api';
@@ -34,6 +35,9 @@ function TopBar() {
 
   return (
     <header className="top-bar">
+      <a className="skip-link" href="#main-content">
+        Skip to content
+      </a>
       <Link to="/" className="top-bar-brand">
         <span className="top-bar-logo" />
         <span className="top-bar-name">Cuti</span>
@@ -94,14 +98,17 @@ function AuthedApp({ onLogout }: { onLogout: () => void }) {
   return (
     <AuthContext.Provider value={{ currentUser, onLogout, setCurrentUser }}>
       <TopBar />
-      <div className="app-shell" style={!showSidebar ? { gridTemplateColumns: '1fr' } : undefined}>
+      <div className={showSidebar ? 'app-shell' : 'app-shell app-shell-full'}>
         {showSidebar && <Sidebar />}
-        <Routes>
-          <Route path="/" element={<TripsLandingPage />} />
-          <Route path="/trips/:tripId" element={<TripDetailPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-        </Routes>
+        <main id="main-content" className="app-main" tabIndex={-1}>
+          <Routes>
+            <Route path="/" element={<TripsLandingPage />} />
+            <Route path="/trips/:tripId" element={<TripDetailPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </main>
       </div>
     </AuthContext.Provider>
   );

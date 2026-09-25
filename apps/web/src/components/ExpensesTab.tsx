@@ -16,6 +16,7 @@ import {
   type AmountMode,
   type SplitMode,
 } from './expenseShared';
+import { ConfirmDialog } from './ConfirmDialog';
 
 /** Groups expenses by calendar day (in the viewer's local time), preserving
  *  first-seen order, each with its day heading and spending total. */
@@ -95,6 +96,7 @@ export function ExpensesTab({
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<Expense | null>(null);
 
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterPaidBy, setFilterPaidBy] = useState('all');
@@ -234,7 +236,7 @@ export function ExpensesTab({
   };
 
   const handleDelete = async (expense: Expense) => {
-    if (!confirm(`Delete "${expense.description}"? This can't be undone.`)) return;
+    setConfirmDelete(null);
     try {
       await api.deleteExpense(tripId, expense.id);
       if (expandedId === expense.id) setExpandedId(null);
@@ -358,7 +360,7 @@ export function ExpensesTab({
                       className="text-btn text-btn-danger"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleDelete(expense);
+                        setConfirmDelete(expense);
                       }}
                     >
                       Delete
@@ -419,7 +421,7 @@ export function ExpensesTab({
                     )}
 
                     <div className="form-actions">
-                      <button type="button" className="text-btn text-btn-danger" onClick={() => handleDelete(expense)}>
+                      <button type="button" className="text-btn text-btn-danger" onClick={() => setConfirmDelete(expense)}>
                         Delete
                       </button>
                       <button type="button" className="btn btn-outline" onClick={() => startEdit(expense)}>
@@ -593,6 +595,13 @@ export function ExpensesTab({
             setShowAddModal(false);
             onChange();
           }}
+        />
+      )}
+      {confirmDelete && (
+        <ConfirmDialog
+          message={`Delete "${confirmDelete.description}"? This can't be undone.`}
+          onConfirm={() => handleDelete(confirmDelete)}
+          onCancel={() => setConfirmDelete(null)}
         />
       )}
     </div>

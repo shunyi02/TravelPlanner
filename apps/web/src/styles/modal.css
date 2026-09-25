@@ -7,8 +7,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Above Leaflet's own controls/panes, which reach z-index 1000. */
-  z-index: 2000;
+  z-index: var(--z-modal);
 }
 
 .modal-title {
@@ -45,4 +44,8 @@
   .modal {
     animation: none;
   }
+}
+
+.confirm-dialog-message {
+  margin: 0 0 8px;
 }
