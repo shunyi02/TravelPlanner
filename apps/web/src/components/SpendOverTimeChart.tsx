@@ -1,89 +1,75 @@
-import { useRef, useState } from 'react';
-import type { Expense } from '../api';
+import type { CSSProperties } from 'react';
+import { formatMoney } from '../format';
 
-const BAR_WIDTH = 24;
-const BAR_GAP = 16;
-const CHART_HEIGHT = 140;
-const BASELINE_Y = 150;
-const VIEW_HEIGHT = 190;
-
-function barPath(x: number, height: number): string {
-  const y = BASELINE_Y - height;
-  const r = Math.min(4, height, BAR_WIDTH / 2);
-  // Rounded top corners only — the bar stays flush with the baseline.
-  return `M ${x},${BASELINE_Y} L ${x},${y + r} A ${r},${r} 0 0 1 ${x + r},${y} L ${x + BAR_WIDTH - r},${y} A ${r},${r} 0 0 1 ${x + BAR_WIDTH},${y + r} L ${x + BAR_WIDTH},${BASELINE_Y} Z`;
-}
-
-/** One day's total spend, as a single-hue bar chart. A single series names
- *  itself in the title, so no legend is needed (per the dataviz skill). */
-export function SpendOverTimeChart({ expenses, currency }: { expenses: Expense[]; currency: string }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [hovered, setHovered] = useState<string | null>(null);
-  const [tooltip, setTooltip] = useState<{ x: number; y: number; day: string; amount: number } | null>(null);
-
-  if (expenses.length === 0) return null;
-
-  const totals = new Map<string, number>();
-  for (const expense of expenses) {
-    const day = expense.expenseDate.slice(0, 10);
-    totals.set(day, (totals.get(day) ?? 0) + Number(expense.amount));
-  }
-  const days = [...totals.keys()].sort();
-  const maxAmount = Math.max(...days.map((d) => totals.get(d)!));
-  const viewWidth = days.length * (BAR_WIDTH + BAR_GAP) + BAR_GAP;
-
-  const showTooltip = (e: React.MouseEvent, day: string, amount: number) => {
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    setTooltip({ x: e.clientX - rect.left, y: e.clientY - rect.top, day, amount });
-  };
+/** Spend per calendar day across the whole trip, as one-hue columns with a
+ *  dashed average line. A single series names itself in the title, so there
+ *  is no legend (per the dataviz skill); each column's value shows on hover
+ *  or keyboard focus, and the biggest day is labelled directly. */
+export function SpendOverTimeChart({
+  days,
+  totalByDay,
+  average,
+  currency,
+}: {
+  /** Every day to plot, "YYYY-MM-DD", in order (including zero-spend days). */
+  days: string[];
+  totalByDay: Map<string, number>;
+  average: number;
+  currency: string;
+}) {
+  const amounts = days.map((d) => totalByDay.get(d) ?? 0);
+  const max = Math.max(...amounts, 0.01);
+  const peakIndex = amounts.indexOf(Math.max(...amounts));
+  // Long trips: label every 7th day (and the last) so labels never collide.
+  const labelEvery = days.length > 14 ? 7 : 1;
+  const money = (n: number) => formatMoney(n, currency);
+  const fmt = (day: string, opts: Intl.DateTimeFormatOptions) =>
+    new Date(`${day}T00:00:00Z`).toLocaleDateString(undefined, { ...opts, timeZone: 'UTC' });
 
   return (
-    <div className="bar-chart" ref={containerRef}>
-      <p className="sidebar-section-label">Spend by day</p>
-      <div className="bar-chart-body">
-        <svg viewBox={`0 0 ${viewWidth} ${VIEW_HEIGHT}`} width={viewWidth} height={VIEW_HEIGHT} role="img" aria-label="Spend by day">
-          <line x1={0} y1={BASELINE_Y} x2={viewWidth} y2={BASELINE_Y} className="bar-chart-baseline" />
-          {days.map((day, i) => {
-            const amount = totals.get(day)!;
-            const height = maxAmount > 0 ? Math.max(4, (amount / maxAmount) * CHART_HEIGHT) : 0;
-            const x = BAR_GAP + i * (BAR_WIDTH + BAR_GAP);
-            const label = new Date(`${day}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-            return (
-              <g key={day}>
-                <path
-                  className="bar-chart-bar"
-                  d={barPath(x, height)}
-                  fill="var(--route)"
-                  opacity={hovered && hovered !== day ? 0.55 : 1}
-                  tabIndex={0}
-                  aria-label={`${label}: ${currency} ${amount.toFixed(2)}`}
-                  onMouseMove={(e) => {
-                    setHovered(day);
-                    showTooltip(e, day, amount);
-                  }}
-                  onMouseLeave={() => {
-                    setHovered(null);
-                    setTooltip(null);
-                  }}
-                  onFocus={() => setHovered(day)}
-                  onBlur={() => setHovered(null)}
-                />
-                <text x={x + BAR_WIDTH / 2} y={BASELINE_Y + 16} textAnchor="middle" className="bar-chart-label">
-                  {label}
-                </text>
-              </g>
-            );
-          })}
-        </svg>
+    <section className="report-card" aria-labelledby="by-day-heading">
+      <div className="report-card-head">
+        <h3 className="report-heading" id="by-day-heading">
+          Spend by day
+        </h3>
+        <span className="report-legend-line" aria-hidden="true">
+          <span className="report-legend-dash" /> average {money(average)}/day
+        </span>
       </div>
 
-      {tooltip && (
-        <div className="chart-tooltip" style={{ left: tooltip.x + 12, top: tooltip.y + 12 }}>
-          <strong>{currency} {tooltip.amount.toFixed(2)}</strong>
-          <span>{new Date(`${tooltip.day}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</span>
-        </div>
-      )}
-    </div>
+      <div className="day-chart">
+        <span className="day-chart-avg" style={{ '--avg': average / max } as CSSProperties} aria-hidden="true" />
+        <ol className="day-chart-cols">
+          {days.map((day, i) => {
+            const amount = amounts[i];
+            const label = `${fmt(day, { weekday: 'long', month: 'short', day: 'numeric' })}: ${amount > 0 ? money(amount) : 'no spending'}`;
+            return (
+              <li className="day-chart-col" key={day} tabIndex={0}>
+                <span className="visually-hidden">{label}</span>
+                <span className="day-chart-tip" aria-hidden="true">
+                  <strong>{amount > 0 ? money(amount) : 'No spending'}</strong>
+                  <span>{fmt(day, { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+                </span>
+                <span className="day-chart-plot" aria-hidden="true">
+                  {i === peakIndex && amount > 0 && <span className="day-chart-peak">{money(amount)}</span>}
+                  <span
+                    className={`day-chart-bar${amount > 0 ? '' : ' empty'}`}
+                    style={{ height: amount > 0 ? `max(${(amount / max) * 100}%, 4px)` : undefined }}
+                  />
+                </span>
+                <span className="day-chart-label" aria-hidden="true">
+                  {i % labelEvery === 0 || i === days.length - 1 ? (
+                    <>
+                      <span className="day-chart-weekday">{fmt(day, { weekday: 'short' })}</span>
+                      <span>{fmt(day, { day: 'numeric' })}</span>
+                    </>
+                  ) : null}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+    </section>
   );
 }

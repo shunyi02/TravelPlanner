@@ -1,5 +1,5 @@
-/* Shared chart primitives — PieChart (category & member breakdowns) and
- * SpendOverTimeChart (Report tab). One shared tooltip box style for both. */
+/* Shared chart primitives: PieChart (the Expenses tab's category breakdown)
+ * and its tooltip. The Report tab's charts live in report.css. */
 
 .chart-tooltip {
   position: absolute;
@@ -80,32 +80,6 @@
 .pie-chart-legend-amount {
   color: var(--ink-soft);
   font-variant-numeric: tabular-nums;
-}
-
-.bar-chart {
-  position: relative;
-  margin-top: 32px;
-  padding-top: 20px;
-  border-top: 1px solid var(--rule);
-}
-
-.bar-chart-body {
-  margin-top: 12px;
-  overflow-x: auto;
-}
-
-.bar-chart-bar {
-  cursor: pointer;
-}
-
-.bar-chart-baseline {
-  stroke: var(--rule);
-  stroke-width: 1;
-}
-
-.bar-chart-label {
-  fill: var(--ink-soft);
-  font-size: 9px;
 }
 
 .pie-chart-slice {

@@ -124,7 +124,15 @@ export function TripDetailPage() {
         />
       )}
       {tab === 'report' && (
-        <ReportTab tripId={tripId} trip={trip} expenses={expenses} memberNames={memberNames} onChange={handleChange} />
+        <ReportTab
+          tripId={tripId}
+          trip={trip}
+          expenses={expenses}
+          memberNames={memberNames}
+          onChange={handleChange}
+          onGoToExpenses={() => setTab('expenses')}
+          onGoToBalances={() => setTab('balances')}
+        />
       )}
     </div>
   );

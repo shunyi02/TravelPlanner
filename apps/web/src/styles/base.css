@@ -87,6 +87,17 @@ body {
   line-height: 1.5;
 }
 
+/* Text for screen readers only (e.g. a chart row's plain-language value). */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 /* One keyboard focus ring for every control (mouse clicks don't show it). */
 :focus-visible {
   outline: 2px solid var(--route);
