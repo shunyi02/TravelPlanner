@@ -53,44 +53,42 @@ export function ProfilePage() {
     <div className="main main-centered">
       <h1 className="page-title">Profile</h1>
 
-      <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 24, maxWidth: 360 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+      <form onSubmit={handleSave} className="form-stack profile-form">
+        <div className="avatar-row">
           <span className="profile-avatar-preview">
             {avatarUrl ? <img src={avatarUrl} alt="" /> : initials(name || currentUser.name)}
           </span>
-          <label className="btn btn-outline" style={{ cursor: 'pointer' }}>
+          <label className="btn btn-outline">
             Change photo
             <input
               type="file"
               accept="image/*"
               onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
-              style={{ display: 'none' }}
+              hidden
             />
           </label>
         </div>
 
-        <label style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
+        <label className="field">
           Name
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
-            style={{ display: 'block', marginTop: 4, width: '100%' }}
           />
         </label>
 
-        <label style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
+        <label className="field">
           Email
           <input
             value={currentUser.email}
             readOnly
             disabled
-            style={{ display: 'block', marginTop: 4, width: '100%' }}
           />
         </label>
 
-        {error && <p style={{ color: 'var(--owe)', margin: 0 }}>{error}</p>}
-        {saved && !error && <p style={{ color: 'var(--route)', margin: 0 }}>Saved.</p>}
+        {error && <p className="form-error">{error}</p>}
+        {saved && !error && <p className="form-success">Saved.</p>}
 
         <div>
           <button type="submit" className="btn" disabled={saving}>

@@ -218,3 +218,26 @@
 .split-remaining.unbalanced {
   color: var(--owe);
 }
+
+.custom-split-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.custom-split-taxed {
+  color: var(--ink-soft);
+}
+
+/* ExpensesTab row: amounts stacked right-aligned, then the row's actions. */
+.expense-row-end {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.expense-row-amounts {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}

@@ -1,4 +1,14 @@
-/* SettingsPage: the theme swatch grid. */
+/* SettingsPage: appearance switch and theme swatches. */
+
+.settings-section {
+  margin-top: 24px;
+}
+
+.settings-label {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
 
 .theme-swatch-grid {
   display: grid;

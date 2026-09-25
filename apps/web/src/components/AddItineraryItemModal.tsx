@@ -1,14 +1,16 @@
+import { AirplaneTilt } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { api, type Place, type PlaceType } from '../api';
 import { AirportField } from './AirportField';
 import { LocationSearchField } from './LocationSearchField';
+import { PLACE_ICONS } from '../placeIcons';
 
 type FlightTripType = 'ONE_WAY' | 'ROUND_TRIP';
 
-const PLACE_TYPE_INFO: Record<PlaceType, { label: string; icon: string; hint: string }> = {
-  STOP: { label: 'Stop', icon: '📍', hint: 'A place to visit — attraction, restaurant, etc.' },
-  HOTEL: { label: 'Hotel', icon: '🏨', hint: 'Where you’re staying, with check-in/out' },
-  FLIGHT: { label: 'Flight', icon: '✈️', hint: 'A flight leg, one-way or round trip' },
+const PLACE_TYPE_INFO: Record<PlaceType, { label: string; hint: string }> = {
+  STOP: { label: 'Stop', hint: 'A place to visit, like an attraction or restaurant' },
+  HOTEL: { label: 'Hotel', hint: 'Where you’re staying, with check-in/out' },
+  FLIGHT: { label: 'Flight', hint: 'A flight leg, one-way or round trip' },
 };
 
 /** Name for a flight the user left unnamed, e.g. "SIN → NRT". */
@@ -176,10 +178,11 @@ export function AddItineraryItemModal({
     return (
       <div className="modal-backdrop" onClick={onClose}>
         <div className="modal" onClick={(e) => e.stopPropagation()}>
-          <h2 className="page-title" style={{ fontSize: 20 }}>Add to itinerary</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 16 }}>
+          <h2 className="modal-title">Add to itinerary</h2>
+          <div className="place-type-options">
             {(['STOP', 'HOTEL', 'FLIGHT'] as PlaceType[]).map((t) => {
               const info = PLACE_TYPE_INFO[t];
+              const TypeIcon = PLACE_ICONS[t];
               return (
                 <button
                   key={t}
@@ -187,7 +190,7 @@ export function AddItineraryItemModal({
                   className="place-type-option"
                   onClick={() => setType(t)}
                 >
-                  <span className="place-type-option-icon">{info.icon}</span>
+                  <TypeIcon className="place-type-option-icon" size={22} weight="duotone" aria-hidden />
                   <span>
                     <span className="place-type-option-label">{info.label}</span>
                     <span className="place-type-option-hint">{info.hint}</span>
@@ -201,26 +204,27 @@ export function AddItineraryItemModal({
     );
   }
 
+  const HeaderIcon = PLACE_ICONS[type];
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="page-title" style={{ fontSize: 20 }}>
-          {PLACE_TYPE_INFO[type].icon} {editPlace ? 'Edit' : 'Add'} {PLACE_TYPE_INFO[type].label.toLowerCase()}
+        <h2 className="modal-title">
+          <HeaderIcon className="icon-inline" size={20} weight="duotone" aria-hidden />{' '}
+          {editPlace ? 'Edit' : 'Add'} {PLACE_TYPE_INFO[type].label.toLowerCase()}
         </h2>
-        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+        <div className="btn-row place-type-tabs">
           {(['STOP', 'HOTEL', 'FLIGHT'] as PlaceType[]).map((t) => (
             <button
               key={t}
               type="button"
-              className={type === t ? 'btn' : 'btn btn-outline'}
+              className={type === t ? 'btn btn-sm' : 'btn btn-outline btn-sm'}
               onClick={() => changeType(t)}
-              style={{ padding: '4px 12px', fontSize: 12 }}
             >
-              {PLACE_TYPE_INFO[t].icon} {PLACE_TYPE_INFO[t].label}
+              {PLACE_TYPE_INFO[t].label}
             </button>
           ))}
         </div>
-        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
+        <form onSubmit={handleSave} className="form-stack">
           {type === 'STOP' || type === 'HOTEL' ? (
             <LocationSearchField
               query={locationQuery}
@@ -250,7 +254,7 @@ export function AddItineraryItemModal({
           )}
 
           {type === 'STOP' && (
-            <label style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
+            <label className="field">
               Visit time (optional)
               <input
                 type="datetime-local"
@@ -258,19 +262,17 @@ export function AddItineraryItemModal({
                 onChange={(e) => setVisitDate(e.target.value)}
                 min={dtMin}
                 max={dtMax}
-                style={{ display: 'block', marginTop: 4 }}
               />
             </label>
           )}
 
           {type === 'STOP' && (
-            <label style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
+            <label className="field">
               Notes (optional)
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={2}
-                style={{ display: 'block', marginTop: 4, width: '100%', resize: 'vertical' }}
               />
             </label>
           )}
@@ -278,8 +280,8 @@ export function AddItineraryItemModal({
           {type === 'FLIGHT' && (
             <>
               {!editPlace && (
-                <div style={{ display: 'flex', gap: 16 }}>
-                  <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <div className="btn-row">
+                  <label className="check-label">
                     <input
                       type="radio"
                       name="tripType"
@@ -288,7 +290,7 @@ export function AddItineraryItemModal({
                     />
                     One way
                   </label>
-                  <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <label className="check-label">
                     <input
                       type="radio"
                       name="tripType"
@@ -305,12 +307,12 @@ export function AddItineraryItemModal({
 
               <div className="flight-leg">
                 <p className="flight-leg-title">
-                  ✈️ {tripType === 'ROUND_TRIP' ? 'Outbound' : 'Flight'}
+                  <AirplaneTilt className="icon-inline" size={16} aria-hidden /> {tripType === 'ROUND_TRIP' ? 'Outbound' : 'Flight'}
                   {(departureAirport || arrivalAirport) && (
                     <span className="flight-leg-route"> · {departureAirport || '?'} → {arrivalAirport || '?'}</span>
                   )}
                 </p>
-                <label style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
+                <label className="field">
                   Departure
                   <input
                     type="datetime-local"
@@ -318,10 +320,9 @@ export function AddItineraryItemModal({
                     onChange={(e) => setDepartureTime(e.target.value)}
                     min={dtMin}
                     max={dtMax}
-                    style={{ display: 'block', marginTop: 4 }}
                   />
                 </label>
-                <label style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
+                <label className="field">
                   Arrival
                   <input
                     type="datetime-local"
@@ -329,7 +330,6 @@ export function AddItineraryItemModal({
                     onChange={(e) => setArrivalTime(e.target.value)}
                     min={dtMin}
                     max={dtMax}
-                    style={{ display: 'block', marginTop: 4 }}
                   />
                 </label>
               </div>
@@ -337,10 +337,10 @@ export function AddItineraryItemModal({
               {tripType === 'ROUND_TRIP' && (
                 <div className="flight-leg">
                   <p className="flight-leg-title">
-                    ✈️ Return
+                    <AirplaneTilt className="icon-inline" size={16} aria-hidden /> Return
                     <span className="flight-leg-route"> · {arrivalAirport || '?'} → {departureAirport || '?'}</span>
                   </p>
-                  <label style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
+                  <label className="field">
                     Departure
                     <input
                       type="datetime-local"
@@ -348,10 +348,9 @@ export function AddItineraryItemModal({
                       onChange={(e) => setReturnDepartureTime(e.target.value)}
                       min={dtMin}
                       max={dtMax}
-                      style={{ display: 'block', marginTop: 4 }}
                     />
                   </label>
-                  <label style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
+                  <label className="field">
                     Arrival
                     <input
                       type="datetime-local"
@@ -359,7 +358,6 @@ export function AddItineraryItemModal({
                       onChange={(e) => setReturnArrivalTime(e.target.value)}
                       min={dtMin}
                       max={dtMax}
-                      style={{ display: 'block', marginTop: 4 }}
                     />
                   </label>
                 </div>
@@ -369,7 +367,7 @@ export function AddItineraryItemModal({
 
           {type === 'HOTEL' && (
             <>
-              <label style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
+              <label className="field">
                 Check-in
                 <input
                   type="datetime-local"
@@ -377,10 +375,9 @@ export function AddItineraryItemModal({
                   onChange={(e) => setCheckIn(e.target.value)}
                   min={dtMin}
                   max={dtMax}
-                  style={{ display: 'block', marginTop: 4 }}
                 />
               </label>
-              <label style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
+              <label className="field">
                 Check-out
                 <input
                   type="datetime-local"
@@ -388,22 +385,21 @@ export function AddItineraryItemModal({
                   onChange={(e) => setCheckOut(e.target.value)}
                   min={dtMin}
                   max={dtMax}
-                  style={{ display: 'block', marginTop: 4 }}
                 />
               </label>
             </>
           )}
 
           {memberIds.length > 1 && (
-            <div style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
+            <div className="field">
               Who's this for
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 4 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div className="check-group">
+                <label className="check-label">
                   <input type="checkbox" checked={isEveryone} onChange={() => setAssigneeIds([])} />
                   Everyone
                 </label>
                 {memberIds.map((id) => (
-                  <label key={id} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <label key={id} className="check-label">
                     <input
                       type="checkbox"
                       checked={assigneeIds.includes(id)}
@@ -420,9 +416,9 @@ export function AddItineraryItemModal({
             </div>
           )}
 
-          {error && <p style={{ color: 'var(--owe)', margin: 0 }}>{error}</p>}
+          {error && <p className="form-error">{error}</p>}
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+          <div className="form-actions">
             {editPlace ? (
               <button type="button" className="btn btn-outline" onClick={onClose}>Cancel</button>
             ) : (

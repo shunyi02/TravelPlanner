@@ -1,3 +1,4 @@
+import { MapPin } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { api, type Trip } from '../api';
 import { LocationSearchField } from './LocationSearchField';
@@ -198,7 +199,7 @@ export function SuggestedStopsPanel({
   };
 
   return (
-    <div className="no-print" style={{ marginBottom: 20 }}>
+    <div className="no-print section-gap">
       <div className="suggested-stops-search">
         <LocationSearchField
           query={searchQuery}
@@ -223,10 +224,10 @@ export function SuggestedStopsPanel({
           onClick={handleSuggest}
           disabled={loading || searchLat == null || searchLng == null}
         >
-          {loading ? 'Finding places…' : '✨ Suggest places to visit'}
+          {loading ? 'Finding places…' : 'Suggest places to visit'}
         </button>
       </div>
-      <div className="segmented-control" style={{ marginTop: 8 }}>
+      <div className="segmented-control suggested-stops-categories">
         {CATEGORIES.map((c) => (
           <button
             key={c.id}
@@ -238,11 +239,11 @@ export function SuggestedStopsPanel({
           </button>
         ))}
       </div>
-      {error && <p style={{ color: 'var(--owe)', margin: '8px 0 0' }}>{error}</p>}
+      {error && <p className="form-error spaced-above">{error}</p>}
       {suggestions && (
         <>
           {suggestions.length === 0 ? (
-            <p className="empty-state" style={{ padding: '8px 0' }}>
+            <p className="empty-state empty-state-compact">
               No new suggestions found near {searchQuery || 'this location'}.
             </p>
           ) : (
@@ -252,7 +253,7 @@ export function SuggestedStopsPanel({
                   {s.imageUrl ? (
                     <img className="suggested-stop-image" src={s.imageUrl} alt="" loading="lazy" />
                   ) : (
-                    <div className="suggested-stop-image suggested-stop-image-placeholder">📍</div>
+                    <div className="suggested-stop-image suggested-stop-image-placeholder"><MapPin size={28} weight="duotone" aria-hidden /></div>
                   )}
                   <div className="suggested-stop-body">
                     <span className="suggested-stop-name" title={s.name}>{s.name}</span>

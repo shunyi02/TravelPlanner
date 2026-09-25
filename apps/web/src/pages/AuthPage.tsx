@@ -25,31 +25,34 @@ function ResetPasswordForm() {
   };
 
   return (
-    <div className="main" style={{ maxWidth: 360, margin: '80px auto' }}>
+    <div className="main auth-page">
       <div className="auth-brand">
-        <span className="top-bar-logo auth-logo-flipped" />
+        <span className="top-bar-logo" />
         <span className="auth-brand-name">Cuti</span>
       </div>
       {done ? (
-        <>
-          <p style={{ marginTop: 20 }}>Password reset. You can log in with your new password now.</p>
-          <button className="btn" style={{ marginTop: 8 }} onClick={() => { window.location.href = '/'; }}>
+        <div className="auth-form">
+          <p className="auth-notice">Password reset. You can log in with your new password now.</p>
+          <button className="btn" onClick={() => { window.location.href = '/'; }}>
             Go to login
           </button>
-        </>
+        </div>
       ) : (
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 20 }}>
-          <p style={{ margin: 0, color: 'var(--ink-soft)', fontSize: 13 }}>Set a new password.</p>
-          <input
-            type="password"
-            placeholder="New password"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            minLength={8}
-            required
-            autoFocus
-          />
-          {error && <p style={{ color: 'var(--owe)', margin: 0 }}>{error}</p>}
+        <form onSubmit={handleSubmit} className="auth-form">
+          <label className="auth-field">
+            <span>New password</span>
+            <input
+              type="password"
+              autoComplete="new-password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              minLength={8}
+              required
+              autoFocus
+            />
+            <small>At least 8 characters.</small>
+          </label>
+          {error && <p className="auth-error" role="alert">{error}</p>}
           <button className="btn" type="submit" disabled={submitting}>
             Reset password
           </button>
@@ -74,11 +77,29 @@ export function AuthPage({
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  /** Non-error feedback, e.g. "check your inbox" after a reset request. */
+  const [notice, setNotice] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const handleForgotPassword = async () => {
+    setNotice(null);
+    if (!email) {
+      setError('Enter your email above first');
+      return;
+    }
+    setError(null);
+    try {
+      const { message } = await api.forgotPassword(email);
+      setNotice(message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not send a reset email');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setNotice(null);
     setSubmitting(true);
     try {
       if (mode === 'login') {
@@ -97,63 +118,69 @@ export function AuthPage({
   if (resetToken) return <ResetPasswordForm />;
 
   return (
-    <div className="main" style={{ maxWidth: 360, margin: '80px auto' }}>
+    <div className="main auth-page">
       {onBack && (
-        <button type="button" className="back-link" style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={onBack}>
+        <button type="button" className="back-link auth-back" onClick={onBack}>
           ← Back
         </button>
       )}
       <div className="auth-brand">
-        <span className="top-bar-logo auth-logo-flipped" />
+        <span className="top-bar-logo" />
         <span className="auth-brand-name">Cuti</span>
       </div>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 20 }}>
+      <form onSubmit={handleSubmit} className="auth-form">
         {mode === 'register' && (
-          <input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} required />
+          <label className="auth-field">
+            <span>Name</span>
+            <input autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} required />
+          </label>
         )}
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          minLength={8}
-          required
-        />
-        {error && <p style={{ color: 'var(--owe)', margin: 0 }}>{error}</p>}
+        <label className="auth-field">
+          <span>Email</span>
+          <input
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </label>
+        <label className="auth-field">
+          <span>Password</span>
+          <input
+            type="password"
+            autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            minLength={8}
+            required
+          />
+          {mode === 'register' && <small>At least 8 characters.</small>}
+        </label>
+        {error && <p className="auth-error" role="alert">{error}</p>}
+        {notice && <p className="auth-notice" role="status">{notice}</p>}
         <button className="btn" type="submit" disabled={submitting}>
           {mode === 'login' ? 'Log in' : 'Sign up'}
         </button>
       </form>
-      <button
-        className="text-btn"
-        style={{ display: 'block', marginTop: 16 }}
-        onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
-      >
-        {mode === 'login' ? "Don't have an account? Sign up" : 'Already have an account? Log in'}
-      </button>
-      {mode === 'login' && (
+      <div className="auth-links">
         <button
+          type="button"
           className="text-btn"
-          style={{ display: 'block', marginTop: 8 }}
-          onClick={async () => {
-            if (!email) {
-              setError('Enter your email above first');
-              return;
-            }
-            const { message } = await api.forgotPassword(email);
-            setError(message);
+          onClick={() => {
+            setMode(mode === 'login' ? 'register' : 'login');
+            setError(null);
+            setNotice(null);
           }}
         >
-          Forgot password?
+          {mode === 'login' ? "Don't have an account? Sign up" : 'Already have an account? Log in'}
         </button>
-      )}
+        {mode === 'login' && (
+          <button type="button" className="text-btn" onClick={handleForgotPassword}>
+            Forgot password?
+          </button>
+        )}
+      </div>
     </div>
   );
 }

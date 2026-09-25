@@ -117,19 +117,19 @@ export function AddExpenseModal({
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="page-title" style={{ fontSize: 20 }}>Log expense</h2>
+        <h2 className="modal-title">Log expense</h2>
         <form onSubmit={handleAdd} className="expense-form">
           <input placeholder="Name" value={description} onChange={(e) => setDescription(e.target.value)} autoFocus />
 
           <div className="receipt-photo-row">
             {receiptPhoto && <img className="receipt-photo-thumb" src={receiptPhoto} alt="" />}
-            <label className="btn btn-outline" style={{ cursor: 'pointer' }}>
+            <label className="btn btn-outline">
               {receiptPhoto ? 'Change receipt photo' : 'Add receipt photo'}
               <input
                 type="file"
                 accept="image/*"
                 onChange={(e) => handleReceiptFile(e.target.files?.[0] ?? null)}
-                style={{ display: 'none' }}
+                hidden
               />
             </label>
             {receiptPhoto && (
@@ -206,9 +206,8 @@ export function AddExpenseModal({
 
           <button
             type="button"
-            className="text-btn"
+            className="text-btn align-start"
             onClick={() => setShowSplitEditor((v) => !v)}
-            style={{ alignSelf: 'flex-start' }}
           >
             {showSplitEditor ? 'Hide split options' : 'Split options (defaults to evenly)'}
           </button>
@@ -226,9 +225,9 @@ export function AddExpenseModal({
             />
           )}
 
-          {error && <p style={{ color: 'var(--owe)', margin: 0 }}>{error}</p>}
+          {error && <p className="form-error">{error}</p>}
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+          <div className="form-actions">
             <button type="button" className="btn btn-outline" onClick={onClose}>Cancel</button>
             <button type="submit" className="btn" disabled={saving}>{saving ? 'Saving…' : 'Confirm'}</button>
           </div>

@@ -76,6 +76,7 @@ export function PieChart({
           {rendered.map((slice) => (
             <path
               key={slice.key}
+              className="pie-chart-slice"
               d={slicePath(100, 100, 90, slice.startAngle, slice.endAngle)}
               fill={slice.color}
               stroke="var(--surface)"
@@ -93,7 +94,6 @@ export function PieChart({
               }}
               onFocus={() => setHovered(slice.key)}
               onBlur={() => setHovered(null)}
-              style={{ cursor: 'pointer', transition: 'opacity 0.12s ease' }}
             />
           ))}
         </svg>

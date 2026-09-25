@@ -44,7 +44,7 @@ function AllTripsPanel({ navigate }: { navigate: ReturnType<typeof useNavigate> 
 
   return (
     <aside className="sidebar">
-      <p className="brand">Travel Planner</p>
+      <p className="brand">Cuti</p>
       {loading ? (
         <p className="empty-state">Loading trips…</p>
       ) : trips.length === 0 ? (
@@ -60,7 +60,7 @@ function AllTripsPanel({ navigate }: { navigate: ReturnType<typeof useNavigate> 
           ))}
         </ul>
       )}
-      <button className="btn" onClick={() => setShowModal(true)} style={{ marginTop: 16, width: '100%' }}>
+      <button className="btn btn-block" onClick={() => setShowModal(true)}>
         + Add a trip
       </button>
       {showModal && <AddTripModal onClose={() => setShowModal(false)} onCreated={handleCreated} />}

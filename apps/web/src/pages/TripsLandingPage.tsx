@@ -163,7 +163,7 @@ export function TripsLandingPage() {
       </div>
 
       {actionError && (
-        <p className="empty-state" style={{ color: 'var(--owe)', padding: '0 0 12px' }}>
+        <p className="form-error spaced-below">
           {actionError}
         </p>
       )}
@@ -278,14 +278,7 @@ export function TripsLandingPage() {
               Delete "{confirmDelete.name}"? This can't be undone.
             </p>
 
-            <div
-              style={{
-                display: 'flex',
-                gap: 8,
-                justifyContent: 'flex-end',
-                marginTop: 16,
-              }}
-            >
+            <div className="form-actions">
               <button
                 className="btn btn-outline"
                 onClick={() => setConfirmDelete(null)}
@@ -294,11 +287,7 @@ export function TripsLandingPage() {
               </button>
 
               <button
-                className="btn"
-                style={{
-                  background: 'var(--owe)',
-                  borderColor: 'var(--owe)',
-                }}
+                className="btn btn-danger"
                 onClick={handleDelete}
               >
                 Delete

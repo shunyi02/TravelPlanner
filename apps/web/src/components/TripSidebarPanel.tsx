@@ -76,7 +76,7 @@ export function TripSidebarPanel({ tripId }: { tripId: string }) {
     <aside className="sidebar">
       <Link to="/" className="back-link">&larr; Back to trips</Link>
 
-      <p className="sidebar-balance" style={{ marginTop: 16, marginBottom: 20 }}>
+      <p className="sidebar-balance sidebar-balance-block">
         {Math.abs(myBalance) < 0.01 ? (
           'You’re all settled up'
         ) : (
@@ -135,12 +135,12 @@ export function TripSidebarPanel({ tripId }: { tripId: string }) {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
-          <button className="btn" type="submit" disabled={saving} style={{ width: '100%' }}>
+          <button className="btn btn-block" type="submit" disabled={saving}>
             {saving ? 'Adding…' : '+ Add member'}
           </button>
         </form>
       )}
-      {error && <p style={{ color: 'var(--owe)', fontSize: 13, marginTop: 8 }}>{error}</p>}
+      {error && <p className="form-error spaced-above">{error}</p>}
     </aside>
   );
 }

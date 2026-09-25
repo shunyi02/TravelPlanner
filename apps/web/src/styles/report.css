@@ -92,3 +92,18 @@
   color: var(--ink-soft);
   margin: 8px 0 0;
 }
+
+.report-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.empty-state.report-no-budget {
+  padding: 0;
+  margin: 4px 0 12px;
+}
+
+.report-budget-input {
+  max-width: 160px;
+}

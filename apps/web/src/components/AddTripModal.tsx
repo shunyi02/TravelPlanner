@@ -59,37 +59,36 @@ export function AddTripModal({
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="page-title" style={{ fontSize: 22 }}>New trip</h2>
-        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <span className="profile-avatar-preview" style={{ borderRadius: 6, width: 64, height: 64 }}>
+        <h2 className="modal-title">New trip</h2>
+        <form onSubmit={handleSave} className="form-stack">
+          <div className="avatar-row">
+            <span className="profile-avatar-preview cover-preview">
               {coverPhoto && <img src={coverPhoto} alt="" />}
             </span>
-            <label className="btn btn-outline" style={{ cursor: 'pointer' }}>
+            <label className="btn btn-outline">
               {coverPhoto ? 'Change cover photo' : 'Add cover photo'}
               <input
                 type="file"
                 accept="image/*"
                 onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
-                style={{ display: 'none' }}
+                hidden
               />
             </label>
           </div>
 
-          <label style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
+          <label className="field">
             Trip name
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
               autoFocus
-              style={{ display: 'block', marginTop: 4, width: '100%' }}
             />
           </label>
 
-          <label style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
+          <label className="field">
             Destination (optional)
-            <div style={{ marginTop: 4 }}>
+            <div>
               <LocationSearchField
                 query={destinationQuery}
                 onQueryChange={(q) => {
@@ -112,27 +111,25 @@ export function AddTripModal({
             </div>
           </label>
 
-          <label style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
+          <label className="field">
             Dates
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 4 }}>
-              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={{ flex: 1 }} />
+            <div className="date-range">
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
               <span>to</span>
               <input
                 type="date"
                 value={endDate}
                 min={startDate || undefined}
                 onChange={(e) => setEndDate(e.target.value)}
-                style={{ flex: 1 }}
               />
             </div>
           </label>
 
-          <label style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
+          <label className="field">
             Currency
             <select
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
-              style={{ display: 'block', marginTop: 4, width: '100%' }}
             >
               {COMMON_CURRENCIES.map((c) => (
                 <option key={c} value={c}>{c}</option>
@@ -140,8 +137,8 @@ export function AddTripModal({
             </select>
           </label>
 
-          {error && <p style={{ color: 'var(--owe)', margin: 0 }}>{error}</p>}
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
+          {error && <p className="form-error">{error}</p>}
+          <div className="form-actions">
             <button type="button" className="btn btn-outline" onClick={onClose}>Cancel</button>
             <button type="submit" className="btn" disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
           </div>

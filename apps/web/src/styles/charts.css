@@ -107,3 +107,8 @@
   fill: var(--ink-soft);
   font-size: 9px;
 }
+
+.pie-chart-slice {
+  cursor: pointer;
+  transition: opacity 0.12s ease;
+}

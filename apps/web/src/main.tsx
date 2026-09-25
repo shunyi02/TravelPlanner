@@ -2,6 +2,8 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
+import { initTheme } from './themes';
+import '@fontsource-variable/inter';
 import './styles/base.css';
 import './styles/layout.css';
 import './styles/modal.css';
@@ -16,6 +18,9 @@ import './styles/bookings.css';
 import './styles/settings.css';
 import './styles/profile.css';
 import './styles/landing.css';
+
+// Before first render; the page has no CSS until this module runs, so there's no flash.
+initTheme();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

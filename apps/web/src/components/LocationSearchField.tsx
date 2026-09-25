@@ -1,3 +1,4 @@
+import { MapPin } from '@phosphor-icons/react';
 import { useEffect, useState } from 'react';
 import L from 'leaflet';
 import { MapContainer, Marker, TileLayer } from 'react-leaflet';
@@ -92,7 +93,7 @@ export function LocationSearchField({
   };
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div className="autocomplete">
       <input
         placeholder={placeholder}
         value={query}
@@ -103,7 +104,7 @@ export function LocationSearchField({
         autoFocus={autoFocus}
         required
       />
-      {searching && <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '4px 0 0' }}>Searching…</p>}
+      {searching && <p className="field-hint">Searching…</p>}
       {results.length > 0 && (
         <ul className="autocomplete-list">
           {results.map((r) => (
@@ -117,8 +118,8 @@ export function LocationSearchField({
       )}
       {lat !== undefined && lng !== undefined && (
         <>
-          <p style={{ fontSize: 12, color: 'var(--route)', margin: '4px 0 0' }}>
-            📍 {lat.toFixed(5)}, {lng.toFixed(5)}
+          <p className="field-hint">
+            <MapPin className="icon-inline" size={13} aria-hidden /> {lat.toFixed(5)}, {lng.toFixed(5)}
           </p>
           {showMap && (
             <div className="location-preview-map">

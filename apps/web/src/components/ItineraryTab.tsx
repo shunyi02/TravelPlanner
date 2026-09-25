@@ -7,6 +7,7 @@ import { RouteMap, routeColorMap, type RouteStop } from './RouteMap';
 import { SuggestedStopsPanel } from './SuggestedStopsPanel';
 import type { DayForecast } from '../weather';
 import { fetchWeather } from '../weather';
+import { PLACE_ICONS } from '../placeIcons';
 
 function daysBetween(start: string, end: string): string[] {
   const days: string[] = [];
@@ -458,6 +459,7 @@ export function ItineraryTab({
   const dayColorGroupByPlaceId = new Map(dayRouteStops.map((s) => [s.id, s.colorGroup]));
 
   const renderRow = (place: Place, opts?: { day?: string; index?: number; draggable?: boolean }) => {
+    const BookingIcon = PLACE_ICONS[place.type];
     const subtitle = placeSubtitle(place, opts?.day);
     const isTransitionDay =
       place.type === 'HOTEL' &&
@@ -505,7 +507,7 @@ export function ItineraryTab({
             />
           )}
           <span className="row-title">
-            {place.type === 'FLIGHT' ? '✈ ' : place.type === 'HOTEL' ? '🏨 ' : ''}
+            {place.type !== 'STOP' && <BookingIcon className="icon-inline" size={15} aria-label={place.type === 'FLIGHT' ? 'Flight' : 'Hotel'} />}{' '}
             {place.name}
           </span>
           {place.assignments.length > 0 && (
@@ -541,7 +543,7 @@ export function ItineraryTab({
 
   return (
     <div>
-      <form className="form-inline no-print" onSubmit={handleSaveDates} style={{ marginBottom: 24 }}>
+      <form className="form-inline no-print itin-dates-form" onSubmit={handleSaveDates}>
         <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
         <span>to</span>
         <input type="date" value={endDate} min={startDate || undefined} onChange={(e) => setEndDate(e.target.value)} />
@@ -549,11 +551,11 @@ export function ItineraryTab({
           Save dates
         </button>
       </form>
-      {dateError && <p style={{ color: 'var(--owe)', margin: '0 0 16px' }}>{dateError}</p>}
-      {deleteError && <p style={{ color: 'var(--owe)', margin: '0 0 16px' }}>{deleteError}</p>}
-      {moveError && <p style={{ color: 'var(--owe)', margin: '0 0 16px' }}>{moveError}</p>}
+      {dateError && <p className="form-error spaced-below">{dateError}</p>}
+      {deleteError && <p className="form-error spaced-below">{deleteError}</p>}
+      {moveError && <p className="form-error spaced-below">{moveError}</p>}
 
-      <div className="no-print" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <div className="no-print btn-row">
         <button className="btn" onClick={() => setShowAddModal(true)}>
           + Add
         </button>
@@ -562,7 +564,7 @@ export function ItineraryTab({
         </button>
       </div>
       {memberIds.length > 1 && (
-        <div className="filter-row no-print" style={{ marginBottom: 20 }}>
+        <div className="filter-row no-print section-gap">
           <span className="filter-row-label">Viewing</span>
           <div className="filter-select-wrap">
             <select value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value)}>
@@ -647,9 +649,9 @@ export function ItineraryTab({
                   <RouteMap stops={scheduledRouteStops} />
                   <div>
                     {days.map((day) => (
-                      <div key={day} style={{ marginBottom: 20 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>
+                      <div key={day} className="section-gap">
+                        <div className="day-heading-row">
+                          <h3 className="day-heading">
                             {formatDay(day)} <DayWeather forecast={weather.get(day)} />
                           </h3>
                           {memberIds.length > 1 && unassignedOnDay(day).length > 0 && (
@@ -676,7 +678,7 @@ export function ItineraryTab({
                           }}
                         >
                           {(byDay.get(day) ?? []).length === 0 ? (
-                            <p className="empty-state" style={{ padding: '8px 0' }}>No stops planned.</p>
+                            <p className="empty-state empty-state-compact">No stops planned.</p>
                           ) : (
                             byDay.get(day)!.map((place) => renderRow(place, { day, draggable: true }))
                           )}
@@ -685,8 +687,8 @@ export function ItineraryTab({
                     ))}
 
                     {unscheduled.length > 0 && (
-                      <div style={{ marginBottom: 20 }}>
-                        <h3 style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 600, color: 'var(--ink-soft)' }}>
+                      <div className="section-gap">
+                        <h3 className="day-heading day-heading-muted">
                           Unscheduled
                         </h3>
                         <div className="card">
@@ -698,8 +700,8 @@ export function ItineraryTab({
                 </>
               ) : (
                 <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                    <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>
+                  <div className="day-heading-row">
+                    <h3 className="day-heading">
                       {formatDay(currentDay)} <DayWeather forecast={weather.get(currentDay)} />
                     </h3>
                     {memberIds.length > 1 && unassignedOnDay(currentDay).length > 0 && (
@@ -711,7 +713,7 @@ export function ItineraryTab({
                   <RouteMap stops={toRouteStops(byDay.get(currentDay) ?? [], currentDay)} />
                   <div className="card">
                     {(byDay.get(currentDay) ?? []).length === 0 ? (
-                      <p className="empty-state" style={{ padding: '8px 0' }}>No stops planned.</p>
+                      <p className="empty-state empty-state-compact">No stops planned.</p>
                     ) : (
                       byDay.get(currentDay)!.map((place) => renderRow(place, { day: currentDay }))
                     )}
@@ -747,15 +749,15 @@ export function ItineraryTab({
       {assigningDay && (
         <div className="modal-backdrop" onClick={() => setAssigningDay(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2 className="page-title" style={{ fontSize: 20 }}>Split {formatDay(assigningDay)}</h2>
-            <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: '4px 0 0' }}>
+            <h2 className="modal-title">Split {formatDay(assigningDay)}</h2>
+            <p className="field-hint">
               Assigns {unassignedOnDay(assigningDay).length} not-yet-assigned item
               {unassignedOnDay(assigningDay).length === 1 ? '' : 's'} on this day to whoever you pick below.
               Items already assigned to a group are left alone.
             </p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 12 }}>
+            <div className="check-group">
               {memberIds.map((id) => (
-                <label key={id} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }}>
+                <label key={id} className="check-label">
                   <input
                     type="checkbox"
                     checked={dayAssigneeIds.includes(id)}
@@ -769,8 +771,8 @@ export function ItineraryTab({
                 </label>
               ))}
             </div>
-            {assignError && <p style={{ color: 'var(--owe)', margin: '12px 0 0' }}>{assignError}</p>}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+            {assignError && <p className="form-error spaced-above">{assignError}</p>}
+            <div className="form-actions">
               <button type="button" className="btn btn-outline" onClick={() => setAssigningDay(null)}>
                 Cancel
               </button>

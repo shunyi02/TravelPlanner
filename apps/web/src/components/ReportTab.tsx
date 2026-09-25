@@ -67,21 +67,22 @@ function BudgetCard({
           </p>
         </>
       ) : (
-        <p className="empty-state" style={{ margin: '4px 0 12px' }}>No budget set for this trip.</p>
+        <p className="empty-state report-no-budget">No budget set for this trip.</p>
       )}
       <form className="form-inline no-print" style={{ marginTop: budgetNum != null ? 12 : 0 }} onSubmit={handleSave}>
         <input
           inputMode="decimal"
           placeholder={`Budget (${currency})`}
+          aria-label={`Trip budget in ${currency}`}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          style={{ maxWidth: 160 }}
+          className="report-budget-input"
         />
         <button className="btn btn-outline" type="submit" disabled={saving}>
           {budgetNum != null ? 'Update' : 'Set budget'}
         </button>
       </form>
-      {error && <p style={{ color: 'var(--owe)', margin: '8px 0 0' }}>{error}</p>}
+      {error && <p className="form-error spaced-above">{error}</p>}
     </div>
   );
 }
@@ -165,7 +166,7 @@ export function ReportTab({
 
   return (
     <div>
-      <div className="no-print" style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+      <div className="no-print report-toolbar">
         <button className="btn btn-outline" onClick={() => window.print()}>
           Export PDF
         </button>
