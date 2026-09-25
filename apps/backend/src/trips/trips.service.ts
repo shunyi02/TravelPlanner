@@ -38,11 +38,28 @@ export class TripsService {
     });
   }
 
+  /** Each trip comes with `route`: its located places as [lat, lng] pairs in
+   *  itinerary order, enough for the trip list to sketch a mini route map
+   *  without loading every place in full. */
   async listForUser(userId: string) {
-    return this.prisma.trip.findMany({
+    const trips = await this.prisma.trip.findMany({
       where: { members: { some: { userId } } },
       orderBy: { createdAt: 'desc' },
+      include: {
+        places: {
+          where: { lat: { not: null }, lng: { not: null } },
+          select: { lat: true, lng: true, visitDate: true, checkIn: true, departureTime: true, order: true },
+        },
+      },
     });
+
+    return trips.map(({ places, ...trip }) => ({
+      ...trip,
+      route: places
+        .map((p) => ({ p, at: (p.visitDate ?? p.checkIn ?? p.departureTime)?.getTime() ?? Infinity }))
+        .sort((a, b) => a.at - b.at || (a.p.order ?? 0) - (b.p.order ?? 0))
+        .map(({ p }) => [p.lat!, p.lng!] as [number, number]),
+    }));
   }
 
   async getOneOrThrow(tripId: string, userId: string) {

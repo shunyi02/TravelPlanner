@@ -320,3 +320,32 @@ describe('TripsService.updatePlace', () => {
     );
   });
 });
+
+describe('TripsService.listForUser', () => {
+  it('returns each trip with its located places as a route in itinerary order, without the full places', async () => {
+    const d = (s: string) => new Date(s);
+    const { service } = makeDeps({
+      prisma: {
+        trip: {
+          findMany: mockFn().mockResolvedValue([
+            {
+              id: TRIP_ID,
+              name: 'Tokyo',
+              places: [
+                { lat: 3, lng: 30, visitDate: d('2026-11-13T09:00:00Z'), checkIn: null, departureTime: null, order: 0 },
+                { lat: 1, lng: 10, visitDate: null, checkIn: d('2026-11-12T06:00:00Z'), departureTime: null, order: 5 },
+                { lat: 9, lng: 90, visitDate: null, checkIn: null, departureTime: null, order: 1 },
+                { lat: 2, lng: 20, visitDate: d('2026-11-12T08:00:00Z'), checkIn: null, departureTime: null, order: 2 },
+              ],
+            },
+          ]),
+        },
+      },
+    });
+
+    const [trip] = await service.listForUser(OWNER_ID);
+
+    expect(trip.route).toEqual([[1, 10], [2, 20], [3, 30], [9, 90]]);
+    expect(trip).not.toHaveProperty('places');
+  });
+});

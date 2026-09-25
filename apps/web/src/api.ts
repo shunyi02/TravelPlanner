@@ -110,6 +110,12 @@ export interface Trip {
   destinationLng: number | null;
 }
 
+/** A trip as the trip list returns it: `route` is its located places as
+ *  [lat, lng] pairs in itinerary order, for sketching a mini route map. */
+export interface TripSummary extends Trip {
+  route: [number, number][];
+}
+
 export type PlaceType = 'STOP' | 'HOTEL' | 'FLIGHT';
 
 export interface Place {
@@ -203,7 +209,7 @@ export const api = {
   getMe: () => request<CurrentUser>('/auth/me'),
   updateProfile: (data: { name?: string; avatarUrl?: string }) =>
     request<CurrentUser>('/auth/me', { method: 'PATCH', body: JSON.stringify(data) }),
-  listTrips: () => request<Trip[]>('/trips'),
+  listTrips: () => request<TripSummary[]>('/trips'),
   createTrip: (data: {
     name: string;
     startDate?: string;

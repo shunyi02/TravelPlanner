@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api, type Trip } from '../api';
+import { api, type Trip, type TripSummary } from '../api';
 import { AddTripModal } from '../components/AddTripModal';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { MiniRoute } from '../components/MiniRoute';
 
 const DAY_MS = 86_400_000;
 
@@ -61,7 +62,7 @@ function tripStatus(trip: Trip): { label: string; sentence: string; active: bool
 export function TripsLandingPage() {
   const navigate = useNavigate();
 
-  const [trips, setTrips] = useState<Trip[]>([]);
+  const [trips, setTrips] = useState<TripSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -116,11 +117,13 @@ export function TripsLandingPage() {
 
   if (loading) {
     return (
-      <div className="main main-centered">
-        <h1 className="page-title">Your trips</h1>
+      <div className="main trips-page">
+        <div className="trip-hero">
+          <h1 className="page-title">Your trips</h1>
+        </div>
         <div className="trip-card-grid" aria-hidden="true">
-          {[0, 1, 2].map((i) => (
-            <div className="trip-skeleton" key={i}>
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div className={`trip-skeleton${i === 0 ? ' trip-card-featured' : ''}`} key={i}>
               <div className="trip-skeleton-strip" />
               <div className="trip-skeleton-line" />
               <div className="trip-skeleton-line" />
@@ -150,10 +153,13 @@ export function TripsLandingPage() {
 
   const pastTrips = trips.filter(isPastTrip);
   const activeTrips = trips.filter((t) => !isPastTrip(t));
+  // The soonest upcoming trip leads the Trips view as a larger card.
+  const featured = view === 'trips' ? activeTrips.find((t) => t.id === upcoming?.id) : undefined;
   const visibleTrips = view === 'history' ? pastTrips : activeTrips;
+  const orderedTrips = featured ? [featured, ...visibleTrips.filter((t) => t !== featured)] : visibleTrips;
 
   return (
-    <div className="main main-centered">
+    <div className="main trips-page">
       <div className="trip-hero">
         <h1 className="page-title">Your trips</h1>
         {upcoming && upcomingStatus && (
@@ -182,12 +188,17 @@ export function TripsLandingPage() {
         </div>
       ) : (
         <>
-          <div className="tab-row no-print" style={{ margin: '0 auto 24px' }}>
-            <button className={view === 'trips' ? 'active' : ''} onClick={() => setView('trips')}>
-              Trips
-            </button>
-            <button className={view === 'history' ? 'active' : ''} onClick={() => setView('history')}>
-              History
+          <div className="trips-toolbar no-print">
+            <div className="tab-row">
+              <button className={view === 'trips' ? 'active' : ''} onClick={() => setView('trips')}>
+                Trips
+              </button>
+              <button className={view === 'history' ? 'active' : ''} onClick={() => setView('history')}>
+                History
+              </button>
+            </div>
+            <button className="btn" onClick={() => setShowModal(true)}>
+              + New trip
             </button>
           </div>
 
@@ -198,11 +209,16 @@ export function TripsLandingPage() {
           )}
 
           <div className="trip-card-grid">
-          {visibleTrips.map((trip) => {
+          {orderedTrips.map((trip, index) => {
             const dateRange = formatDateRange(trip.startDate, trip.endDate);
             const status = tripStatus(trip);
+            const isFeatured = trip === featured;
             return (
-              <div key={trip.id} className="trip-card">
+              <div
+                key={trip.id}
+                className={`trip-card${isFeatured ? ' trip-card-featured' : ''}`}
+                style={{ '--i': Math.min(index, 12) } as CSSProperties}
+              >
                 <button
                   className="trip-card-body"
                   onClick={() => navigate(`/trips/${trip.id}`)}
@@ -210,13 +226,23 @@ export function TripsLandingPage() {
                   {trip.coverPhoto ? (
                     <img src={trip.coverPhoto} alt="" className="trip-card-strip" />
                   ) : (
-                    <div className="trip-card-strip trip-card-strip-fallback" />
+                    <MiniRoute
+                      route={trip.route}
+                      {...(isFeatured && { width: 660, height: 420 })}
+                      className={`trip-card-strip${trip.route.length ? '' : ' trip-card-strip-fallback'}`}
+                    />
                   )}
 
                   <div className="trip-card-content">
+                    {isFeatured && <span className="trip-card-eyebrow">Next up</span>}
                     <span className="trip-card-name">{trip.name}</span>
 
-                    {dateRange && <span className="trip-card-dates">{dateRange}</span>}
+                    {dateRange && (
+                      <span className="trip-card-dates">
+                        {dateRange}
+                        {isFeatured && trip.destinationName && ` · ${trip.destinationName}`}
+                      </span>
+                    )}
 
                     {status && (
                       <span className={`trip-card-status${status.active ? ' active' : ''}`}>{status.label}</span>
@@ -253,15 +279,6 @@ export function TripsLandingPage() {
               </div>
             );
           })}
-
-          {view === 'trips' && (
-            <button
-              className="trip-card trip-card-add"
-              onClick={() => setShowModal(true)}
-            >
-              + Add a trip
-            </button>
-          )}
           </div>
         </>
       )}
