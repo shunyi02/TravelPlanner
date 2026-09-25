@@ -1,0 +1,458 @@
+/* BalancesTab: the "your balance" summary, the settle-up payment list, and
+ * the net-balance chart (owes to the left of a centre line, gets back to the
+ * right). Direction is always carried by words or +/− signs, never color alone. */
+
+.balances {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---------- Summary ---------- */
+
+.balances-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 24px;
+  padding: 22px 24px 24px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  border-left: 4px solid var(--rule);
+}
+
+.balances-summary-owed {
+  border-left-color: var(--route);
+}
+
+.balances-summary-owe {
+  border-left-color: var(--owe);
+}
+
+.balances-summary-even {
+  border-left-color: var(--route);
+  background: var(--route-soft);
+}
+
+.balances-eyebrow {
+  display: block;
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.balances-summary-headline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin: 6px 0 4px;
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.balances-summary-amount {
+  font-variant-numeric: tabular-nums;
+}
+
+.balances-summary-owed .balances-summary-amount {
+  color: var(--route);
+}
+
+.balances-summary-owe .balances-summary-amount {
+  color: var(--owe);
+}
+
+.balances-summary-check {
+  color: var(--route);
+}
+
+.balances-summary-sub {
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+.balances-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.balances-copy .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.balances-copy-status {
+  min-height: 18px;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+/* ---------- Section headings ---------- */
+
+.balances-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.balances-heading-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.balances-heading {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+/* ---------- People ---------- */
+
+.balances-person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.balances-person-name {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.balances-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--route-soft);
+  color: var(--route);
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.balances-avatar-you {
+  background: var(--route);
+  color: var(--on-route);
+}
+
+/* ---------- Settle up ---------- */
+
+.balances-payments,
+.balances-chart {
+  list-style: none;
+  margin: 0;
+}
+
+/* Fixed arrow and amount columns keep "from → to" aligned across rows. */
+.balances-payment {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 20px minmax(0, 1fr) 230px;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.balances-payment:last-child {
+  border-bottom: none;
+}
+
+.balances-payment-mine {
+  margin: 0 -16px;
+  padding: 14px 16px;
+  background: color-mix(in srgb, var(--highlight) 12%, transparent);
+}
+
+.balances-payment-mine:first-child {
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.balances-payment-mine:last-child {
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+.balances-payment-mine:only-child {
+  border-radius: var(--radius-lg);
+}
+
+.balances-payment-arrow {
+  color: var(--ink-soft);
+}
+
+.balances-payment-end {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.balances-payment-amount {
+  margin-left: auto;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.balances-tag {
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.balances-tag-owe {
+  background: var(--owe-soft);
+  color: var(--owe);
+}
+
+.balances-tag-owed {
+  background: var(--route-soft);
+  color: var(--route);
+}
+
+/* ---------- Net balance chart ---------- */
+
+.balances-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.balances-legend-owe::before {
+  content: '◂ ';
+  color: var(--owe);
+}
+
+.balances-legend-owed::after {
+  content: ' ▸';
+  color: var(--route);
+}
+
+.balances-legend-axis {
+  width: 1px;
+  height: 14px;
+  background: var(--ink-soft);
+  opacity: 0.5;
+}
+
+.balances-bar-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 190px) minmax(0, 1fr) 130px;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.balances-bar-row:last-child {
+  border-bottom: none;
+}
+
+.balances-track {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  height: 12px;
+}
+
+.balances-track-half {
+  display: flex;
+  align-items: stretch;
+}
+
+.balances-track-owe {
+  justify-content: flex-end;
+  border-right: 1px solid color-mix(in srgb, var(--ink-soft) 50%, transparent);
+}
+
+.balances-bar {
+  min-width: 4px;
+  transition: width 0.5s cubic-bezier(0.2, 0.7, 0.2, 1);
+  animation: balances-bar-in 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+
+.balances-bar-owe {
+  background: var(--owe);
+  border-radius: 6px 0 0 6px;
+  transform-origin: right;
+}
+
+.balances-bar-owed {
+  background: var(--route);
+  border-radius: 0 6px 6px 0;
+  transform-origin: left;
+}
+
+@keyframes balances-bar-in {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+.balances-bar-amount {
+  text-align: right;
+  font-weight: 500;
+}
+
+.balances-bar-amount:not(.owed-to-you):not(.you-owe) {
+  color: var(--ink-soft);
+}
+
+/* ---------- Empty state ---------- */
+
+.balances-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 48px 24px 56px;
+  text-align: center;
+  color: var(--ink-soft);
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.balances-state svg {
+  color: var(--route);
+}
+
+.balances-state h3 {
+  margin: 4px 0 0;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 18px;
+}
+
+.balances-state p {
+  margin: 0 0 8px;
+  max-width: 38ch;
+}
+
+/* ---------- Loading skeleton ---------- */
+
+.balances-skeleton {
+  border-left-color: var(--rule);
+}
+
+.balances-skeleton .balances-skeleton-line,
+.balances-skeleton-row {
+  border-radius: 4px;
+  background: var(--rule);
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+.balances-summary.balances-skeleton {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.balances-skeleton-line {
+  height: 12px;
+  width: 55%;
+}
+
+.balances-skeleton-line-short {
+  width: 90px;
+}
+
+.balances-skeleton-line-big {
+  height: 26px;
+  width: 280px;
+  max-width: 80%;
+}
+
+.balances-skeleton-row {
+  height: 22px;
+  margin: 16px 0;
+}
+
+/* ---------- Narrow screens ---------- */
+
+@media (max-width: 640px) {
+  .balances-summary {
+    padding: 18px 18px 20px;
+  }
+
+  .balances-summary-headline {
+    font-size: 22px;
+  }
+
+  .balances-copy {
+    align-items: flex-start;
+  }
+
+  .balances-payment {
+    grid-template-columns: minmax(0, 1fr) 20px minmax(0, 1fr);
+    row-gap: 8px;
+  }
+
+  .balances-payment-end {
+    grid-column: 1 / -1;
+    justify-content: space-between;
+  }
+
+  .balances-bar-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'person amount'
+      'track track';
+    row-gap: 10px;
+  }
+
+  .balances-bar-row .balances-person {
+    grid-area: person;
+  }
+
+  .balances-track {
+    grid-area: track;
+  }
+
+  .balances-bar-amount {
+    grid-area: amount;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .balances-bar {
+    animation: none;
+    transition: none;
+  }
+
+  .balances-skeleton .balances-skeleton-line,
+  .balances-skeleton-row {
+    animation: none;
+  }
+}

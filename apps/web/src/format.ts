@@ -41,3 +41,14 @@ export function formatDayHeading(iso: string): string {
     day: 'numeric',
   });
 }
+
+/** A money amount with its currency code and thousands separators, e.g.
+ *  "SGD 1,374.51". Falls back to a plain "SGD 1374.51" for a code Intl
+ *  doesn't recognise. */
+export function formatMoney(amount: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat(undefined, { style: 'currency', currency, currencyDisplay: 'code' }).format(amount);
+  } catch {
+    return `${currency} ${amount.toFixed(2)}`;
+  }
+}

@@ -113,7 +113,16 @@ export function TripDetailPage() {
           onChange={handleChange}
         />
       )}
-      {tab === 'balances' && <BalancesTab tripId={tripId} memberNames={memberNames} currency={trip.currency} />}
+      {tab === 'balances' && (
+        <BalancesTab
+          tripId={tripId}
+          tripName={trip.name}
+          memberNames={memberNames}
+          currency={trip.currency}
+          hasExpenses={expenses.length > 0}
+          onGoToExpenses={() => setTab('expenses')}
+        />
+      )}
       {tab === 'report' && (
         <ReportTab tripId={tripId} trip={trip} expenses={expenses} memberNames={memberNames} onChange={handleChange} />
       )}
