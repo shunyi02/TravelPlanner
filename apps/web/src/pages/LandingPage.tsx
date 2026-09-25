@@ -59,16 +59,16 @@ export function LandingPage({
             <img
               className="landing-hero-shot landing-hero-shot-light"
               src="/hero-itinerary-light.jpg"
-              alt="A Cuti trip page: the Guangzhou trip banner with stops, trip length and currency, day-by-day tabs, and the route map"
-              width={535}
-              height={710}
+              alt="A Cuti trip to Kuala Lumpur for four travellers: nine stops over four days in ringgit, with day one's route on the map"
+              width={519}
+              height={768}
             />
             <img
               className="landing-hero-shot landing-hero-shot-dark"
               src="/hero-itinerary-dark.jpg"
-              alt="A Cuti trip page: the Guangzhou trip banner with stops, trip length and currency, day-by-day tabs, and the route map"
-              width={535}
-              height={710}
+              alt="A Cuti trip to Kuala Lumpur for four travellers: nine stops over four days in ringgit, with day one's route on the map"
+              width={519}
+              height={768}
               loading="lazy"
             />
           </div>
