@@ -231,6 +231,8 @@ export const api = {
       destinationName?: string;
       destinationLat?: number;
       destinationLng?: number;
+      /** Move every dated itinerary item by this many days with the change. */
+      shiftItineraryDays?: number;
     },
   ) => request<Trip>(`/trips/${tripId}`, { method: 'PATCH', body: JSON.stringify(data) }),
   getTrip: (tripId: string) => request<TripDetail>(`/trips/${tripId}`),

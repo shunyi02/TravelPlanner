@@ -1,4 +1,7 @@
+import { useRef } from 'react';
+import { PencilSimple } from '@phosphor-icons/react';
 import type { TripDetail } from '../api';
+import { TripDatesEditor } from './TripDatesEditor';
 
 function formatShort(iso: string): string {
   return new Date(iso.slice(0, 10) + 'T00:00:00Z')
@@ -24,20 +27,32 @@ function tripStatus(start: string | null, end: string | null): string | null {
 }
 
 /** Dark banner at the top of every trip tab: dates, title, and three stat cards.
- *  Mirrors the mobile app's TripHero (apps/mobile/src/components/TripHero.tsx). */
-export function TripHero({ trip }: { trip: TripDetail }) {
+ *  Mirrors the mobile app's TripHero (apps/mobile/src/components/TripHero.tsx).
+ *  The dates double as the way to change them: they open TripDatesEditor. */
+export function TripHero({
+  trip,
+  editingDates,
+  onEditDates,
+  onChange,
+}: {
+  trip: TripDetail;
+  editingDates: boolean;
+  onEditDates: (open: boolean) => void;
+  onChange: () => void;
+}) {
+  const datesButtonRef = useRef<HTMLButtonElement>(null);
   const stops = trip.places.filter((p) => p.type === 'STOP').length;
   const hotels = trip.places.filter((p) => p.type === 'HOTEL').length;
   const flights = trip.places.filter((p) => p.type === 'FLIGHT').length;
   const days = trip.startDate && trip.endDate ? dayCount(trip.startDate, trip.endDate) : null;
   const status = tripStatus(trip.startDate, trip.endDate);
 
-  const eyebrow = [
-    trip.destinationName?.toUpperCase(),
-    trip.startDate && trip.endDate ? `${formatShort(trip.startDate)} - ${formatShort(trip.endDate)}` : null,
-  ]
-    .filter(Boolean)
-    .join('  ·  ');
+  const dateLabel = trip.startDate && trip.endDate ? `${formatShort(trip.startDate)} – ${formatShort(trip.endDate)}` : null;
+
+  const closeEditor = () => {
+    onEditDates(false);
+    datesButtonRef.current?.focus();
+  };
 
   const subtitle = [
     `${trip.members.length} ${trip.members.length === 1 ? 'traveler' : 'travelers'}`,
@@ -52,9 +67,25 @@ export function TripHero({ trip }: { trip: TripDetail }) {
   ];
 
   return (
+    <div className="itin-hero-wrap">
     <section className="itin-hero">
       <div className="itin-hero-top">
-        <p className="itin-hero-eyebrow">{eyebrow}</p>
+        <p className="itin-hero-eyebrow">
+          {trip.destinationName && <span>{trip.destinationName.toUpperCase()}{'  ·  '}</span>}
+          <button
+            type="button"
+            ref={datesButtonRef}
+            className={`itin-hero-dates no-print${dateLabel ? '' : ' itin-hero-dates-empty'}`}
+            aria-expanded={editingDates}
+            aria-haspopup="dialog"
+            aria-label={dateLabel ? `Trip dates ${dateLabel}. Change dates` : 'Add trip dates'}
+            onClick={() => onEditDates(!editingDates)}
+          >
+            {dateLabel ?? '+ ADD DATES'}
+            {dateLabel && <PencilSimple size={13} weight="bold" aria-hidden className="itin-hero-dates-icon" />}
+          </button>
+          {dateLabel && <span className="print-only">{dateLabel}</span>}
+        </p>
         {status && <span className="itin-hero-badge">{status}</span>}
       </div>
       <h1 className="itin-hero-title">{trip.name}</h1>
@@ -68,5 +99,7 @@ export function TripHero({ trip }: { trip: TripDetail }) {
         ))}
       </div>
     </section>
+    {editingDates && <TripDatesEditor trip={trip} onClose={closeEditor} onSaved={onChange} />}
+    </div>
   );
 }

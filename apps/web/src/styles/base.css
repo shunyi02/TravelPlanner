@@ -511,7 +511,16 @@ label.btn {
 
 /* Print: only the current tab's content (e.g. the itinerary) — no chrome,
  * no interactive controls, no map (tiles don't reliably print). */
+/* Shown only on paper, e.g. plain text standing in for an on-screen button. */
+.print-only {
+  display: none;
+}
+
 @media print {
+  .print-only {
+    display: inline;
+  }
+
   .top-bar,
   .sidebar,
   .no-print,

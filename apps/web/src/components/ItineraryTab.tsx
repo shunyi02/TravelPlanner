@@ -9,25 +9,7 @@ import type { DayForecast } from '../weather';
 import { fetchWeather } from '../weather';
 import { PLACE_ICONS } from '../placeIcons';
 import { ConfirmDialog } from './ConfirmDialog';
-
-function daysBetween(start: string, end: string): string[] {
-  const days: string[] = [];
-  const cur = new Date(start + 'T00:00:00Z');
-  const last = new Date(end + 'T00:00:00Z');
-  while (cur <= last) {
-    days.push(cur.toISOString().slice(0, 10));
-    cur.setUTCDate(cur.getUTCDate() + 1);
-  }
-  return days;
-}
-
-/** Calendar-day difference between two "YYYY-MM-DD" keys (UTC-anchored, matching
- *  dayKeysFor's convention). */
-function dayDelta(fromDay: string, toDay: string): number {
-  const from = new Date(fromDay + 'T00:00:00Z').getTime();
-  const to = new Date(toDay + 'T00:00:00Z').getTime();
-  return Math.round((to - from) / 86_400_000);
-}
+import { dayDelta, dayKeysFor, daysBetween } from '../itineraryDates';
 
 /** Shift an ISO datetime by whole calendar days, keeping its time-of-day. */
 function shiftDateByDays(iso: string, delta: number): string {
@@ -72,28 +54,6 @@ function dayTip(dayPlaces: Place[], forecast?: DayForecast): { label: string; te
 function formatTime(iso?: string | null): string {
   if (!iso) return '';
   return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-}
-
-/** Which day-buckets a place belongs in. Hotels span every day from checkIn to checkOut
- *  inclusive; flights/stops occupy a single day. */
-function dayKeysFor(place: Place): string[] {
-  if (place.type === 'HOTEL') {
-    if (!place.checkIn) return [];
-    const ci = place.checkIn.slice(0, 10);
-    const co = place.checkOut ? place.checkOut.slice(0, 10) : ci;
-    const keys: string[] = [];
-    const cur = new Date(ci + 'T00:00:00Z');
-    const last = new Date(co + 'T00:00:00Z');
-    while (cur <= last) {
-      keys.push(cur.toISOString().slice(0, 10));
-      cur.setUTCDate(cur.getUTCDate() + 1);
-    }
-    return keys;
-  }
-  if (place.type === 'FLIGHT') {
-    return place.departureTime ? [place.departureTime.slice(0, 10)] : [];
-  }
-  return place.visitDate ? [place.visitDate.slice(0, 10)] : [];
 }
 
 /** Empty string means "everyone" (no assignees) — same convention as
@@ -163,17 +123,18 @@ export function ItineraryTab({
   places,
   memberNames,
   onChange,
+  onEditDates,
 }: {
   tripId: string;
   trip: TripDetail;
   places: Place[];
   memberNames: Record<string, string>;
   onChange: () => void;
+  onEditDates: () => void;
 }) {
   const memberIds = Object.keys(memberNames);
-  const [startDate, setStartDate] = useState(trip.startDate?.slice(0, 10) ?? '');
-  const [endDate, setEndDate] = useState(trip.endDate?.slice(0, 10) ?? '');
-  const [dateError, setDateError] = useState<string | null>(null);
+  const startDate = trip.startDate?.slice(0, 10) ?? '';
+  const endDate = trip.endDate?.slice(0, 10) ?? '';
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingPlace, setEditingPlace] = useState<Place | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -212,20 +173,6 @@ export function ItineraryTab({
       }
       return next;
     });
-  };
-
-  const handleSaveDates = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setDateError(null);
-    try {
-      await api.updateTrip(tripId, {
-        startDate: startDate || undefined,
-        endDate: endDate || undefined,
-      });
-      onChange();
-    } catch (err) {
-      setDateError(err instanceof Error ? err.message : 'Could not save dates');
-    }
   };
 
   const handleDelete = async (place: Place) => {
@@ -545,19 +492,10 @@ export function ItineraryTab({
 
   return (
     <div>
-      <form className="form-inline no-print itin-dates-form" onSubmit={handleSaveDates}>
-        <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-        <span>to</span>
-        <input type="date" value={endDate} min={startDate || undefined} onChange={(e) => setEndDate(e.target.value)} />
-        <button className="btn" type="submit">
-          Save dates
-        </button>
-      </form>
-      {dateError && <p className="form-error spaced-below">{dateError}</p>}
       {deleteError && <p className="form-error spaced-below">{deleteError}</p>}
       {moveError && <p className="form-error spaced-below">{moveError}</p>}
 
-      <div className="no-print btn-row">
+      <div className="no-print btn-row section-gap">
         <button className="btn" onClick={() => setShowAddModal(true)}>
           + Add
         </button>
@@ -590,7 +528,12 @@ export function ItineraryTab({
         <>
           <RouteMap stops={routeStops} />
           {places.length === 0 ? (
-            <p className="empty-state">No stops yet. Set trip dates above to plan day by day.</p>
+            <div className="empty-state itin-no-dates">
+              <p>No stops yet. Add trip dates to plan day by day.</p>
+              <button className="btn btn-outline" onClick={onEditDates}>
+                Set trip dates
+              </button>
+            </div>
           ) : visiblePlaces.length === 0 ? (
             <p className="empty-state">No stops for this filter.</p>
           ) : (

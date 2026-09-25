@@ -1,0 +1,375 @@
+/* The trip header's date button and the TripDatesEditor popover it opens:
+ * a range calendar, change summary, "move the itinerary" option, and warnings.
+ * On narrow screens the popover becomes a bottom sheet. */
+
+.itin-hero-wrap {
+  position: relative;
+}
+
+/* ---------- Header date button ---------- */
+
+.itin-hero-dates {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: -4px -8px;
+  padding: 4px 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.itin-hero-dates:hover,
+.itin-hero-dates[aria-expanded='true'] {
+  background: rgba(246, 240, 225, 0.12);
+  color: var(--hero-ink);
+}
+
+.itin-hero-dates:focus-visible {
+  outline-color: var(--highlight);
+}
+
+.itin-hero-dates-icon {
+  opacity: 0.55;
+  transition: opacity 0.15s ease;
+}
+
+.itin-hero-dates:hover .itin-hero-dates-icon,
+.itin-hero-dates:focus-visible .itin-hero-dates-icon {
+  opacity: 1;
+}
+
+.itin-hero-dates-empty {
+  color: var(--highlight);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--highlight) 55%, transparent);
+}
+
+/* ---------- Popover ---------- */
+
+.trip-dates-backdrop {
+  display: none;
+}
+
+.trip-dates {
+  position: absolute;
+  top: 64px;
+  left: 16px;
+  z-index: var(--z-menu);
+  width: min(620px, calc(100% - 32px));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px 16px;
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md), 0 0 0 1px var(--rule);
+  animation: trip-dates-in 0.18s ease-out;
+}
+
+@keyframes trip-dates-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+.trip-dates-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+
+.trip-dates-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.trip-dates-hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+/* ---------- Calendar ---------- */
+
+.trip-dates-calendar {
+  position: relative;
+}
+
+.trip-dates-nav {
+  position: absolute;
+  top: -4px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink);
+  transition: background 0.15s ease;
+}
+
+.trip-dates-nav:hover {
+  background: var(--bg);
+}
+
+.trip-dates-nav-prev {
+  left: 0;
+}
+
+.trip-dates-nav-next {
+  right: 0;
+}
+
+.trip-dates-months {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 24px;
+}
+
+.trip-dates-month-name {
+  margin: 0 0 10px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.trip-dates-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  row-gap: 2px;
+}
+
+.trip-dates-weekday {
+  padding-bottom: 4px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.trip-dates-day {
+  position: relative;
+  height: 36px;
+  border: none;
+  background: none;
+  color: var(--ink);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  border-radius: 0;
+  z-index: 0;
+}
+
+/* The round "chip" sits on ::before so the range band (the button's own
+   background) can run edge to edge between the start and end chips. */
+.trip-dates-day::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  z-index: -1;
+  border-radius: 50%;
+  transition: background 0.12s ease;
+}
+
+.trip-dates-day:hover::before {
+  background: var(--bg);
+}
+
+.trip-dates-day.today {
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.trip-dates-day.in-range {
+  background: var(--route-soft);
+}
+
+.trip-dates-day.range-start.has-end {
+  background: linear-gradient(to right, transparent 50%, var(--route-soft) 50%);
+}
+
+.trip-dates-day.range-end:not(.range-start) {
+  background: linear-gradient(to left, transparent 50%, var(--route-soft) 50%);
+}
+
+.trip-dates-day.range-start,
+.trip-dates-day.range-end {
+  color: var(--on-route);
+  font-weight: 600;
+}
+
+.trip-dates-day.range-start::before,
+.trip-dates-day.range-end::before {
+  background: var(--route);
+}
+
+/* Hover preview before the end is picked: same shapes, lighter. */
+.trip-dates-day.preview.in-range {
+  background: color-mix(in srgb, var(--route-soft) 60%, transparent);
+}
+
+.trip-dates-day.preview.range-end:not(.range-start) {
+  color: var(--route);
+  background: linear-gradient(to left, transparent 50%, color-mix(in srgb, var(--route-soft) 60%, transparent) 50%);
+}
+
+.trip-dates-day.preview.range-end:not(.range-start)::before {
+  background: var(--surface);
+  box-shadow: inset 0 0 0 2px var(--route);
+}
+
+.trip-dates-day:focus-visible {
+  outline: none;
+}
+
+.trip-dates-day:focus-visible::before {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--route);
+}
+
+/* ---------- Summary, option, warnings ---------- */
+
+.trip-dates-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+}
+
+.trip-dates-range {
+  font-weight: 600;
+}
+
+.trip-dates-count {
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+.trip-dates-move {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  cursor: pointer;
+}
+
+.trip-dates-move input {
+  margin-top: 3px;
+  accent-color: var(--route);
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.trip-dates-move strong {
+  display: block;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.trip-dates-move-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.trip-dates-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--ledger-soft);
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.trip-dates-warning svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--ledger);
+}
+
+.trip-dates-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+}
+
+.itin-no-dates {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+}
+
+.itin-no-dates p {
+  margin: 0;
+}
+
+/* ---------- Bottom sheet on phones ---------- */
+
+@media (max-width: 639px) {
+  .trip-dates-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-modal);
+    background: rgba(0, 0, 0, 0.35);
+  }
+
+  .trip-dates {
+    position: fixed;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: var(--z-modal);
+    width: auto;
+    max-height: 92dvh;
+    overflow-y: auto;
+    padding: 18px 16px calc(16px + env(safe-area-inset-bottom));
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    animation-name: trip-dates-sheet-in;
+  }
+
+  @keyframes trip-dates-sheet-in {
+    from {
+      transform: translateY(24px);
+      opacity: 0;
+    }
+  }
+
+  .trip-dates-day {
+    height: 42px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trip-dates {
+    animation: none;
+  }
+}

@@ -329,16 +329,20 @@
   font-family: ui-monospace, Menlo, monospace;
 }
 
+/* Wraps rather than truncating: the dates in it are a button (to change
+   them) and must stay reachable on narrow screens. */
 .itin-hero-eyebrow {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 0;
   margin: 0;
   font-size: 13px;
   letter-spacing: 2px;
   color: var(--hero-soft);
   white-space: pre;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .itin-hero-badge {
@@ -566,10 +570,6 @@ h1.itin-hero-title {
 
 .place-type-tabs {
   margin-top: 12px;
-}
-
-.itin-dates-form {
-  margin-bottom: 24px;
 }
 
 .suggested-stops-categories {

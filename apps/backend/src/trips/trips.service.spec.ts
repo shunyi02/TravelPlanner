@@ -349,3 +349,54 @@ describe('TripsService.listForUser', () => {
     expect(trip).not.toHaveProperty('places');
   });
 });
+
+describe('TripsService.update', () => {
+  function deps() {
+    const d = makeDeps({
+      prisma: {
+        tripMember: { findUnique: mockFn().mockResolvedValue({ tripId: TRIP_ID, userId: OWNER_ID, role: 'member' }) },
+        trip: { update: mockFn().mockResolvedValue({ id: TRIP_ID, name: 'Tokyo' }) },
+        $executeRaw: mockFn().mockResolvedValue(3),
+      },
+    });
+    return { service: d.service, prisma: d.prisma as any };
+  }
+
+  it('updates dates alone without touching the itinerary', async () => {
+    const { service, prisma } = deps();
+
+    await service.update(TRIP_ID, OWNER_ID, { startDate: '2026-11-19', endDate: '2026-11-23' });
+
+    expect(prisma.trip.update).toHaveBeenCalled();
+    expect(prisma.$executeRaw).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('shifts places and accommodations in the same transaction as the date change', async () => {
+    const { service, prisma } = deps();
+
+    const trip = await service.update(TRIP_ID, OWNER_ID, {
+      startDate: '2026-11-19',
+      endDate: '2026-11-23',
+      shiftItineraryDays: 7,
+    });
+
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(2);
+    const [placeSql] = prisma.$executeRaw.mock.calls[0];
+    expect(placeSql.join('?')).toContain('UPDATE "Place"');
+    expect(prisma.$executeRaw.mock.calls[0]).toContain(7);
+    expect(prisma.$executeRaw.mock.calls[0]).toContain(TRIP_ID);
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(prisma.$transaction.mock.calls[0][0]).toHaveLength(3);
+    expect(trip).toEqual({ id: TRIP_ID, name: 'Tokyo' });
+  });
+
+  it('rejects an end date before the start date before writing anything', async () => {
+    const { service, prisma } = deps();
+
+    await expect(
+      service.update(TRIP_ID, OWNER_ID, { startDate: '2026-11-19', endDate: '2026-11-10', shiftItineraryDays: 7 }),
+    ).rejects.toThrow(BadRequestException);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+});

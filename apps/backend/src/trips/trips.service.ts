@@ -385,7 +385,7 @@ export class TripsService {
       throw new BadRequestException('endDate must be on or after startDate');
     }
 
-    return this.prisma.trip.update({
+    const updateTrip = this.prisma.trip.update({
       where: { id: tripId },
       data: {
         startDate: dto.startDate ? new Date(dto.startDate) : undefined,
@@ -397,6 +397,28 @@ export class TripsService {
         destinationLng: dto.destinationLng,
       },
     });
+
+    const shift = dto.shiftItineraryDays ?? 0;
+    if (shift === 0) return updateTrip;
+
+    // Whole-day shifts keep each item's time of day. Null dates stay null.
+    const [, , trip] = await this.prisma.$transaction([
+      this.prisma.$executeRaw`
+        UPDATE "Place" SET
+          "visitDate" = "visitDate" + make_interval(days => ${shift}::int),
+          "checkIn" = "checkIn" + make_interval(days => ${shift}::int),
+          "checkOut" = "checkOut" + make_interval(days => ${shift}::int),
+          "departureTime" = "departureTime" + make_interval(days => ${shift}::int),
+          "arrivalTime" = "arrivalTime" + make_interval(days => ${shift}::int)
+        WHERE "tripId" = ${tripId}`,
+      this.prisma.$executeRaw`
+        UPDATE "Accommodation" SET
+          "checkInDate" = "checkInDate" + make_interval(days => ${shift}::int),
+          "checkOutDate" = "checkOutDate" + make_interval(days => ${shift}::int)
+        WHERE "tripId" = ${tripId}`,
+      updateTrip,
+    ]);
+    return trip;
   }
 
 

@@ -18,6 +18,7 @@ export function TripDetailPage() {
   const [trip, setTrip] = useState<TripDetailType | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [tab, setTab] = useState<Tab>('itinerary');
+  const [editingDates, setEditingDates] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => {
@@ -71,7 +72,7 @@ export function TripDetailPage() {
 
   return (
     <div className="main main-wide">
-      <TripHero trip={trip} />
+      <TripHero trip={trip} editingDates={editingDates} onEditDates={setEditingDates} onChange={handleChange} />
 
       <div className="tab-row no-print">
         <button className={tab === 'itinerary' ? 'active' : ''} onClick={() => setTab('itinerary')}>
@@ -98,6 +99,7 @@ export function TripDetailPage() {
           places={trip.places}
           memberNames={memberNames}
           onChange={handleChange}
+          onEditDates={() => setEditingDates(true)}
         />
       )}
       {tab === 'bookings' && <BookingsTab places={trip.places} memberNames={memberNames} />}
