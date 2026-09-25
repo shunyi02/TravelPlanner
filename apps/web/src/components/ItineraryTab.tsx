@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Compass } from '@phosphor-icons/react';
 import type { Place, TripDetail } from '../api';
 import { api } from '../api';
 import { AddItineraryItemModal } from './AddItineraryItemModal';
 import { DayWeather } from './DayWeather';
 import { RouteMap, routeColorMap, type RouteStop } from './RouteMap';
-import { SuggestedStopsPanel } from './SuggestedStopsPanel';
+import { DiscoverPanel } from './DiscoverPanel';
 import type { DayForecast } from '../weather';
 import { fetchWeather } from '../weather';
 import { PLACE_ICONS } from '../placeIcons';
@@ -136,6 +137,12 @@ export function ItineraryTab({
   const startDate = trip.startDate?.slice(0, 10) ?? '';
   const endDate = trip.endDate?.slice(0, 10) ?? '';
   const [showAddModal, setShowAddModal] = useState(false);
+  const [discoverOpen, setDiscoverOpen] = useState(false);
+  const discoverButtonRef = useRef<HTMLButtonElement>(null);
+  const closeDiscover = useCallback(() => {
+    setDiscoverOpen(false);
+    discoverButtonRef.current?.focus();
+  }, []);
   const [editingPlace, setEditingPlace] = useState<Place | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -499,6 +506,15 @@ export function ItineraryTab({
         <button className="btn" onClick={() => setShowAddModal(true)}>
           + Add
         </button>
+        <button
+          type="button"
+          ref={discoverButtonRef}
+          className="btn btn-outline itin-discover-btn"
+          aria-expanded={discoverOpen}
+          onClick={() => setDiscoverOpen((v) => !v)}
+        >
+          <Compass size={17} aria-hidden /> Discover places
+        </button>
         <button className="btn btn-outline" onClick={() => window.print()}>
           Export PDF
         </button>
@@ -517,12 +533,6 @@ export function ItineraryTab({
         </div>
       )}
 
-      <SuggestedStopsPanel
-        tripId={tripId}
-        trip={trip}
-        existingPlaceNames={places.map((p) => p.name)}
-        onAdded={onChange}
-      />
 
       {days.length === 0 ? (
         <>
@@ -668,6 +678,17 @@ export function ItineraryTab({
             </>
           );
         })()
+      )}
+
+      {discoverOpen && (
+        <DiscoverPanel
+          tripId={tripId}
+          trip={trip}
+          days={days}
+          viewedDay={currentDay}
+          onAdded={onChange}
+          onClose={closeDiscover}
+        />
       )}
 
       {(showAddModal || editingPlace) && (

@@ -1,0 +1,397 @@
+/* DiscoverPanel: a right-hand side panel (full-screen sheet on phones) for
+ * finding well-known places near the trip's bases and adding them to a day.
+ * On wide screens the page makes room for it (body.discover-open) so the
+ * itinerary stays visible alongside. */
+
+.itin-discover-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.discover-backdrop {
+  display: none;
+}
+
+.discover {
+  --discover-w: 420px;
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-menu);
+  width: var(--discover-w);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: -12px 0 32px rgba(0, 0, 0, 0.12), -1px 0 0 var(--rule);
+  animation: discover-in 0.22s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+@keyframes discover-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+}
+
+@media (min-width: 1200px) {
+  body.discover-open .app-shell {
+    padding-right: 420px;
+  }
+}
+
+/* ---------- Header & controls ---------- */
+
+.discover-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 10px;
+}
+
+.discover-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 600;
+}
+
+.discover-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-soft);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.discover-close:hover {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.discover-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 20px 16px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.discover-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.discover-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.discover-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.discover-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  padding: 6px 12px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.discover-chip:hover {
+  border-color: var(--route);
+}
+
+.discover-chip[aria-pressed='true'] {
+  background: var(--route);
+  border-color: var(--route);
+  color: var(--on-route);
+}
+
+.discover-chip-search {
+  color: var(--route);
+}
+
+.discover-search {
+  margin-top: 2px;
+}
+
+/* Five categories don't fit one row at panel width: an even 3 + 2 grid. */
+.discover-categories {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--radius-md);
+  background: var(--bg);
+}
+
+.discover-category {
+  grid-column: span 2;
+  padding: 7px 10px;
+  border: none;
+  border-radius: calc(var(--radius-md) - 3px);
+  background: none;
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.discover-category:nth-child(n + 4) {
+  grid-column: span 3;
+}
+
+.discover-category[aria-pressed='true'] {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-sm);
+}
+
+.discover-day {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.discover-day select {
+  flex: 1;
+}
+
+/* ---------- Results ---------- */
+
+.discover-results {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 14px 20px 20px;
+}
+
+.discover-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.discover-card {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 14px;
+  padding: 10px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--rule);
+  transition: box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.discover-card:hover {
+  box-shadow: 0 0 0 1px var(--route), var(--shadow-sm);
+}
+
+.discover-card-added {
+  background: var(--route-soft);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--route) 40%, transparent);
+}
+
+.discover-photo-link {
+  display: block;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.discover-photo {
+  display: block;
+  width: 112px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  background: var(--route-soft);
+}
+
+.discover-photo-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--route);
+}
+
+.discover-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.discover-name {
+  font-weight: 600;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.discover-meta {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.discover-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  font-size: 12px;
+  color: var(--route);
+  text-decoration: none;
+}
+
+.discover-link:hover {
+  text-decoration: underline;
+}
+
+/* Pinned to the bottom so buttons line up whatever the name's length. */
+.discover-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 6px;
+}
+
+.discover-add {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.discover-added {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--route);
+}
+
+.discover-note,
+.discover-empty {
+  margin: 14px 0 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.discover-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.discover-empty p {
+  margin: 0;
+}
+
+.discover-foot {
+  padding: 10px 20px 14px;
+  border-top: 1px solid var(--rule);
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.discover-foot a {
+  color: inherit;
+}
+
+/* ---------- Loading skeleton ---------- */
+
+.discover-card-skeleton .discover-photo,
+.discover-skel-line {
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+.discover-card-skeleton .discover-photo {
+  display: block;
+}
+
+.discover-skel-line {
+  display: block;
+  height: 12px;
+  width: 80%;
+  margin-top: 8px;
+  border-radius: 4px;
+  background: var(--rule);
+}
+
+.discover-skel-line-short {
+  width: 45%;
+}
+
+/* ---------- Phones: full-screen sheet ---------- */
+
+@media (max-width: 639px) {
+  .discover-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-modal);
+    background: rgba(0, 0, 0, 0.35);
+  }
+
+  .discover {
+    z-index: var(--z-modal);
+    width: 100%;
+    padding-bottom: env(safe-area-inset-bottom);
+    animation-name: discover-sheet-in;
+  }
+
+  @keyframes discover-sheet-in {
+    from {
+      transform: translateY(24px);
+      opacity: 0;
+    }
+  }
+
+  .discover-card {
+    grid-template-columns: 96px minmax(0, 1fr);
+  }
+
+  .discover-photo {
+    width: 96px;
+    height: 92px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .discover,
+  .discover-card-skeleton .discover-photo,
+  .discover-skel-line {
+    animation: none;
+  }
+}
