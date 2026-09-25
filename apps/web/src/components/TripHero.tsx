@@ -34,7 +34,7 @@ export function TripHero({ trip }: { trip: TripDetail }) {
 
   const eyebrow = [
     trip.destinationName?.toUpperCase(),
-    trip.startDate && trip.endDate ? `${formatShort(trip.startDate)} — ${formatShort(trip.endDate)}` : null,
+    trip.startDate && trip.endDate ? `${formatShort(trip.startDate)} - ${formatShort(trip.endDate)}` : null,
   ]
     .filter(Boolean)
     .join('  ·  ');
@@ -47,7 +47,7 @@ export function TripHero({ trip }: { trip: TripDetail }) {
 
   const stats = [
     { value: String(stops), label: stops === 1 ? 'stop planned' : 'stops planned' },
-    { value: days ? `${days} ${days === 1 ? 'DAY' : 'DAYS'}` : '—', label: 'trip length' },
+    { value: days ? `${days} ${days === 1 ? 'day' : 'days'}` : 'Not set', label: 'trip length' },
     { value: trip.currency, label: 'trip currency' },
   ];
 

@@ -4,22 +4,22 @@
   --ink: #1d1d1f;
   --ink-soft: #6e6e73;
   --rule: #e5e5ea;
-  --route: #1fa463;
+  --route: #177b4a;
   --route-soft: #e3f6ec;
-  --ledger: #c97a1e;
+  --ledger: #9a5e17;
   --ledger-soft: #fbf0df;
-  --owe: #e0483b;
+  --owe: #c82d20;
   --owe-soft: #fceae8;
   /* Trip hero banner and its warm accent (selected day, badge). */
   --hero: #11302a;
   --highlight: #ecb34f;
 
-  /* Renders as true SF Pro on macOS/iOS/Safari; Inter (already loaded, the
-   * closest open substitute) is the fallback everywhere else. Display and
+  /* Renders as true SF Pro on macOS/iOS/Safari; Inter (self-hosted via
+   * @fontsource-variable/inter, the closest open substitute) everywhere else. Display and
    * body share one family on purpose — Apple's own UI carries hierarchy
    * through weight/size, never a second typeface. */
-  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', Inter, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter Variable', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter Variable', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
   --radius-sm: 8px;
   --radius-md: 14px;
@@ -27,6 +27,22 @@
   --radius-pill: 980px;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 1px rgba(0, 0, 0, 0.03);
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.06);
+
+  /* Tokens derived per mode (the palette itself lives in themes.ts). */
+  color-scheme: light;
+  --on-route: #ffffff; /* label color on a solid --route fill */
+  --surface-glass: rgba(255, 255, 255, 0.72);
+  --hero-text: var(--hero); /* the hero hue used as text on light surfaces */
+}
+
+/* themes.ts sets data-mode from Settings or the OS preference. */
+:root[data-mode='dark'] {
+  color-scheme: dark;
+  --on-route: #121214;
+  --surface-glass: rgba(28, 28, 31, 0.72);
+  --hero-text: var(--ink);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
 * {
@@ -56,6 +72,12 @@ body {
   font-family: var(--font-body);
   font-size: 15px;
   line-height: 1.5;
+}
+
+/* One keyboard focus ring for every control (mouse clicks don't show it). */
+:focus-visible {
+  outline: 2px solid var(--route);
+  outline-offset: 2px;
 }
 
 button {
@@ -114,6 +136,11 @@ h1.page-title {
   margin: 0 0 4px;
 }
 
+/* An icon sitting in a line of text. */
+.icon-inline {
+  vertical-align: -0.15em;
+}
+
 .empty-state {
   color: var(--ink-soft);
   padding: 24px 0;
@@ -136,7 +163,7 @@ h1.page-title {
   border-radius: var(--radius-pill);
   border: none;
   background: var(--route);
-  color: #fff;
+  color: var(--on-route);
   font-weight: 600;
   transition: transform 0.1s ease, opacity 0.15s ease;
 }
@@ -287,6 +314,146 @@ h1.page-title {
 
 .filter-select-wrap:has(select:hover)::after {
   border-top-color: var(--route);
+}
+
+/* Shared form layout: a vertical stack of labelled fields, label text above
+ * its control, errors and actions at the end. Used by AuthPage and every modal. */
+.form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.field-hint {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.form-error {
+  margin: 0;
+  font-size: 13px;
+  color: var(--owe);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.form-error.spaced-above {
+  margin-top: 10px;
+}
+
+.form-error.spaced-below {
+  margin-bottom: 16px;
+}
+
+.form-success {
+  margin: 0;
+  font-size: 13px;
+  color: var(--route);
+}
+
+/* A checkbox or radio with its text, and a wrapping group of them. */
+.check-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.check-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+/* Two date inputs with "to" between them. */
+.date-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.date-range input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* A row of buttons, and a tab's top toolbar (actions left, extras right). */
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tab-toolbar {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.btn-block {
+  display: block;
+  width: 100%;
+}
+
+.btn-sm {
+  padding: 4px 12px;
+  font-size: 12px;
+}
+
+.section-gap {
+  margin-bottom: 20px;
+}
+
+.empty-state-compact {
+  padding: 8px 0;
+}
+
+.align-start {
+  align-self: flex-start;
+}
+
+.btn.btn-danger {
+  background: var(--owe);
+}
+
+/* Photo preview beside its upload button (profile avatar, trip cover). */
+.avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Wraps an input and its absolutely positioned suggestion list. */
+.autocomplete {
+  position: relative;
+}
+
+.autocomplete-input {
+  width: 100%;
+}
+
+/* A <label class="btn"> wrapping a hidden file input. */
+label.btn {
+  cursor: pointer;
 }
 
 .form-inline {

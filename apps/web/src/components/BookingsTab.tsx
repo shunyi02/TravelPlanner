@@ -1,3 +1,4 @@
+import { AirplaneTilt, Bed } from '@phosphor-icons/react';
 import type { Place } from '../api';
 
 function formatTime(iso: string | null): string {
@@ -83,7 +84,7 @@ function FlightCard({ place, memberNames }: { place: Place; memberNames: Record<
           <span className="booking-place">{place.departureAirport ?? '—'}</span>
         </div>
         <div className="booking-link" aria-hidden="true">
-          <span className="booking-link-icon">✈</span>
+          <span className="booking-link-icon"><AirplaneTilt size={18} /></span>
           {duration && <span className="booking-link-label">{duration}</span>}
         </div>
         <div className="booking-end">
@@ -111,7 +112,7 @@ function HotelCard({ place, memberNames }: { place: Place; memberNames: Record<s
           <span className="booking-place">Check-in {place.checkIn ? formatTime(place.checkIn) : ''}</span>
         </div>
         <div className="booking-link" aria-hidden="true">
-          <span className="booking-link-icon">🏨</span>
+          <span className="booking-link-icon"><Bed size={18} /></span>
           {nights !== null && <span className="booking-link-label">{nights} night{nights === 1 ? '' : 's'}</span>}
         </div>
         <div className="booking-end">

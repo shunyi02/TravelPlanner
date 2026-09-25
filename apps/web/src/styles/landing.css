@@ -72,38 +72,86 @@
   font-size: 16px;
 }
 
-/* Echoes the trip card's own route-map motif (see .trip-card-strip-fallback)
- * so the hero visual is drawn from the product itself, not stock decoration. */
+/* A real screenshot of a trip page (light and dark captures, see
+ * public/hero-itinerary-*.jpg) rather than a drawn placeholder. */
 .landing-hero-art {
-  aspect-ratio: 1;
+  justify-self: end;
+  width: 100%;
+  max-width: 440px;
+}
+
+.landing-hero-shot {
+  display: block;
+  width: 100%;
+  height: auto;
   border-radius: var(--radius-lg);
-  background-color: var(--route-soft);
-  background-image:
-    radial-gradient(circle 5px at 20% 65%, var(--route) 98%, transparent 100%),
-    radial-gradient(circle 5px at 52% 30%, var(--route) 98%, transparent 100%),
-    radial-gradient(circle 5px at 82% 60%, var(--route) 98%, transparent 100%),
-    linear-gradient(115deg, transparent 49%, var(--route) 49.6%, var(--route) 50.4%, transparent 51%);
-  background-repeat: no-repeat;
-  background-size: 100% 100%;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
+}
+
+.landing-hero-shot-dark,
+:root[data-mode='dark'] .landing-hero-shot-light {
+  display: none;
+}
+
+:root[data-mode='dark'] .landing-hero-shot-dark {
+  display: block;
 }
 
 @media (max-width: 720px) {
   .landing-hero-art {
-    display: none;
+    justify-self: center;
+    max-width: 360px;
   }
 }
 
 .landing-features {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 1.3fr 1fr;
   gap: 20px;
   padding-bottom: 64px;
+}
+
+/* Uneven layout instead of four equal cards: the lead feature is a tall tile
+ * in the trip banner's dark --hero color, two stack beside it, and the last
+ * spans the full width below. */
+.landing-feature:first-child {
+  grid-row: span 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: 280px;
+  background: var(--hero);
+}
+
+.landing-feature:first-child h3 {
+  font-size: 24px;
+  color: #f6f0e1;
+}
+
+.landing-feature:first-child p {
+  font-size: 15px;
+  max-width: 40ch;
+  color: rgba(246, 240, 225, 0.72);
+}
+
+.landing-feature:first-child .landing-feature-icon {
+  color: var(--highlight);
+}
+
+.landing-feature:last-child {
+  grid-column: 1 / -1;
+  background: var(--route-soft);
+  box-shadow: none;
 }
 
 @media (max-width: 720px) {
   .landing-features {
     grid-template-columns: 1fr;
+  }
+
+  .landing-feature:first-child {
+    grid-row: auto;
+    min-height: 0;
   }
 }
 
@@ -112,9 +160,9 @@
 }
 
 .landing-feature-icon {
-  font-size: 26px;
   display: block;
   margin-bottom: 12px;
+  color: var(--route);
 }
 
 .landing-feature h3 {
@@ -218,13 +266,12 @@ p.landing-site-footer-powered-by {
   margin: 0;
   padding: 0 24px 20px;
   text-align: center;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--ink);
+  font-size: 12px;
+  color: var(--ink-soft);
 }
 
 .landing-site-footer-powered-by a {
-  color: var(--ink);
+  color: var(--ink-soft);
 }
 
 .landing-site-footer-powered-by a:hover {

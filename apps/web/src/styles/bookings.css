@@ -1,5 +1,5 @@
 /* BookingsTab: confirmation-style cards for flights and hotels. Shares the
- * itinerary's language — Georgia section titles, monospace times, --hero ink
+ * itinerary's language — display-font section titles, monospace times, --hero ink
  * and --highlight accents — so it follows the app theme. */
 
 /* Flights and hotels side by side when the page is wide enough. */
@@ -25,10 +25,10 @@
 
 .booking-section-title {
   margin: 0;
-  font-family: Georgia, serif;
+  font-family: var(--font-display);
   font-weight: 700;
   font-size: 24px;
-  color: var(--hero);
+  color: var(--hero-text);
 }
 
 .booking-section-meta,
@@ -112,7 +112,7 @@
   font-size: 30px;
   font-weight: 600;
   line-height: 1.1;
-  color: var(--hero);
+  color: var(--hero-text);
 }
 
 .booking-place {

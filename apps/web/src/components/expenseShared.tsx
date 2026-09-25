@@ -120,14 +120,14 @@ export function SplitEditor({
             return (
               <div className="custom-split-row" key={id}>
                 <span>{memberNames[id] ?? id}</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span className="custom-split-inputs">
                   <input
                     inputMode="decimal"
                     value={amounts[id] ?? ''}
                     onChange={(e) => onAmountsChange({ ...amounts, [id]: e.target.value })}
                   />
                   {hasTax && val > 0 && (
-                    <span style={{ color: 'var(--ink-soft)' }}>
+                    <span className="custom-split-taxed">
                       → pays {currency} {(val * taxMultiplier).toFixed(2)}
                     </span>
                   )}

@@ -353,7 +353,7 @@
 
 .itin-hero-title,
 .itin-route-title {
-  font-family: Georgia, serif;
+  font-family: var(--font-display);
   font-weight: 700;
 }
 
@@ -414,13 +414,13 @@ h1.itin-hero-title {
 .itin-route-title {
   margin: 0;
   font-size: 26px;
-  color: var(--hero);
+  color: var(--hero-text);
 }
 
 .itin-route-meta {
   font-size: 13px;
   letter-spacing: 0.12em;
-  color: #c0553a;
+  color: var(--ledger);
 }
 
 .day-cards {
@@ -441,8 +441,9 @@ h1.itin-hero-title {
   min-width: 140px;
   padding: 14px 18px;
   text-align: left;
-  background: #fdf9f0;
-  border: 1.5px solid #e6dcc8;
+  /* Warm paper tint drawn from the theme's highlight, so it adapts to dark mode. */
+  background: color-mix(in srgb, var(--highlight) 7%, var(--surface));
+  border: 1.5px solid color-mix(in srgb, var(--highlight) 30%, var(--rule));
   border-radius: var(--radius-lg);
   scroll-snap-align: start;
   transition: background 0.15s ease, border-color 0.15s ease;
@@ -457,12 +458,16 @@ h1.itin-hero-title {
 .day-card-date {
   font-size: 20px;
   font-weight: 600;
+  color: var(--hero-text);
+}
+
+.day-card.active .day-card-date {
   color: var(--hero);
 }
 
 .day-card-sub {
   font-size: 13px;
-  color: #8a7f6c;
+  color: var(--ink-soft);
 }
 
 .day-card.active .day-card-sub {
@@ -470,17 +475,17 @@ h1.itin-hero-title {
 }
 
 .itin-tip {
-  background: #e6efe9;
-  border-left: 4px solid #5d8c6b;
+  background: var(--route-soft);
+  border-left: 4px solid var(--route);
   border-radius: 0 var(--radius-md) var(--radius-md) 0;
   padding: 14px 18px;
   margin-bottom: 20px;
   font-size: 14px;
-  color: #26382f;
+  color: var(--ink);
 }
 
 .itin-tip strong {
-  color: var(--hero);
+  color: var(--hero-text);
 }
 
 .stop-check {
@@ -493,7 +498,7 @@ h1.itin-hero-title {
   flex-shrink: 0;
   align-self: center;
   padding: 0;
-  border: 1.5px solid #b7ab94;
+  border: 1.5px solid color-mix(in srgb, var(--ink-soft) 60%, transparent);
   border-radius: 6px;
   background: transparent;
   color: var(--hero);
@@ -530,4 +535,43 @@ h1.itin-hero-title {
     border-radius: 0;
     padding: 24px 20px 28px;
   }
+}
+
+/* Per-day list headings in the itinerary's "all days" view. */
+.day-heading-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.day-heading {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.day-heading-muted {
+  margin: 0 0 8px;
+  color: var(--ink-soft);
+}
+
+/* AddItineraryItemModal: the stop/hotel/flight chooser and type tabs. */
+.place-type-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.place-type-tabs {
+  margin-top: 12px;
+}
+
+.itin-dates-form {
+  margin-bottom: 24px;
+}
+
+.suggested-stops-categories {
+  margin-top: 8px;
 }

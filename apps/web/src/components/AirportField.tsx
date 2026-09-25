@@ -19,7 +19,7 @@ export function AirportField({
   const resolved = findAirport(value);
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div className="autocomplete">
       <input
         placeholder={placeholder}
         value={value}
@@ -29,7 +29,7 @@ export function AirportField({
         }}
         onFocus={() => setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
-        style={{ width: '100%' }}
+        className="autocomplete-input"
       />
       {open && results.length > 0 && (
         <ul className="autocomplete-list">

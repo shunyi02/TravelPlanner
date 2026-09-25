@@ -91,21 +91,14 @@
   height: 28px;
   border-radius: 50%;
   border: none;
-  background: rgba(255, 255, 255, 0.9);
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
   color: var(--owe);
   font-size: 15px;
   line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0;
   transition: opacity 0.15s ease;
-}
-
-.trip-card:hover .trip-card-remove,
-.trip-card:focus-within .trip-card-remove,
-.trip-card-remove:focus {
-  opacity: 1;
 }
 
 .trip-card-duplicate {
@@ -116,21 +109,28 @@
   height: 28px;
   border-radius: 50%;
   border: none;
-  background: rgba(255, 255, 255, 0.9);
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
   color: var(--ink-soft);
   font-size: 14px;
   line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0;
   transition: opacity 0.15s ease;
 }
 
-.trip-card:hover .trip-card-duplicate,
-.trip-card:focus-within .trip-card-duplicate,
-.trip-card-duplicate:focus {
-  opacity: 1;
+/* Hide the card's corner actions until hover/focus, but only on devices that
+ * can hover; touch screens keep them visible or they'd be unreachable. */
+@media (hover: hover) {
+  .trip-card-remove,
+  .trip-card-duplicate {
+    opacity: 0;
+  }
+
+  .trip-card:hover :is(.trip-card-remove, .trip-card-duplicate),
+  .trip-card:focus-within :is(.trip-card-remove, .trip-card-duplicate) {
+    opacity: 1;
+  }
 }
 
 .trip-card-name {

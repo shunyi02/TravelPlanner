@@ -255,8 +255,8 @@ export function ExpensesTab({
 
   return (
     <div>
-      <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
-        <div style={{ display: 'flex', gap: 8 }}>
+      <div className="no-print tab-toolbar">
+        <div className="btn-row">
           <button className="btn" onClick={() => setShowAddModal(true)}>
             + Add expense
           </button>
@@ -304,7 +304,7 @@ export function ExpensesTab({
           </div>
         )}
       </div>
-      {error && <p style={{ color: 'var(--owe)', marginBottom: 16 }}>{error}</p>}
+      {error && <p className="form-error spaced-below">{error}</p>}
 
       {expenses.length === 0 ? (
         <p className="empty-state">No expenses logged yet.</p>
@@ -320,7 +320,7 @@ export function ExpensesTab({
               </div>
               {group.items.map((expense) => (
             <div key={expense.id}>
-              <div className="ledger-row" style={{ cursor: 'pointer' }} onClick={() => toggleExpand(expense.id)}>
+              <div className="ledger-row" onClick={() => toggleExpand(expense.id)}>
                 <div className="row-main">
                   <span className="row-title">{expense.description}</span>
                   <span className="row-sub">
@@ -329,8 +329,8 @@ export function ExpensesTab({
                     {' · '}{formatDateTime(expense.expenseDate)}
                   </span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                <div className="expense-row-end">
+                  <div className="expense-row-amounts">
                     <span className="amount">
                       {expense.currency} {expense.amount}
                     </span>
@@ -370,7 +370,7 @@ export function ExpensesTab({
               {expandedId === expense.id && editingId !== expense.id && (
                 <div className="modal-backdrop" onClick={() => setExpandedId(null)}>
                   <div className="modal" onClick={(e) => e.stopPropagation()}>
-                    <h2 className="page-title" style={{ fontSize: 20 }}>{expense.description}</h2>
+                    <h2 className="modal-title">{expense.description}</h2>
                     <p className="expense-detail-meta">
                       <span className="category-badge">{expense.category}</span>
                       {' · paid by '}{memberNames[expense.paidById] ?? 'someone'}
@@ -418,7 +418,7 @@ export function ExpensesTab({
                       </div>
                     )}
 
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+                    <div className="form-actions">
                       <button type="button" className="text-btn text-btn-danger" onClick={() => handleDelete(expense)}>
                         Delete
                       </button>
@@ -436,7 +436,7 @@ export function ExpensesTab({
               {editingId === expense.id && (
                 <div className="modal-backdrop" onClick={() => setEditingId(null)}>
                   <div className="modal" onClick={(e) => e.stopPropagation()}>
-                    <h2 className="page-title" style={{ fontSize: 20 }}>Edit expense</h2>
+                    <h2 className="modal-title">Edit expense</h2>
                     <div className="expense-form">
                       <input
                         value={editDescription}
@@ -446,13 +446,13 @@ export function ExpensesTab({
 
                       <div className="receipt-photo-row">
                         {editReceiptPhoto && <img className="receipt-photo-thumb" src={editReceiptPhoto} alt="" />}
-                        <label className="btn btn-outline" style={{ cursor: 'pointer' }}>
+                        <label className="btn btn-outline">
                           {editReceiptPhoto ? 'Change receipt photo' : 'Add receipt photo'}
                           <input
                             type="file"
                             accept="image/*"
                             onChange={(e) => handleEditReceiptFile(e.target.files?.[0] ?? null)}
-                            style={{ display: 'none' }}
+                            hidden
                           />
                         </label>
                         {editReceiptPhoto && (
@@ -537,9 +537,8 @@ export function ExpensesTab({
 
                       <button
                         type="button"
-                        className="text-btn"
+                        className="text-btn align-start"
                         onClick={() => setShowEditSplitEditor((v) => !v)}
-                        style={{ alignSelf: 'flex-start' }}
                       >
                         {showEditSplitEditor ? 'Hide split options' : 'Split options'}
                       </button>
@@ -557,9 +556,9 @@ export function ExpensesTab({
                         />
                       )}
 
-                      {error && <p style={{ color: 'var(--owe)', margin: 0 }}>{error}</p>}
+                      {error && <p className="form-error">{error}</p>}
 
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+                      <div className="form-actions">
                         <button type="button" className="btn btn-outline" onClick={() => setEditingId(null)}>
                           Cancel
                         </button>

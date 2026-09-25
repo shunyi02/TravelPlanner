@@ -1,23 +1,67 @@
 import { useState } from 'react';
-import { applyTheme, DEFAULT_THEME_ID, THEME_STORAGE_KEY, THEMES } from '../themes';
+import {
+  APPEARANCE_STORAGE_KEY,
+  applyTheme,
+  storedAppearance,
+  storedThemeId,
+  THEME_STORAGE_KEY,
+  THEMES,
+  type Appearance,
+} from '../themes';
+
+const APPEARANCES: { id: Appearance; label: string }[] = [
+  { id: 'system', label: 'System' },
+  { id: 'light', label: 'Light' },
+  { id: 'dark', label: 'Dark' },
+];
+
+function save(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Storage unavailable (private mode): the choice still applies for this visit.
+  }
+}
 
 export function SettingsPage() {
-  const [selected, setSelected] = useState(
-    () => localStorage.getItem(THEME_STORAGE_KEY) || DEFAULT_THEME_ID,
-  );
+  const [selected, setSelected] = useState(storedThemeId);
+  const [appearance, setAppearance] = useState(storedAppearance);
 
   const handleSelect = (id: string) => {
-    applyTheme(id);
-    localStorage.setItem(THEME_STORAGE_KEY, id);
+    applyTheme(id, appearance);
+    save(THEME_STORAGE_KEY, id);
     setSelected(id);
+  };
+
+  const handleAppearance = (next: Appearance) => {
+    applyTheme(selected, next);
+    save(APPEARANCE_STORAGE_KEY, next);
+    setAppearance(next);
   };
 
   return (
     <div className="main main-centered">
       <h1 className="page-title">Settings</h1>
 
-      <div style={{ marginTop: 24 }}>
-        <p style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--ink-soft)' }}>Theme colors</p>
+      <section className="settings-section">
+        <p className="settings-label">Appearance</p>
+        <div className="segmented-control" role="group" aria-label="Appearance">
+          {APPEARANCES.map((a) => (
+            <button
+              key={a.id}
+              type="button"
+              className={appearance === a.id ? 'active' : ''}
+              aria-pressed={appearance === a.id}
+              onClick={() => handleAppearance(a.id)}
+            >
+              {a.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="settings-section">
+        <p className="settings-label">Theme colors</p>
         <div className="theme-swatch-grid">
           {THEMES.map((theme) => (
             <button
@@ -30,18 +74,18 @@ export function SettingsPage() {
             >
               <span
                 className="theme-swatch-preview"
-                style={{ background: theme.vars['--bg'] }}
+                style={{ background: theme.light['--bg'] }}
               >
                 <span
                   className="theme-swatch-accent"
-                  style={{ background: theme.vars['--route'] }}
+                  style={{ background: theme.light['--route'] }}
                 />
               </span>
               <span className="theme-swatch-name">{theme.name}</span>
             </button>
           ))}
         </div>
-      </div>
+      </section>
     </div>
   );
 }
