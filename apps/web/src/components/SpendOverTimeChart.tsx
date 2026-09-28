@@ -27,7 +27,7 @@ export function SpendOverTimeChart({
     new Date(`${day}T00:00:00Z`).toLocaleDateString(undefined, { ...opts, timeZone: 'UTC' });
 
   return (
-    <section className="report-card" aria-labelledby="by-day-heading">
+    <section className="report-card report-pair" aria-labelledby="by-day-heading">
       <div className="report-card-head">
         <h3 className="report-heading" id="by-day-heading">
           Spend by day

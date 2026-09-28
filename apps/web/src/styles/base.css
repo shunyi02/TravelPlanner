@@ -521,6 +521,10 @@ label.btn {
     display: inline;
   }
 
+  .screen-only {
+    display: none !important;
+  }
+
   .top-bar,
   .sidebar,
   .no-print,

@@ -605,6 +605,69 @@
     print-color-adjust: exact;
   }
 
+  /* Two columns on paper: full-width sections, with the daily chart and
+     paid-vs-used side by side, so the report fits two pages. */
+  .report {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .report > * {
+    grid-column: 1 / -1;
+  }
+
+  .report > .report-pair {
+    grid-column: auto;
+  }
+
+  .report-tiles {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .report-tile {
+    padding: 10px 12px;
+  }
+
+  .report-tile-value {
+    font-size: 17px;
+  }
+
+  .report-tile-value.print-only,
+  .report-tile-label.print-only {
+    display: block;
+  }
+
+  .report-prepared {
+    display: block;
+    margin: 2px 0 0;
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+
+  .report-card {
+    padding: 14px 16px;
+  }
+
+  .report-pair .report-member {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+    padding: 6px 0;
+  }
+
+  .report-pair .report-member-bar-row {
+    grid-template-columns: 34px minmax(0, 1fr) 96px;
+  }
+
+  .report-pair .report-note-top {
+    display: none;
+  }
+
+  .report-pair .day-chart {
+    --plot-h: 150px;
+  }
+
   .report-card,
   .report-tile {
     box-shadow: none;

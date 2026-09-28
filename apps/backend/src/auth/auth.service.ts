@@ -1,4 +1,5 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { MIN_SIGNUP_AGE, isOldEnoughToSignUp } from '@travel-planner/shared';
 import { JwtService } from '@nestjs/jwt';
 import { randomBytes, createHash } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -29,6 +30,10 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
+    if (!isOldEnoughToSignUp(dto.dateOfBirth)) {
+      throw new BadRequestException(`You must be at least ${MIN_SIGNUP_AGE} to create an account.`);
+    }
+
     const existing = await this.usersService.findByEmail(dto.email);
     if (existing && !existing.isPlaceholder) {
       throw new ConflictException('Email already registered');

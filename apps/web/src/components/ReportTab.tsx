@@ -6,6 +6,7 @@ import { api } from '../api';
 import { useAuth } from '../authContext';
 import { dateKey, formatMoney } from '../format';
 import { SpendOverTimeChart } from './SpendOverTimeChart';
+import { fileSafe, printDocument } from '../print';
 
 const DAY_MS = 86_400_000;
 
@@ -275,8 +276,16 @@ export function ReportTab({
   return (
     <div className="report">
       <div className="report-head">
-        <h2 className="report-title">Trip report</h2>
-        <button className="btn btn-outline report-export no-print" onClick={() => window.print()}>
+        <div>
+          <h2 className="report-title">Trip report</h2>
+          {currentUser && (
+            <p className="print-only report-prepared">
+              Prepared by {currentUser.name} ·{' '}
+              {new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+            </p>
+          )}
+        </div>
+        <button className="btn btn-outline report-export no-print" onClick={() => printDocument(fileSafe(`${trip.name} – Report`))}>
           <FilePdf size={17} aria-hidden /> Export PDF
         </button>
       </div>
@@ -295,10 +304,13 @@ export function ReportTab({
           </span>
         </div>
         <div className="report-tile">
-          <span className="report-tile-value">{money(myShare ?? perPerson)}</span>
-          <span className="report-tile-label">
+          {/* On paper the report gets shared, so it shows the neutral figure. */}
+          <span className="report-tile-value screen-only">{money(myShare ?? perPerson)}</span>
+          <span className="report-tile-label screen-only">
             {myShare != null ? `your share · avg ${money(perPerson)} each` : 'per person'}
           </span>
+          <span className="report-tile-value print-only">{money(perPerson)}</span>
+          <span className="report-tile-label print-only">per person</span>
         </div>
         <div className="report-tile">
           <span className="report-tile-value report-tile-value-text">{topCategory}</span>
@@ -394,7 +406,7 @@ export function ReportTab({
 
       <SpendOverTimeChart days={days} totalByDay={totalByDay} average={perDay} currency={currency} />
 
-      <section className="report-card" aria-labelledby="members-heading">
+      <section className="report-card report-pair" aria-labelledby="members-heading">
         <div className="report-card-head">
           <h3 className="report-heading" id="members-heading">
             Paid vs. used

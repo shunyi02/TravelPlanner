@@ -1,5 +1,7 @@
 import { AirplaneTilt, Bed } from '@phosphor-icons/react';
 import type { Place } from '../api';
+import { dateKey } from '../format';
+import { dayDelta } from '../itineraryDates';
 
 function formatTime(iso: string | null): string {
   if (!iso) return '--:--';
@@ -28,9 +30,7 @@ function formatDuration(from: string | null, to: string | null): string | null {
 }
 
 function nightCount(checkIn: string, checkOut: string): number {
-  const a = new Date(checkIn.slice(0, 10) + 'T00:00:00Z').getTime();
-  const b = new Date(checkOut.slice(0, 10) + 'T00:00:00Z').getTime();
-  return Math.max(0, Math.round((b - a) / 86_400_000));
+  return Math.max(0, dayDelta(dateKey(checkIn), dateKey(checkOut)));
 }
 
 /** Where a booking sits relative to now — same wording as the trip hero. */

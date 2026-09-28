@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { MIN_SIGNUP_AGE, isOldEnoughToSignUp } from '@travel-planner/shared';
 import { api, getResetToken } from '../api';
 
 /** Read once at module load — the value doesn't change during the page's life. */
@@ -76,6 +77,7 @@ export function AuthPage({
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
   const [error, setError] = useState<string | null>(null);
   /** Non-error feedback, e.g. "check your inbox" after a reset request. */
   const [notice, setNotice] = useState<string | null>(null);
@@ -105,7 +107,10 @@ export function AuthPage({
       if (mode === 'login') {
         await api.login({ email, password });
       } else {
-        await api.register({ email, name, password });
+        if (!isOldEnoughToSignUp(dateOfBirth)) {
+          throw new Error(`You must be at least ${MIN_SIGNUP_AGE} to create an account.`);
+        }
+        await api.register({ email, name, password, dateOfBirth });
       }
       onAuthed();
     } catch (err) {
@@ -157,6 +162,19 @@ export function AuthPage({
           />
           {mode === 'register' && <small>At least 8 characters.</small>}
         </label>
+        {mode === 'register' && (
+          <label className="auth-field">
+            <span>Date of birth</span>
+            <input
+              type="date"
+              autoComplete="bday"
+              value={dateOfBirth}
+              onChange={(e) => setDateOfBirth(e.target.value)}
+              max={new Date().toISOString().slice(0, 10)}
+              required
+            />
+          </label>
+        )}
         {error && <p className="auth-error" role="alert">{error}</p>}
         {notice && <p className="auth-notice" role="status">{notice}</p>}
         <button className="btn" type="submit" disabled={submitting}>

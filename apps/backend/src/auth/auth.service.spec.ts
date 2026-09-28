@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals';
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 
 // See expenses.service.spec.ts for why plain `any` mocks are used instead of
@@ -8,6 +8,7 @@ const mockFn = (): any => jest.fn();
 
 const USER_ID = 'user-1';
 const EMAIL = 'alice@example.com';
+const ADULT_DOB = '1990-01-01';
 
 function makeDeps(overrides: {
   prisma?: Record<string, any>;
@@ -48,10 +49,23 @@ function makeDeps(overrides: {
 }
 
 describe('AuthService.register', () => {
+  it('rejects anyone under the minimum age without creating an account', async () => {
+    const { service, usersService } = makeDeps();
+    const tenYearsAgo = new Date();
+    tenYearsAgo.setFullYear(tenYearsAgo.getFullYear() - 10);
+    const dateOfBirth = tenYearsAgo.toISOString().slice(0, 10);
+
+    await expect(
+      service.register({ email: EMAIL, name: 'Kid', password: 'password123', dateOfBirth } as any),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(usersService.findByEmail).not.toHaveBeenCalled();
+    expect(usersService.create).not.toHaveBeenCalled();
+  });
+
   it('creates the user and issues a token pair', async () => {
     const { service, usersService, jwtService, prisma } = makeDeps();
 
-    const tokens = await service.register({ email: EMAIL, name: 'Alice', password: 'password123' } as any);
+    const tokens = await service.register({ email: EMAIL, name: 'Alice', password: 'password123', dateOfBirth: ADULT_DOB } as any);
 
     expect(usersService.create).toHaveBeenCalledWith({ email: EMAIL, name: 'Alice', password: 'password123' });
     expect(jwtService.sign).toHaveBeenCalledWith({ sub: USER_ID, email: EMAIL }, { expiresIn: '15m' });
@@ -67,7 +81,7 @@ describe('AuthService.register', () => {
     });
 
     await expect(
-      service.register({ email: EMAIL, name: 'Alice', password: 'password123' } as any),
+      service.register({ email: EMAIL, name: 'Alice', password: 'password123', dateOfBirth: ADULT_DOB } as any),
     ).rejects.toThrow(ConflictException);
     expect(usersService.create).not.toHaveBeenCalled();
   });
@@ -79,7 +93,7 @@ describe('AuthService.register', () => {
       },
     });
 
-    const tokens = await service.register({ email: EMAIL, name: 'Alice Real Name', password: 'password123' } as any);
+    const tokens = await service.register({ email: EMAIL, name: 'Alice Real Name', password: 'password123', dateOfBirth: ADULT_DOB } as any);
 
     expect(usersService.create).not.toHaveBeenCalled();
     expect(usersService.claimPlaceholder).toHaveBeenCalledWith(USER_ID, {
@@ -93,7 +107,7 @@ describe('AuthService.register', () => {
   it('does not touch trip invites when none are pending', async () => {
     const { service, prisma } = makeDeps();
 
-    await service.register({ email: EMAIL, name: 'Alice', password: 'password123' } as any);
+    await service.register({ email: EMAIL, name: 'Alice', password: 'password123', dateOfBirth: ADULT_DOB } as any);
 
     expect(prisma.tripInvite.findMany).toHaveBeenCalledWith({ where: { email: EMAIL } });
     expect(prisma.$transaction).not.toHaveBeenCalled();
@@ -105,7 +119,7 @@ describe('AuthService.register', () => {
       prisma: { tripInvite: { findMany: mockFn().mockResolvedValue(invites), deleteMany: mockFn().mockResolvedValue({ count: 1 }) } },
     });
 
-    await service.register({ email: EMAIL, name: 'Alice', password: 'password123' } as any);
+    await service.register({ email: EMAIL, name: 'Alice', password: 'password123', dateOfBirth: ADULT_DOB } as any);
 
     expect(prisma.$transaction).toHaveBeenCalled();
     expect(prisma.tripMember.create).toHaveBeenCalledWith({

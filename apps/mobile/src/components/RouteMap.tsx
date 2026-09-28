@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { hueForIndex } from '../palette';
+import { LEAFLET_CSS, LEAFLET_JS } from '../vendor/leaflet';
 import { useTheme, type ThemeColors } from '../theme';
 
 export interface RouteStop {
@@ -53,7 +54,7 @@ function buildHtml(stops: RouteStop[], colorByGroup: Map<string, string>): strin
 <html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>${LEAFLET_CSS}</style>
   <style>
     html, body, #map { height: 100%; margin: 0; padding: 0; }
     .route-map-pin span {
@@ -65,7 +66,7 @@ function buildHtml(stops: RouteStop[], colorByGroup: Map<string, string>): strin
 </head>
 <body>
   <div id="map"></div>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>${LEAFLET_JS}</script>
   <script>
     const points = ${JSON.stringify(points)};
     const map = L.map('map', { scrollWheelZoom: false, zoomControl: true });

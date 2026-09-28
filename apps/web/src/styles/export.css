@@ -1,0 +1,393 @@
+/* Export: the ExportDialog, the ItinerarySheet it prints or turns into an
+ * image, and print-wide page setup. The sheet always uses the current
+ * theme's light colors (set inline by ItinerarySheet). */
+
+/* ---------- Dialog ---------- */
+
+.export-dialog {
+  max-width: 440px;
+}
+
+.export-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 0;
+  border: none;
+}
+
+.export-group legend,
+.export-legend {
+  margin-bottom: 8px;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.export-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  cursor: pointer;
+}
+
+.export-option input {
+  margin-top: 3px;
+  accent-color: var(--route);
+}
+
+.export-option.disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.export-option-sub {
+  display: block;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.export-select {
+  width: 100%;
+}
+
+.export-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.export-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.export-hint {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+@media (max-width: 480px) {
+  .export-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Where the sheet renders ---------- */
+
+.print-root {
+  display: none;
+}
+
+/* Rendered for capture but kept off-screen. */
+.image-stage {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  pointer-events: none;
+}
+
+/* ---------- The sheet ---------- */
+
+.sheet {
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: var(--surface);
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.sheet-image {
+  width: 560px;
+  padding: 34px 32px 26px;
+}
+
+.sheet-head {
+  padding-bottom: 14px;
+  border-bottom: 2px solid var(--route);
+}
+
+.sheet-brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--route);
+}
+
+.sheet-logo {
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 10px solid var(--route);
+}
+
+.sheet-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--hero-text, var(--ink));
+}
+
+.sheet-dates {
+  margin: 6px 0 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.sheet-people {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.sheet-section {
+  margin-top: 16px;
+  break-inside: avoid;
+}
+
+.sheet-h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.sheet-bookings {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--route-soft);
+}
+
+.sheet-booking-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.sheet-booking-list li {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  column-gap: 6px;
+  align-items: baseline;
+}
+
+.sheet-booking-list svg {
+  color: var(--route);
+  align-self: center;
+}
+
+.sheet-booking-name {
+  font-weight: 600;
+}
+
+.sheet-booking-detail {
+  grid-column: 2;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.sheet-day {
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+}
+
+.sheet-day-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin-bottom: 6px;
+}
+
+.sheet-day-date {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.sheet-day-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 16px;
+}
+
+.sheet-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sheet-item {
+  display: grid;
+  grid-template-columns: 14px 62px minmax(0, 1fr);
+  align-items: baseline;
+  column-gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px dotted var(--rule);
+}
+
+.sheet-item:last-child {
+  border-bottom: none;
+}
+
+.sheet-check {
+  width: 11px;
+  height: 11px;
+  border: 1.5px solid var(--ink-soft);
+  border-radius: 3px;
+  transform: translateY(1px);
+}
+
+.sheet-time {
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sheet-what {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.sheet-name {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.sheet-name svg {
+  color: var(--route);
+}
+
+.sheet-item-hotel .sheet-name,
+.sheet-item-flight .sheet-name {
+  color: var(--hero-text, var(--ink));
+}
+
+.sheet-who {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--route-soft);
+  color: var(--route);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.sheet-sub {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+
+.sheet-free {
+  margin: 4px 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.sheet-route {
+  width: 170px;
+  height: 112px;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.sheet-image .sheet-route {
+  width: 150px;
+  height: 100px;
+}
+
+/* A sketch should arrive fully drawn, on paper and in an image. */
+.sheet .mini-route-line {
+  animation: none;
+}
+
+.sheet-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 10px;
+  border-top: 1px solid var(--rule);
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+/* ---------- Printing ---------- */
+
+@page {
+  size: A4;
+  margin: 14mm 14mm 16mm;
+
+  @bottom-right {
+    content: counter(page) ' / ' counter(pages);
+    font-size: 9pt;
+    color: #6e6e73;
+  }
+}
+
+@media print {
+  body.printing-sheet > #root {
+    display: none !important;
+  }
+
+  body.printing-sheet .print-root {
+    display: block;
+  }
+
+  /* The trip header (Report tab) on paper: no dark banner that printers
+     drop or waste ink on; dark text on white with an accent rule. */
+  .itin-hero {
+    background: none !important;
+    color: var(--ink) !important;
+    padding: 0 0 12px !important;
+    border-radius: 0 !important;
+    border-bottom: 2px solid var(--route);
+    margin-bottom: 16px !important;
+  }
+
+  .itin-hero::before,
+  .itin-hero-badge,
+  .itin-hero-stats {
+    display: none !important;
+  }
+
+  .itin-hero .itin-hero-eyebrow,
+  .itin-hero .itin-hero-sub {
+    color: var(--ink-soft) !important;
+  }
+
+  .itin-hero h1.itin-hero-title {
+    margin-top: 6px !important;
+    font-size: 28px !important;
+    line-height: 1.2 !important;
+    color: var(--ink) !important;
+  }
+}

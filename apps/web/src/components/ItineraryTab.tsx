@@ -1,16 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Compass } from '@phosphor-icons/react';
+import { Compass, Export } from '@phosphor-icons/react';
 import type { Place, TripDetail } from '../api';
 import { api } from '../api';
 import { AddItineraryItemModal } from './AddItineraryItemModal';
 import { DayWeather } from './DayWeather';
 import { RouteMap, routeColorMap, type RouteStop } from './RouteMap';
 import { DiscoverPanel } from './DiscoverPanel';
+import { ExportDialog } from './ExportDialog';
 import type { DayForecast } from '../weather';
 import { fetchWeather } from '../weather';
 import { PLACE_ICONS } from '../placeIcons';
 import { ConfirmDialog } from './ConfirmDialog';
-import { dayDelta, dayKeysFor, daysBetween } from '../itineraryDates';
+import {
+  dayDelta,
+  dayKeysFor,
+  daysBetween,
+  formatTime,
+  groupByDay,
+  hotelDayLabel,
+  sortTimeForDay,
+} from '../itineraryDates';
+import { dateKey } from '../format';
 
 /** Shift an ISO datetime by whole calendar days, keeping its time-of-day. */
 function shiftDateByDays(iso: string, delta: number): string {
@@ -52,11 +62,6 @@ function dayTip(dayPlaces: Place[], forecast?: DayForecast): { label: string; te
   };
 }
 
-function formatTime(iso?: string | null): string {
-  if (!iso) return '';
-  return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-}
-
 /** Empty string means "everyone" (no assignees) — same convention as
  *  Place.assignments itself. Two stops are "for the same audience" only
  *  when this matches exactly. */
@@ -66,23 +71,6 @@ function assigneeSignature(place: Place): string {
 
 function assigneeSet(place: Place): Set<string> {
   return new Set(place.assignments.map((a) => a.userId));
-}
-
-/** For a hotel shown under a specific day, label what's happening that day
- *  (check-in / staying / check-out), including time if set. Undefined `day`
- *  means "not day-bucketed" (flat/unscheduled view) — falls back to date range. */
-function hotelDayLabel(place: Place, day?: string): string | null {
-  const ci = place.checkIn?.slice(0, 10);
-  const co = place.checkOut?.slice(0, 10);
-  if (!day || !ci) {
-    return ci || co ? `${ci ?? ''}${co ? ` – ${co}` : ''}` : null;
-  }
-  if (day === ci && day === co) {
-    return `Check-in ${formatTime(place.checkIn)} & check-out ${formatTime(place.checkOut)}`;
-  }
-  if (day === ci) return `Check-in ${formatTime(place.checkIn)}`;
-  if (day === co) return `Check-out ${formatTime(place.checkOut)}`;
-  return 'Staying';
 }
 
 function placeSubtitle(place: Place, day?: string): string | null {
@@ -100,22 +88,6 @@ function placeSubtitle(place: Place, day?: string): string | null {
   const coords = place.lat != null && place.lng != null ? `${place.lat.toFixed(4)}, ${place.lng.toFixed(4)}` : null;
   const parts = [time, place.notes, coords].filter(Boolean);
   return parts.length > 0 ? parts.join(' · ') : null;
-}
-
-/** Sort key for ordering rows within a single day bucket. Hotels use checkout
- *  time on their checkout day, check-in time otherwise (so "11am checkout" sits
- *  above "3pm check-in" on a same-day changeover). */
-function sortTimeForDay(place: Place, day?: string): number {
-  if (place.type === 'HOTEL') {
-    const ci = place.checkIn;
-    const co = place.checkOut;
-    if (day && co && day === co.slice(0, 10) && (!ci || day !== ci.slice(0, 10))) {
-      return new Date(co).getTime();
-    }
-    return ci ? new Date(ci).getTime() : 0;
-  }
-  if (place.type === 'FLIGHT') return place.departureTime ? new Date(place.departureTime).getTime() : 0;
-  return place.visitDate ? new Date(place.visitDate).getTime() : 0;
 }
 
 export function ItineraryTab({
@@ -138,6 +110,7 @@ export function ItineraryTab({
   const endDate = trip.endDate?.slice(0, 10) ?? '';
   const [showAddModal, setShowAddModal] = useState(false);
   const [discoverOpen, setDiscoverOpen] = useState(false);
+  const [showExport, setShowExport] = useState(false);
   const discoverButtonRef = useRef<HTMLButtonElement>(null);
   const closeDiscover = useCallback(() => {
     setDiscoverOpen(false);
@@ -303,23 +276,7 @@ export function ItineraryTab({
     assigneeFilter === 'all'
       ? places
       : places.filter((p) => p.assignments.length === 0 || p.assignments.some((a) => a.userId === assigneeFilter));
-  const daySet = new Set(days);
-  const byDay = new Map<string, Place[]>();
-  const unscheduled: Place[] = [];
-  for (const p of visiblePlaces) {
-    const keys = dayKeysFor(p).filter((k) => daySet.has(k));
-    if (keys.length > 0) {
-      for (const key of keys) {
-        if (!byDay.has(key)) byDay.set(key, []);
-        byDay.get(key)!.push(p);
-      }
-    } else {
-      unscheduled.push(p);
-    }
-  }
-  for (const [day, dayPlaces] of byDay) {
-    dayPlaces.sort((a, b) => sortTimeForDay(a, day) - sortTimeForDay(b, day));
-  }
+  const { byDay, unscheduled } = groupByDay(visiblePlaces, days);
 
   /** Located stops/hotels from `list`, bucketed by day — `day` when given (a
    *  single-day call site), else each place's own first day key ("" if
@@ -420,7 +377,7 @@ export function ItineraryTab({
     const isTransitionDay =
       place.type === 'HOTEL' &&
       opts?.day &&
-      (opts.day === place.checkIn?.slice(0, 10) || opts.day === place.checkOut?.slice(0, 10));
+      ((place.checkIn && opts.day === dateKey(place.checkIn)) || (place.checkOut && opts.day === dateKey(place.checkOut)));
     // The single-day tab shows sub-group-aware colors; everywhere else
     // (overview, unscheduled, the flat no-dates list) stays one-per-day.
     const onCurrentDayTab = currentDay !== null && opts?.day === currentDay;
@@ -515,8 +472,8 @@ export function ItineraryTab({
         >
           <Compass size={17} aria-hidden /> Discover places
         </button>
-        <button className="btn btn-outline" onClick={() => window.print()}>
-          Export PDF
+        <button type="button" className="btn btn-outline itin-discover-btn" onClick={() => setShowExport(true)}>
+          <Export size={17} aria-hidden /> Export
         </button>
       </div>
       {memberIds.length > 1 && (
@@ -678,6 +635,17 @@ export function ItineraryTab({
             </>
           );
         })()
+      )}
+
+      {showExport && (
+        <ExportDialog
+          trip={trip}
+          days={days}
+          memberNames={memberNames}
+          viewedDay={currentDay}
+          viewedPerson={assigneeFilter}
+          onClose={() => setShowExport(false)}
+        />
       )}
 
       {discoverOpen && (

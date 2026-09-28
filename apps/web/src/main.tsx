@@ -17,6 +17,7 @@ import './styles/trip-detail.css';
 import './styles/itinerary.css';
 import './styles/trip-dates.css';
 import './styles/discover.css';
+import './styles/export.css';
 import './styles/bookings.css';
 import './styles/settings.css';
 import './styles/profile.css';

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { MIN_SIGNUP_AGE, isOldEnoughToSignUp } from '@travel-planner/shared';
 import { api } from '../api';
 import { useTheme, type ThemeColors } from '../theme';
 
@@ -124,6 +125,7 @@ export function AuthScreen({ onAuthed }: { onAuthed: () => void }) {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -134,7 +136,10 @@ export function AuthScreen({ onAuthed }: { onAuthed: () => void }) {
       if (mode === 'login') {
         await api.login({ email, password });
       } else {
-        await api.register({ email, name, password });
+        if (!isOldEnoughToSignUp(dateOfBirth.trim())) {
+          throw new Error(`You must be at least ${MIN_SIGNUP_AGE} to create an account (date of birth as YYYY-MM-DD).`);
+        }
+        await api.register({ email, name, password, dateOfBirth: dateOfBirth.trim() });
       }
       onAuthed();
     } catch (err) {
@@ -178,6 +183,17 @@ export function AuthScreen({ onAuthed }: { onAuthed: () => void }) {
         value={password}
         onChangeText={setPassword}
       />
+      {mode === 'register' && (
+        <TextInput
+          style={styles.input}
+          placeholder="Date of birth (YYYY-MM-DD)"
+          placeholderTextColor={colors.inkSoft}
+          keyboardType="numbers-and-punctuation"
+          autoComplete="birthdate-full"
+          value={dateOfBirth}
+          onChangeText={setDateOfBirth}
+        />
+      )}
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 

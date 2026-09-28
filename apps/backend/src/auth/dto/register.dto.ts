@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsString, Matches, MinLength } from 'class-validator';
 
 export class RegisterDto {
   @IsEmail()
@@ -11,4 +11,8 @@ export class RegisterDto {
   @IsString()
   @MinLength(8)
   password!: string;
+
+  /** "YYYY-MM-DD". Checked against MIN_SIGNUP_AGE in AuthService.register; never stored. */
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'dateOfBirth must be YYYY-MM-DD' })
+  dateOfBirth!: string;
 }

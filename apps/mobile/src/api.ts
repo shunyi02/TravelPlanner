@@ -174,7 +174,7 @@ export interface Expense {
 }
 
 export const api = {
-  register: async (data: { email: string; name: string; password: string }) => {
+  register: async (data: { email: string; name: string; password: string; dateOfBirth: string }) => {
     const res = await rawRequest<{ accessToken: string; refreshToken: string }>(
       '/auth/register',
       { method: 'POST', body: JSON.stringify(data) },
