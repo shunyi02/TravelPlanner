@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import type { TripDetail } from '../api';
 import { api } from '../api';
 import { useTheme, type ThemeColors } from '../theme';
+import { Button } from './Button';
 
 export function MembersTab({
   tripId,
@@ -79,9 +80,7 @@ export function MembersTab({
             </View>
           </View>
           {isOwner && (
-            <Pressable onPress={() => handleCancelInvite(invite.id)}>
-              <Text style={[styles.textBtn, { color: colors.owe }]}>Cancel</Text>
-            </Pressable>
+            <Button label="Cancel" variant="text" tone="danger" onPress={() => handleCancelInvite(invite.id)} />
           )}
         </View>
       ))}
@@ -106,9 +105,12 @@ export function MembersTab({
               onChangeText={setEmail}
             />
           </View>
-          <Pressable style={[styles.button, { marginTop: 8 }]} onPress={handleAddMember} disabled={saving}>
-            <Text style={styles.buttonText}>{saving ? 'Adding…' : 'Add member'}</Text>
-          </Pressable>
+          <Button
+            label={saving ? 'Adding…' : 'Add member'}
+            onPress={handleAddMember}
+            disabled={saving}
+            style={{ marginTop: 8 }}
+          />
         </View>
       )}
       {error && <Text style={{ color: colors.owe, marginTop: 8 }}>{error}</Text>}
@@ -128,7 +130,6 @@ function createStyles(colors: ThemeColors) {
   },
   rowTitle: { fontSize: 15, fontWeight: '500', color: colors.ink },
   rowSub: { fontSize: 12, color: colors.inkSoft, marginTop: 2 },
-  textBtn: { fontSize: 13, fontWeight: '500' },
   badge: {
     backgroundColor: colors.ledgerSoft,
     borderRadius: 4,
@@ -146,14 +147,5 @@ function createStyles(colors: ThemeColors) {
     backgroundColor: colors.surface,
     color: colors.ink,
   },
-  button: {
-    backgroundColor: colors.route,
-    borderRadius: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buttonText: { color: '#fff', fontWeight: '600' },
   });
 }

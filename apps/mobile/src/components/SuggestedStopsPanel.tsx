@@ -3,6 +3,7 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { api, type Trip } from '../api';
 import { LocationSearchField } from './LocationSearchField';
 import { useTheme, type ThemeColors } from '../theme';
+import { Button } from './Button';
 
 interface Suggestion {
   id: string;
@@ -174,15 +175,13 @@ export function SuggestedStopsPanel({
         lng={searchLng}
         placeholder="Search a place…"
       />
-      <Pressable
-        style={[styles.suggestButton, (loading || searchLat == null || searchLng == null) && { opacity: 0.5 }]}
+      <Button
+        label={loading ? 'Finding places…' : 'Suggest places to visit'}
+        variant="secondary"
         onPress={handleSuggest}
         disabled={loading || searchLat == null || searchLng == null}
-      >
-        <Text style={[styles.buttonText, { color: colors.route }]}>
-          {loading ? 'Finding places…' : '✨ Suggest places to visit'}
-        </Text>
-      </Pressable>
+        style={{ marginTop: 8 }}
+      />
 
       <View style={styles.categoryRow}>
         {CATEGORIES.map((c) => (
@@ -218,15 +217,14 @@ export function SuggestedStopsPanel({
                   {s.name}
                 </Text>
                 {s.description ? <Text style={styles.cardCategory}>{s.description}</Text> : null}
-                <Pressable
-                  style={[styles.addButton, addedIds.has(s.id) && { opacity: 0.5 }]}
+                <Button
+                  label={addedIds.has(s.id) ? 'Added' : 'Add'}
+                  variant="text"
                   disabled={addedIds.has(s.id)}
                   onPress={() => handleAdd(s)}
-                >
-                  <Text style={[styles.buttonText, { color: colors.route }]}>
-                    {addedIds.has(s.id) ? 'Added' : '+ Add'}
-                  </Text>
-                </Pressable>
+                  accessibilityLabel={`Add ${s.name} to the itinerary`}
+                  style={{ marginTop: 4 }}
+                />
               </View>
             ))}
           </View>
@@ -237,15 +235,6 @@ export function SuggestedStopsPanel({
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
-    suggestButton: {
-      borderWidth: 1,
-      borderColor: colors.route,
-      borderRadius: 6,
-      paddingVertical: 10,
-      alignItems: 'center',
-      marginTop: 8,
-    },
-    buttonText: { fontWeight: '600' },
     categoryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
     categoryChip: {
       borderWidth: 1,
@@ -276,6 +265,5 @@ function createStyles(colors: ThemeColors) {
     },
     cardName: { fontSize: 13, fontWeight: '600', color: colors.ink, marginTop: 6, paddingHorizontal: 8 },
     cardCategory: { fontSize: 11, color: colors.inkSoft, marginTop: 2, paddingHorizontal: 8 },
-    addButton: { marginTop: 8, alignItems: 'center', paddingVertical: 4 },
   });
 }

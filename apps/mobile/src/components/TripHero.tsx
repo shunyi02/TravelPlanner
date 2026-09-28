@@ -2,32 +2,10 @@ import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import type { TripDetail } from '../api';
 import { fonts, useTheme, type ThemeColors } from '../theme';
+import { dayCount, formatShort, tripStatus } from '../tripDates';
 
 const CREAM = '#f6f0e1';
 const CREAM_SOFT = 'rgba(246, 240, 225, 0.72)';
-
-function formatShort(iso: string): string {
-  return new Date(iso.slice(0, 10) + 'T00:00:00Z')
-    .toLocaleDateString('en-GB', { day: '2-digit', month: 'short', timeZone: 'UTC' })
-    .toUpperCase();
-}
-
-function dayCount(start: string, end: string): number {
-  const ms = new Date(end.slice(0, 10) + 'T00:00:00Z').getTime() - new Date(start.slice(0, 10) + 'T00:00:00Z').getTime();
-  return Math.round(ms / 86_400_000) + 1;
-}
-
-/** "In 12 days" / "On the road" / "Wrapped up", or null without dates. */
-function tripStatus(start: string | null, end: string | null): string | null {
-  if (!start || !end) return null;
-  const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD, local
-  if (today < start.slice(0, 10)) {
-    const n = dayCount(today, start) - 1;
-    return n === 1 ? 'Tomorrow' : `In ${n} days`;
-  }
-  if (today <= end.slice(0, 10)) return 'On the road';
-  return 'Wrapped up';
-}
 
 /** Full-bleed dark banner at the top of the itinerary: dates, title, and three stat cards. */
 export function TripHero({ trip }: { trip: TripDetail }) {

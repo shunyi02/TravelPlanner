@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { MIN_SIGNUP_AGE, isOldEnoughToSignUp } from '@travel-planner/shared';
 import { api } from '../api';
 import { useTheme, type ThemeColors } from '../theme';
+import { Button } from './Button';
 
 /** Pastes either a bare reset token or the whole emailed link (which points at
  *  the web app's `?token=...`) — mobile has no in-app way to auto-detect the
@@ -61,9 +62,7 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
       <View style={styles.container}>
         <Text style={styles.title}>Password reset</Text>
         <Text style={{ color: colors.ink }}>You can log in with your new password now.</Text>
-        <Pressable style={styles.button} onPress={onBack}>
-          <Text style={styles.buttonText}>Back to login</Text>
-        </Pressable>
+        <Button label="Back to login" onPress={onBack} style={styles.submit} />
       </View>
     );
   }
@@ -82,9 +81,12 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
         value={email}
         onChangeText={setEmail}
       />
-      <Pressable style={styles.button} onPress={handleRequest} disabled={requesting}>
-        <Text style={styles.buttonText}>{requesting ? 'Sending…' : 'Send reset link'}</Text>
-      </Pressable>
+      <Button
+        label={requesting ? 'Sending…' : 'Send reset link'}
+        onPress={handleRequest}
+        disabled={requesting}
+        style={styles.submit}
+      />
       {requestMessage ? <Text style={{ color: colors.ink }}>{requestMessage}</Text> : null}
 
       <Text style={[styles.sectionLabel, { marginTop: 20 }]}>
@@ -107,9 +109,12 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
         onChangeText={setNewPassword}
       />
       {resetError ? <Text style={styles.error}>{resetError}</Text> : null}
-      <Pressable style={styles.button} onPress={handleReset} disabled={resetting}>
-        <Text style={styles.buttonText}>{resetting ? 'Resetting…' : 'Reset password'}</Text>
-      </Pressable>
+      <Button
+        label={resetting ? 'Resetting…' : 'Reset password'}
+        onPress={handleReset}
+        disabled={resetting}
+        style={styles.submit}
+      />
 
       <Pressable onPress={onBack}>
         <Text style={styles.switchText}>Back to login</Text>
@@ -197,9 +202,12 @@ export function AuthScreen({ onAuthed }: { onAuthed: () => void }) {
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <Pressable style={styles.button} onPress={handleSubmit} disabled={submitting}>
-        <Text style={styles.buttonText}>{mode === 'login' ? 'Log in' : 'Sign up'}</Text>
-      </Pressable>
+      <Button
+        label={submitting ? (mode === 'login' ? 'Logging in…' : 'Signing up…') : mode === 'login' ? 'Log in' : 'Sign up'}
+        onPress={handleSubmit}
+        disabled={submitting}
+        style={styles.submit}
+      />
 
       {mode === 'login' && (
         <Pressable onPress={() => setMode('forgot')}>
@@ -231,14 +239,7 @@ function createStyles(colors: ThemeColors) {
       color: colors.ink,
     },
     error: { color: colors.owe },
-    button: {
-      backgroundColor: colors.route,
-      borderRadius: 6,
-      paddingVertical: 14,
-      alignItems: 'center',
-      marginTop: 8,
-    },
-    buttonText: { color: '#fff', fontWeight: '600' },
+    submit: { marginTop: 8, minHeight: 48 },
     switchText: { color: colors.route, textAlign: 'center', marginTop: 12 },
   });
 }

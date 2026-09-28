@@ -3,6 +3,7 @@ import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-nativ
 import type { Place, PlaceType, TripDetail } from '../api';
 import { api } from '../api';
 import { useTheme, type ThemeColors } from '../theme';
+import { Button } from './Button';
 import { DayWeather } from './DayWeather';
 import type { DayForecast } from '../weather';
 import { fetchWeather } from '../weather';
@@ -340,14 +341,8 @@ function PlaceEditor({
       {error && <Text style={{ color: colors.owe, marginTop: 4 }}>{error}</Text>}
 
       <View style={styles.rowActions}>
-        <Pressable style={styles.button} onPress={handleSave} disabled={saving}>
-          <Text style={styles.buttonText}>{saving ? 'Saving…' : initial ? 'Save' : 'Add'}</Text>
-        </Pressable>
-        {onCancel && (
-          <Pressable style={styles.buttonOutline} onPress={onCancel}>
-            <Text style={[styles.buttonText, { color: colors.route }]}>Cancel</Text>
-          </Pressable>
-        )}
+        <Button label={saving ? 'Saving…' : initial ? 'Save' : 'Add'} onPress={handleSave} disabled={saving} />
+        {onCancel && <Button label="Cancel" variant="secondary" onPress={onCancel} />}
       </View>
     </View>
   );
@@ -489,14 +484,14 @@ export function ItineraryTab({
         </Pressable>
         {isExpanded && (
           <View style={styles.rowActions}>
-            <Pressable onPress={() => setEditingId(place.id)}>
-              <Text style={styles.textBtn}>Edit</Text>
-            </Pressable>
-            <Pressable onPress={() => handleDelete(place)} disabled={deletingId === place.id}>
-              <Text style={[styles.textBtn, { color: colors.owe }]}>
-                {deletingId === place.id ? 'Removing…' : 'Remove'}
-              </Text>
-            </Pressable>
+            <Button label="Edit" variant="text" onPress={() => setEditingId(place.id)} />
+            <Button
+              label={deletingId === place.id ? 'Removing…' : 'Remove'}
+              variant="text"
+              tone="danger"
+              onPress={() => handleDelete(place)}
+              disabled={deletingId === place.id}
+            />
           </View>
         )}
       </View>
@@ -520,9 +515,7 @@ export function ItineraryTab({
           value={endDate}
           onChangeText={setEndDate}
         />
-        <Pressable style={styles.button} onPress={handleSaveDates}>
-          <Text style={styles.buttonText}>Save</Text>
-        </Pressable>
+        <Button label="Save" onPress={handleSaveDates} />
       </View>
       {dateError ? <Text style={{ color: colors.owe, marginBottom: 16 }}>{dateError}</Text> : null}
       {deleteError ? <Text style={{ color: colors.owe, marginBottom: 16 }}>{deleteError}</Text> : null}
@@ -536,12 +529,12 @@ export function ItineraryTab({
 
       <RouteMap stops={routeStops} />
 
-      <Pressable
-        style={[styles.buttonOutline, { alignSelf: 'flex-start', marginBottom: 16 }]}
+      <Button
+        label={showAddForm ? 'Close' : 'Add to itinerary'}
+        variant="secondary"
         onPress={() => setShowAddForm(!showAddForm)}
-      >
-        <Text style={[styles.buttonText, { color: colors.route }]}>{showAddForm ? 'Close' : '+ Add'}</Text>
-      </Pressable>
+        style={{ alignSelf: 'flex-start', marginBottom: 16 }}
+      />
 
       {showAddForm && (
         <PlaceEditor
@@ -604,7 +597,6 @@ function createStyles(colors: ThemeColors) {
     rowTitle: { fontSize: 15, fontWeight: '500', color: colors.ink },
     rowSub: { fontSize: 12, color: colors.inkSoft, marginTop: 2 },
     rowActions: { flexDirection: 'row', gap: 16, paddingVertical: 8, paddingLeft: 12 },
-    textBtn: { color: colors.route, fontSize: 13, fontWeight: '500' },
     input: {
       borderWidth: 1,
       borderColor: colors.rule,
@@ -615,24 +607,6 @@ function createStyles(colors: ThemeColors) {
       color: colors.ink,
       marginBottom: 8,
     },
-    button: {
-      backgroundColor: colors.route,
-      borderRadius: 6,
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    buttonOutline: {
-      borderWidth: 1,
-      borderColor: colors.route,
-      borderRadius: 6,
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    buttonText: { color: '#fff', fontWeight: '600' },
     editor: {
       borderWidth: 1,
       borderColor: colors.rule,

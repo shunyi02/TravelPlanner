@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Image, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image, Modal, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { api } from '../api';
 import { useTheme, type ThemeColors } from '../theme';
+import { Button } from './Button';
 
 export function AddTripModal({
   visible,
@@ -67,9 +68,7 @@ export function AddTripModal({
           <Text style={styles.title}>New trip</Text>
 
           {coverPhoto && <Image source={{ uri: coverPhoto }} style={styles.preview} />}
-          <Pressable style={styles.button} onPress={pickImage}>
-            <Text style={styles.buttonText}>{coverPhoto ? 'Change photo' : 'Add cover photo'}</Text>
-          </Pressable>
+          <Button label={coverPhoto ? 'Change photo' : 'Add cover photo'} variant="secondary" onPress={pickImage} />
 
           <TextInput
             style={styles.input}
@@ -112,12 +111,8 @@ export function AddTripModal({
           {error && <Text style={{ color: colors.owe }}>{error}</Text>}
 
           <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
-            <Pressable onPress={onClose}>
-              <Text style={{ color: colors.inkSoft, paddingVertical: 10, paddingHorizontal: 12 }}>Cancel</Text>
-            </Pressable>
-            <Pressable style={styles.button} onPress={handleSave} disabled={saving}>
-              <Text style={styles.buttonText}>{saving ? 'Saving…' : 'Save'}</Text>
-            </Pressable>
+            <Button label="Cancel" variant="text" onPress={onClose} style={{ paddingHorizontal: 12 }} />
+            <Button label={saving ? 'Saving…' : 'Save'} onPress={handleSave} disabled={saving} />
           </View>
         </View>
       </View>
@@ -140,7 +135,5 @@ function createStyles(colors: ThemeColors) {
       backgroundColor: colors.surface,
       color: colors.ink,
     },
-    button: { backgroundColor: colors.route, borderRadius: 6, paddingVertical: 10, paddingHorizontal: 14, alignItems: 'center' },
-    buttonText: { color: '#fff', fontWeight: '600' },
   });
 }

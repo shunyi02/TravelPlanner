@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { Balance } from '@travel-planner/shared';
 import { EXPENSE_CATEGORIES } from '@travel-planner/shared';
 import type { Expense, TripDetail } from '../api';
@@ -8,6 +8,7 @@ import { hueForIndex } from '../palette';
 import { PieChart, type PieSlice } from './PieChart';
 import { SpendOverTimeChart } from './SpendOverTimeChart';
 import { useTheme, type ThemeColors } from '../theme';
+import { Button } from './Button';
 
 function BudgetCard({
   tripId,
@@ -80,9 +81,12 @@ function BudgetCard({
           value={input}
           onChangeText={setInput}
         />
-        <Pressable style={styles.buttonOutline} onPress={handleSave} disabled={saving}>
-          <Text style={[styles.buttonText, { color: colors.route }]}>{budgetNum != null ? 'Update' : 'Set budget'}</Text>
-        </Pressable>
+        <Button
+          label={budgetNum != null ? 'Update' : 'Set budget'}
+          variant="secondary"
+          onPress={handleSave}
+          disabled={saving}
+        />
       </View>
       {error && <Text style={{ color: colors.owe, marginTop: 8 }}>{error}</Text>}
     </View>
@@ -320,8 +324,6 @@ function createStyles(colors: ThemeColors) {
       color: colors.ink,
       width: 140,
     },
-    buttonOutline: { borderRadius: 6, paddingVertical: 8, paddingHorizontal: 14 },
-    buttonText: { fontWeight: '600' },
     memberRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',

@@ -1,23 +1,18 @@
 import { useEffect, useState } from 'react';
+import { useRouter } from 'expo-router';
 import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { api } from '../src/api';
 import { useAuth } from '../src/authContext';
 import { useTheme, type ThemeColors } from '../src/theme';
-
-function initials(name: string): string {
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase() ?? '')
-    .join('');
-}
+import { initials } from '../src/initials';
+import { Button } from '../src/components/Button';
 
 export default function ProfileScreen() {
   const colors = useTheme();
   const styles = createStyles(colors);
-  const { currentUser, setCurrentUser } = useAuth();
+  const router = useRouter();
+  const { currentUser, setCurrentUser, logout } = useAuth();
   const [name, setName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
@@ -72,9 +67,7 @@ export default function ProfileScreen() {
             <Text style={styles.avatarInitials}>{initials(name || currentUser.name)}</Text>
           </View>
         )}
-        <Pressable style={styles.buttonOutline} onPress={pickImage}>
-          <Text style={[styles.buttonText, { color: colors.route }]}>{avatarUrl ? 'Change photo' : 'Add photo'}</Text>
-        </Pressable>
+        <Button label={avatarUrl ? 'Change photo' : 'Add photo'} variant="secondary" size="sm" onPress={pickImage} />
       </View>
 
       <Text style={styles.label}>Name</Text>
@@ -86,9 +79,19 @@ export default function ProfileScreen() {
       {error ? <Text style={{ color: colors.owe, marginTop: 8 }}>{error}</Text> : null}
       {saved ? <Text style={{ color: colors.route, marginTop: 8 }}>Saved.</Text> : null}
 
-      <Pressable style={[styles.button, { marginTop: 16 }]} onPress={handleSave} disabled={saving}>
-        <Text style={styles.buttonTextSolid}>{saving ? 'Saving…' : 'Save'}</Text>
-      </Pressable>
+      <Button label={saving ? 'Saving…' : 'Save'} onPress={handleSave} disabled={saving} style={{ marginTop: 16 }} />
+
+      <View style={styles.section}>
+        <Pressable
+          onPress={() => router.push('/settings')}
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.linkRow, pressed && { opacity: 0.6 }]}
+        >
+          <Text style={styles.linkRowText}>Settings</Text>
+          <Text style={styles.linkRowChevron}>›</Text>
+        </Pressable>
+        <Button label="Log out" variant="text" tone="danger" onPress={logout} style={styles.logout} />
+      </View>
     </ScrollView>
   );
 }
@@ -118,14 +121,17 @@ function createStyles(colors: ThemeColors) {
       color: colors.ink,
     },
     readOnly: { color: colors.inkSoft, paddingVertical: 10 },
-    button: {
-      backgroundColor: colors.route,
-      borderRadius: 6,
-      paddingVertical: 12,
+    section: { marginTop: 36, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.rule },
+    linkRow: {
+      flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'space-between',
+      minHeight: 52,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.rule,
     },
-    buttonOutline: { borderRadius: 6, paddingVertical: 8, paddingHorizontal: 14 },
-    buttonText: { fontWeight: '600' },
-    buttonTextSolid: { color: '#fff', fontWeight: '600' },
+    linkRowText: { fontSize: 16, color: colors.ink },
+    linkRowChevron: { fontSize: 22, color: colors.inkSoft },
+    logout: { alignSelf: 'flex-start', marginTop: 20 },
   });
 }

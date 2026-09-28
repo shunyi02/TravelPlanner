@@ -4,6 +4,7 @@ import { EXPENSE_CATEGORIES, DEFAULT_EXPENSE_CATEGORY } from '@travel-planner/sh
 import type { Expense } from '../api';
 import { api } from '../api';
 import { useTheme, type ThemeColors } from '../theme';
+import { Button } from './Button';
 
 type SplitMode = 'even' | 'custom';
 
@@ -354,12 +355,8 @@ export function ExpensesTab({
                     ))
                 )}
                 <View style={styles.rowActions}>
-                  <Pressable onPress={() => startEdit(expense)}>
-                    <Text style={styles.textBtn}>Edit</Text>
-                  </Pressable>
-                  <Pressable onPress={() => handleDelete(expense)}>
-                    <Text style={[styles.textBtn, { color: colors.owe }]}>Delete</Text>
-                  </Pressable>
+                  <Button label="Edit" variant="text" onPress={() => startEdit(expense)} />
+                  <Button label="Delete" variant="text" tone="danger" onPress={() => handleDelete(expense)} />
                 </View>
               </View>
             )}
@@ -383,9 +380,12 @@ export function ExpensesTab({
                 />
                 <PayerPicker memberIds={memberIds} memberNames={memberNames} value={editPaidById} onChange={setEditPaidById} />
                 <CategoryPicker value={editCategory} onChange={setEditCategory} />
-                <Pressable onPress={() => setShowEditSplitEditor((v) => !v)}>
-                  <Text style={styles.textBtn}>{showEditSplitEditor ? 'Hide split options' : 'Split options'}</Text>
-                </Pressable>
+                <Button
+                  label={showEditSplitEditor ? 'Hide split options' : 'Split options'}
+                  variant="text"
+                  onPress={() => setShowEditSplitEditor((v) => !v)}
+                  style={styles.textAction}
+                />
                 {showEditSplitEditor && (
                   <SplitEditor
                     memberIds={memberIds}
@@ -398,12 +398,8 @@ export function ExpensesTab({
                   />
                 )}
                 <View style={styles.rowActions}>
-                  <Pressable style={styles.button} onPress={() => handleSaveEdit(expense)}>
-                    <Text style={styles.buttonText}>Save</Text>
-                  </Pressable>
-                  <Pressable style={styles.buttonOutline} onPress={() => setEditingId(null)}>
-                    <Text style={[styles.buttonText, { color: colors.route }]}>Cancel</Text>
-                  </Pressable>
+                  <Button label="Save" onPress={() => handleSaveEdit(expense)} style={styles.formButton} />
+                  <Button label="Cancel" variant="secondary" onPress={() => setEditingId(null)} style={styles.formButton} />
                 </View>
               </View>
             )}
@@ -431,11 +427,12 @@ export function ExpensesTab({
         </View>
         <PayerPicker memberIds={memberIds} memberNames={memberNames} value={paidById} onChange={setPaidById} />
         <CategoryPicker value={category} onChange={setCategory} />
-        <Pressable onPress={() => setShowSplitEditor((v) => !v)} style={{ marginTop: 8 }}>
-          <Text style={styles.textBtn}>
-            {showSplitEditor ? 'Hide split options' : 'Split options (defaults to evenly)'}
-          </Text>
-        </Pressable>
+        <Button
+          label={showSplitEditor ? 'Hide split options' : 'Split options (defaults to evenly)'}
+          variant="text"
+          onPress={() => setShowSplitEditor((v) => !v)}
+          style={[styles.textAction, { marginTop: 8 }]}
+        />
         {showSplitEditor && (
           <SplitEditor
             memberIds={memberIds}
@@ -448,9 +445,7 @@ export function ExpensesTab({
           />
         )}
         {error && <Text style={{ color: colors.owe, marginTop: 8 }}>{error}</Text>}
-        <Pressable style={styles.button} onPress={handleAdd}>
-          <Text style={styles.buttonText}>Log expense</Text>
-        </Pressable>
+        <Button label="Log expense" onPress={handleAdd} style={styles.formButton} />
       </View>
     </View>
   );
@@ -487,7 +482,7 @@ function createStyles(colors: ThemeColors) {
     splitItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
     splitItemLabel: { fontSize: 13, color: colors.inkSoft, flex: 1 },
     rowActions: { flexDirection: 'row', gap: 16, marginTop: 4 },
-    textBtn: { color: colors.route, fontSize: 13, fontWeight: '500' },
+    textAction: { alignSelf: 'flex-start' },
     form: { flexDirection: 'row', gap: 8 },
     payerLabel: { fontSize: 12, color: colors.inkSoft, marginTop: 10, marginBottom: 6 },
     payerRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -510,22 +505,7 @@ function createStyles(colors: ThemeColors) {
       backgroundColor: colors.surface,
       color: colors.ink,
     },
-    button: {
-      backgroundColor: colors.route,
-      borderRadius: 6,
-      paddingVertical: 10,
-      paddingHorizontal: 16,
-      alignItems: 'center',
-      marginTop: 10,
-    },
-    buttonOutline: {
-      borderRadius: 6,
-      paddingVertical: 10,
-      paddingHorizontal: 16,
-      alignItems: 'center',
-      marginTop: 10,
-    },
-    buttonText: { color: '#fff', fontWeight: '600' },
+    formButton: { marginTop: 10 },
     splitModeRow: { flexDirection: 'row', gap: 16, marginTop: 8 },
     splitModeOption: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     splitModeLabel: { fontSize: 13, color: colors.inkSoft },
