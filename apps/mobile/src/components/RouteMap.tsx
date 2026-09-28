@@ -1,7 +1,7 @@
 import { createElement, useMemo, useRef } from 'react';
 import { Linking, Platform, StyleSheet, Text, View } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { hueForIndex, NEUTRAL_HUE } from '../palette';
+import { hueForIndex, NEUTRAL_HUE } from '@travel-planner/shared';
 import { LEAFLET_CSS, LEAFLET_JS } from '../vendor/leaflet';
 import { radius, typeScale, useTheme, type ThemeColors } from '../theme';
 import { Tappable } from './Tappable';

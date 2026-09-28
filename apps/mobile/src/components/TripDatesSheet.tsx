@@ -1,19 +1,12 @@
 import { useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { api, type Place, type TripDetail } from '../api';
+import { dayDelta, dayKeysFor } from '@travel-planner/shared';
+import { api, type TripDetail } from '../api';
 import { radius, typeScale, useTheme, type ThemeColors } from '../theme';
 import { dayCount } from '../tripDates';
 import { Button } from './Button';
 import { DateField } from './DateField';
-
-function dayDelta(fromDay: string, toDay: string): number {
-  return Math.round((Date.parse(`${toDay}T00:00:00Z`) - Date.parse(`${fromDay}T00:00:00Z`)) / 86_400_000);
-}
-
-function isDated(p: Place): boolean {
-  return Boolean(p.visitDate || p.checkIn || p.departureTime);
-}
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
@@ -45,7 +38,7 @@ export function TripDatesSheet({
   const complete = Boolean(start && end);
   const backwards = complete && end < start;
   const delta = origStart && start ? dayDelta(origStart, start) : 0;
-  const datedCount = trip.places.filter(isDated).length;
+  const datedCount = trip.places.filter((p) => dayKeysFor(p).length > 0).length;
   const canMove = delta !== 0 && datedCount > 0;
   const unchanged = start === origStart && end === origEnd;
 

@@ -69,6 +69,9 @@ export function AddItineraryItemModal({
     editPlace?.visitDate ? toDatetimeLocal(editPlace.visitDate) : defaultDay ? dayAt(defaultDay, 12) : '',
   );
   const [notes, setNotes] = useState(editPlace?.notes ?? '');
+  const [address, setAddress] = useState(editPlace?.address ?? '');
+  const [confirmationCode, setConfirmationCode] = useState(editPlace?.confirmationCode ?? '');
+  const [flightNumber, setFlightNumber] = useState(editPlace?.flightNumber ?? '');
 
   // location search (STOP and HOTEL — flights aren't geocoded, just airport codes)
   const [locationQuery, setLocationQuery] = useState(
@@ -128,6 +131,8 @@ export function AddItineraryItemModal({
           arrivalTime: arrivalTime || undefined,
           departureAirport: departureAirport || undefined,
           arrivalAirport: arrivalAirport || undefined,
+          flightNumber: flightNumber.trim(),
+          confirmationCode: confirmationCode.trim(),
           assigneeIds,
         };
         if (editPlace) {
@@ -143,6 +148,8 @@ export function AddItineraryItemModal({
               // swapped: return leg goes arrival -> departure
               departureAirport: arrivalAirport || undefined,
               arrivalAirport: departureAirport || undefined,
+              // Usually one booking for both legs; the flight number differs.
+              confirmationCode: confirmationCode.trim(),
               assigneeIds,
             });
           }
@@ -154,9 +161,11 @@ export function AddItineraryItemModal({
           visitDate: visitDate || undefined,
           ...((type === 'STOP' || type === 'HOTEL') && { lat, lng }),
           ...(type === 'STOP' && { notes: notes.trim() || undefined }),
+          address: address.trim(),
           ...(type === 'HOTEL' && {
             checkIn: checkIn || undefined,
             checkOut: checkOut || undefined,
+            confirmationCode: confirmationCode.trim(),
           }),
           assigneeIds,
         };
@@ -263,6 +272,13 @@ export function AddItineraryItemModal({
                 min={dtMin}
                 max={dtMax}
               />
+            </label>
+          )}
+
+          {(type === 'STOP' || type === 'HOTEL') && (
+            <label className="field">
+              Address (optional)
+              <input value={address} onChange={(e) => setAddress(e.target.value)} autoComplete="off" />
             </label>
           )}
 
@@ -388,6 +404,32 @@ export function AddItineraryItemModal({
                 />
               </label>
             </>
+          )}
+
+          {type === 'FLIGHT' && (
+            <label className="field">
+              Flight number (optional)
+              <input
+                value={flightNumber}
+                onChange={(e) => setFlightNumber(e.target.value.toUpperCase())}
+                placeholder="e.g. SQ 850"
+                maxLength={20}
+                autoComplete="off"
+              />
+            </label>
+          )}
+
+          {(type === 'HOTEL' || type === 'FLIGHT') && (
+            <label className="field">
+              Booking reference (optional)
+              <input
+                value={confirmationCode}
+                onChange={(e) => setConfirmationCode(e.target.value)}
+                placeholder="Shown on the exported itinerary"
+                maxLength={60}
+                autoComplete="off"
+              />
+            </label>
           )}
 
           {memberIds.length > 1 && (

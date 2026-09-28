@@ -2,7 +2,7 @@ import { Fragment } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { MapContainer, Marker, Polyline, TileLayer, Tooltip } from 'react-leaflet';
-import { hueForIndex, NEUTRAL_HUE } from '../palette';
+import { hueForIndex, NEUTRAL_HUE } from '@travel-planner/shared';
 
 /** A colored numbered badge (the same visual language as the itinerary
  *  list's .stop-index circle) instead of Leaflet's default pin image, so

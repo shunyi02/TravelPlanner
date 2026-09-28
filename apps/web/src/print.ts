@@ -12,7 +12,5 @@ export function printDocument(title: string) {
   window.print();
 }
 
-/** A file-name-safe version of `name` (keeps spaces, accents and "&"). */
-export function fileSafe(name: string): string {
-  return name.replace(/[\\/:*?"<>|]+/g, '-').trim();
-}
+/** A file-name-safe version of a name. Shared with the itinerary sheet. */
+export { fileSafe } from '@travel-planner/shared';

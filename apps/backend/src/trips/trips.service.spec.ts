@@ -267,6 +267,20 @@ describe('TripsService.updatePlace', () => {
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
+  it('clears a blank booking detail, trims a set one and leaves an omitted one alone', async () => {
+    const update = mockFn().mockImplementation((args: any) => Promise.resolve({ id: 'place-1', ...args.data }));
+    const { service } = makeDeps({
+      prisma: { place: { findUnique: mockFn().mockResolvedValue(makeExistingPlace()), update } },
+    });
+
+    await service.updatePlace(TRIP_ID, OWNER_ID, 'place-1', { confirmationCode: '  ', flightNumber: ' SQ 850 ' } as any);
+
+    const { data } = update.mock.calls[0][0];
+    expect(data.confirmationCode).toBeNull();
+    expect(data.flightNumber).toBe('SQ 850');
+    expect(data.address).toBeUndefined();
+  });
+
   it('replaces assignments when assigneeIds is given, deleting old ones first', async () => {
     const deleteMany = mockFn().mockResolvedValue({ count: 1 });
     const update = mockFn().mockImplementation((args: any) => Promise.resolve({ id: 'place-1', ...args.data }));

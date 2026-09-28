@@ -27,11 +27,7 @@ export function formatDateTime(iso: string): string {
 }
 
 /** Calendar-day key for an ISO datetime, in the viewer's local time (e.g. "2026-09-30"). */
-export function dateKey(iso: string): string {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
+export { dateKey } from '@travel-planner/shared';
 
 /** Heading for a day group, e.g. "Wed, Sep 30". */
 export function formatDayHeading(iso: string): string {

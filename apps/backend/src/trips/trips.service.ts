@@ -9,6 +9,17 @@ import { AddManualMemberDto } from './dto/add-manual-member.dto';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { UpdateTripDto } from './dto/update-trip.dto';
 
+/** A place's booking details for Prisma: omitted stays unchanged, and an
+ *  empty or blank string clears the field (stored as null). */
+function bookingDetails(dto: { address?: string; confirmationCode?: string; flightNumber?: string }) {
+  const clean = (v?: string) => (v === undefined ? undefined : v.trim() || null);
+  return {
+    address: clean(dto.address),
+    confirmationCode: clean(dto.confirmationCode),
+    flightNumber: clean(dto.flightNumber),
+  };
+}
+
 @Injectable()
 export class TripsService {
   constructor(
@@ -130,6 +141,9 @@ export class TripsService {
             arrivalAirport: p.arrivalAirport,
             checkIn: p.checkIn,
             checkOut: p.checkOut,
+            address: p.address,
+            confirmationCode: p.confirmationCode,
+            flightNumber: p.flightNumber,
           })),
         },
         accommodations: {
@@ -245,6 +259,7 @@ export class TripsService {
         arrivalAirport: dto.arrivalAirport,
         checkIn: dto.checkIn ? new Date(dto.checkIn) : undefined,
         checkOut: dto.checkOut ? new Date(dto.checkOut) : undefined,
+        ...bookingDetails(dto),
         assignments: dto.assigneeIds?.length
           ? { create: dto.assigneeIds.map((assigneeId) => ({ userId: assigneeId })) }
           : undefined,
@@ -261,24 +276,29 @@ export class TripsService {
     }
     if (dto.assigneeIds?.length) await this.assertValidAssignees(tripId, dto.assigneeIds);
 
+    const data = {
+      type: dto.type,
+      name: dto.name,
+      lat: dto.lat,
+      lng: dto.lng,
+      visitDate: dto.visitDate ? new Date(dto.visitDate) : undefined,
+      notes: dto.notes,
+      departureTime: dto.departureTime ? new Date(dto.departureTime) : undefined,
+      arrivalTime: dto.arrivalTime ? new Date(dto.arrivalTime) : undefined,
+      departureAirport: dto.departureAirport,
+      arrivalAirport: dto.arrivalAirport,
+      checkIn: dto.checkIn ? new Date(dto.checkIn) : undefined,
+      checkOut: dto.checkOut ? new Date(dto.checkOut) : undefined,
+      ...bookingDetails(dto),
+    };
+
     if (dto.assigneeIds) {
       const [, updated] = await this.prisma.$transaction([
         this.prisma.placeAssignment.deleteMany({ where: { placeId } }),
         this.prisma.place.update({
           where: { id: placeId },
           data: {
-            type: dto.type,
-            name: dto.name,
-            lat: dto.lat,
-            lng: dto.lng,
-            visitDate: dto.visitDate ? new Date(dto.visitDate) : undefined,
-            notes: dto.notes,
-            departureTime: dto.departureTime ? new Date(dto.departureTime) : undefined,
-            arrivalTime: dto.arrivalTime ? new Date(dto.arrivalTime) : undefined,
-            departureAirport: dto.departureAirport,
-            arrivalAirport: dto.arrivalAirport,
-            checkIn: dto.checkIn ? new Date(dto.checkIn) : undefined,
-            checkOut: dto.checkOut ? new Date(dto.checkOut) : undefined,
+            ...data,
             assignments: dto.assigneeIds.length
               ? { create: dto.assigneeIds.map((assigneeId) => ({ userId: assigneeId })) }
               : undefined,
@@ -291,20 +311,7 @@ export class TripsService {
 
     return this.prisma.place.update({
       where: { id: placeId },
-      data: {
-        type: dto.type,
-        name: dto.name,
-        lat: dto.lat,
-        lng: dto.lng,
-        visitDate: dto.visitDate ? new Date(dto.visitDate) : undefined,
-        notes: dto.notes,
-        departureTime: dto.departureTime ? new Date(dto.departureTime) : undefined,
-        arrivalTime: dto.arrivalTime ? new Date(dto.arrivalTime) : undefined,
-        departureAirport: dto.departureAirport,
-        arrivalAirport: dto.arrivalAirport,
-        checkIn: dto.checkIn ? new Date(dto.checkIn) : undefined,
-        checkOut: dto.checkOut ? new Date(dto.checkOut) : undefined,
-      },
+      data,
       include: { assignments: true },
     });
   }

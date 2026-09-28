@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { toPng } from 'html-to-image';
 import { FilePdf, ShareNetwork } from '@phosphor-icons/react';
+import { paperForLocale, renderItinerarySheet, themeDefinitionById } from '@travel-planner/shared';
 import type { TripDetail } from '../api';
-import { fileSafe, printDocument } from '../print';
-import { ItinerarySheet } from './ItinerarySheet';
+import { storedThemeId } from '../themes';
 
 function formatDay(day: string): string {
   return new Date(day + 'T00:00:00Z').toLocaleDateString(undefined, {
@@ -15,11 +15,14 @@ function formatDay(day: string): string {
   });
 }
 
+const stageHtml = (sheet: { css: string; body: string }) => `<style>${sheet.css}</style>${sheet.body}`;
+
 const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
 
 /** Export options for the itinerary: whole trip or one day, everyone or one
- *  person, then print it (Save as PDF) or share it as an image. Either way
- *  the output is ItinerarySheet, not a copy of the screen. */
+ *  person, what to include, then print it (Save as PDF) or share it as an
+ *  image. Either way the output is the shared itinerary sheet (the same one
+ *  the mobile app turns into a PDF), not a copy of the screen. */
 export function ExportDialog({
   trip,
   days,
@@ -42,24 +45,23 @@ export function ExportDialog({
   const [person, setPerson] = useState(viewedPerson);
   const [job, setJob] = useState<'print' | 'image' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [include, setInclude] = useState({ map: true, notes: true, checkboxes: true });
   const stageRef = useRef<HTMLDivElement>(null);
   const firstRef = useRef<HTMLInputElement>(null);
   const memberIds = Object.keys(memberNames);
-
   const personId = person === 'all' ? null : person;
-  const places = personId
-    ? trip.places.filter((p) => p.assignments.length === 0 || p.assignments.some((a) => a.userId === personId))
-    : trip.places;
-  const sheetDays = scope === 'day' && day ? [day] : days;
-  const title = fileSafe(
-    [
-      trip.name,
-      scope === 'day' && day ? `Day ${days.indexOf(day) + 1}` : 'Itinerary',
-      personId ? (memberNames[personId] ?? '').split(' ')[0] : null,
-    ]
-      .filter(Boolean)
-      .join(' – '),
-  );
+
+  const render = (variant: 'print' | 'image') =>
+    renderItinerarySheet(trip, memberNames, {
+      scope,
+      day: scope === 'day' ? day : undefined,
+      personId,
+      include,
+      variant,
+      // Exports are always light and on-brand, even when the app is in dark mode.
+      palette: themeDefinitionById(storedThemeId()).light,
+      paper: paperForLocale(navigator.language),
+    });
 
   useEffect(() => {
     firstRef.current?.focus();
@@ -70,19 +72,29 @@ export function ExportDialog({
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose, job]);
 
-  const handlePrint = async () => {
+  /** Prints the sheet from a hidden iframe, so the app's own page and styles
+   *  stay out of it; the iframe's title becomes the suggested PDF file name. */
+  const handlePrint = () => {
     setError(null);
     setJob('print');
-    document.body.classList.add('printing-sheet');
-    await nextFrame();
-    const done = () => {
-      window.removeEventListener('afterprint', done);
-      document.body.classList.remove('printing-sheet');
+    const sheet = render('print');
+    const frame = document.createElement('iframe');
+    frame.setAttribute('aria-hidden', 'true');
+    frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+    const cleanUp = () => {
+      frame.remove();
       setJob(null);
       onClose();
     };
-    window.addEventListener('afterprint', done);
-    printDocument(title);
+    frame.onload = () => {
+      const win = frame.contentWindow;
+      if (!win) return cleanUp();
+      win.addEventListener('afterprint', () => setTimeout(cleanUp, 0));
+      win.focus();
+      win.print();
+    };
+    frame.srcdoc = sheet.document;
+    document.body.appendChild(frame);
   };
 
   const handleImage = async () => {
@@ -91,10 +103,11 @@ export function ExportDialog({
     try {
       await nextFrame();
       await document.fonts.ready;
-      const node = stageRef.current?.firstElementChild as HTMLElement | null;
+      const node = stageRef.current?.querySelector('.cuti-sheet') as HTMLElement | null;
       if (!node) throw new Error('Nothing to capture');
       const dataUrl = await toPng(node, { pixelRatio: 2, cacheBust: true });
       const blob = await (await fetch(dataUrl)).blob();
+      const { title } = render('image');
       const file = new File([blob], `${title}.png`, { type: 'image/png' });
       if (navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file], title });
@@ -115,18 +128,6 @@ export function ExportDialog({
       setJob(null);
     }
   };
-
-  const sheet = (variant: 'print' | 'image') => (
-    <ItinerarySheet
-      trip={trip}
-      days={sheetDays}
-      places={places}
-      memberNames={memberNames}
-      personId={personId}
-      scope={scope}
-      variant={variant}
-    />
-  );
 
   return (
     <>
@@ -195,6 +196,28 @@ export function ExportDialog({
             </label>
           )}
 
+          <fieldset className="export-group">
+            <legend>Show</legend>
+            <div className="export-toggles">
+              {(
+                [
+                  ['map', 'Route maps'],
+                  ['notes', 'Notes'],
+                  ['checkboxes', 'Tick boxes'],
+                ] as const
+              ).map(([key, label]) => (
+                <label key={key} className="export-toggle">
+                  <input
+                    type="checkbox"
+                    checked={include[key]}
+                    onChange={(e) => setInclude((prev) => ({ ...prev, [key]: e.target.checked }))}
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
           {error && <p className="form-error">{error}</p>}
 
           <div className="export-actions">
@@ -217,12 +240,15 @@ export function ExportDialog({
         </div>
       </div>
 
-      {job === 'print' && createPortal(<div className="print-root">{sheet('print')}</div>, document.body)}
       {job === 'image' &&
         createPortal(
-          <div className="image-stage" ref={stageRef} aria-hidden="true">
-            {sheet('image')}
-          </div>,
+          <div
+            className="image-stage"
+            ref={stageRef}
+            aria-hidden="true"
+            // The sheet is our own HTML: user text in it is escaped by renderItinerarySheet.
+            dangerouslySetInnerHTML={{ __html: stageHtml(render('image')) }}
+          />,
           document.body,
         )}
     </>

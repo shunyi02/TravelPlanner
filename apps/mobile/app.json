@@ -15,7 +15,8 @@
           "photosPermission": "Allow Travel Planner to access your photos to set a trip cover."
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-sharing"
     ],
     "ios": {
       "supportsTablet": true

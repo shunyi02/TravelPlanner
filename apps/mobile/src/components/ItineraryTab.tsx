@@ -17,17 +17,8 @@ import { Tappable } from './Tappable';
 import { DateField } from './DateField';
 import { Field, TextField } from './Field';
 import { Airplane, Bed, CalendarBlank, MapPin } from '../icons';
-
-function daysBetween(start: string, end: string): string[] {
-  const days: string[] = [];
-  const cur = new Date(start + 'T00:00:00Z');
-  const last = new Date(end + 'T00:00:00Z');
-  while (cur <= last) {
-    days.push(cur.toISOString().slice(0, 10));
-    cur.setUTCDate(cur.getUTCDate() + 1);
-  }
-  return days;
-}
+import { daysBetween, dayKeysFor, formatTime, hotelDayLabel, sortTimeForDay } from '@travel-planner/shared';
+import { ExportSheet } from './ExportSheet';
 
 /** "Sat, 12 Dec" for a day heading. */
 function formatDayLong(iso: string) {
@@ -37,50 +28,6 @@ function formatDayLong(iso: string) {
     month: 'short',
     timeZone: 'UTC',
   });
-}
-
-function formatTime(iso?: string | null): string {
-  if (!iso) return '';
-  return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-}
-
-/** Which day-buckets a place belongs in. Hotels span every day from checkIn to checkOut
- *  inclusive; flights/stops occupy a single day. */
-function dayKeysFor(place: Place): string[] {
-  if (place.type === 'HOTEL') {
-    if (!place.checkIn) return [];
-    const ci = place.checkIn.slice(0, 10);
-    const co = place.checkOut ? place.checkOut.slice(0, 10) : ci;
-    const keys: string[] = [];
-    const cur = new Date(ci + 'T00:00:00Z');
-    const last = new Date(co + 'T00:00:00Z');
-    while (cur <= last) {
-      keys.push(cur.toISOString().slice(0, 10));
-      cur.setUTCDate(cur.getUTCDate() + 1);
-    }
-    return keys;
-  }
-  if (place.type === 'FLIGHT') {
-    return place.departureTime ? [place.departureTime.slice(0, 10)] : [];
-  }
-  return place.visitDate ? [place.visitDate.slice(0, 10)] : [];
-}
-
-/** For a hotel shown under a specific day, label what's happening that day
- *  (check-in / staying / check-out). Undefined `day` means "not day-bucketed"
- *  (flat/unscheduled view) — falls back to date range. */
-function hotelDayLabel(place: Place, day?: string): string | null {
-  const ci = place.checkIn?.slice(0, 10);
-  const co = place.checkOut?.slice(0, 10);
-  if (!day || !ci) {
-    return ci || co ? `${ci ?? ''}${co ? ` – ${co}` : ''}` : null;
-  }
-  if (day === ci && day === co) {
-    return `Check-in ${formatTime(place.checkIn)} & check-out ${formatTime(place.checkOut)}`;
-  }
-  if (day === ci) return `Check-in ${formatTime(place.checkIn)}`;
-  if (day === co) return `Check-out ${formatTime(place.checkOut)}`;
-  return 'Staying';
 }
 
 function placeSubtitle(place: Place, day?: string): string | null {
@@ -100,22 +47,6 @@ function placeSubtitle(place: Place, day?: string): string | null {
   const time = formatTime(place.visitDate);
   const parts = [time, place.notes].filter(Boolean);
   return parts.length > 0 ? parts.join(' · ') : null;
-}
-
-/** Sort key for ordering rows within a single day bucket. Hotels use checkout
- *  time on their checkout day, check-in time otherwise (so "11am checkout" sits
- *  above "3pm check-in" on a same-day changeover). */
-function sortTimeForDay(place: Place, day?: string): number {
-  if (place.type === 'HOTEL') {
-    const ci = place.checkIn;
-    const co = place.checkOut;
-    if (day && co && day === co.slice(0, 10) && (!ci || day !== ci.slice(0, 10))) {
-      return new Date(co).getTime();
-    }
-    return ci ? new Date(ci).getTime() : 0;
-  }
-  if (place.type === 'FLIGHT') return place.departureTime ? new Date(place.departureTime).getTime() : 0;
-  return place.visitDate ? new Date(place.visitDate).getTime() : 0;
 }
 
 /** Located stops/hotels from `list`, bucketed by day (each place's own first
@@ -204,6 +135,9 @@ function PlaceEditor({
   const [type, setType] = useState<PlaceType>(initial?.type ?? 'STOP');
   const [name, setName] = useState(initial?.name ?? '');
   const [notes, setNotes] = useState(initial?.notes ?? '');
+  const [address, setAddress] = useState(initial?.address ?? '');
+  const [confirmationCode, setConfirmationCode] = useState(initial?.confirmationCode ?? '');
+  const [flightNumber, setFlightNumber] = useState(initial?.flightNumber ?? '');
   const [visitDateTime, setVisitDateTime] = useState(initial?.visitDate ? toLocalInput(initial.visitDate) : '');
   const [departureAirport, setDepartureAirport] = useState(initial?.departureAirport ?? '');
   const [arrivalAirport, setArrivalAirport] = useState(initial?.arrivalAirport ?? '');
@@ -241,10 +175,15 @@ function PlaceEditor({
         payload.lat = lat;
         payload.lng = lng;
         payload.notes = notes.trim() || undefined;
+        payload.address = address.trim();
       } else if (type === 'HOTEL') {
         payload.checkIn = parseLocalInput(checkInDateTime);
         payload.checkOut = parseLocalInput(checkOutDateTime);
+        payload.address = address.trim();
+        payload.confirmationCode = confirmationCode.trim();
       } else {
+        payload.flightNumber = flightNumber.trim();
+        payload.confirmationCode = confirmationCode.trim();
         payload.departureAirport = departureAirport.trim() || undefined;
         payload.arrivalAirport = arrivalAirport.trim() || undefined;
         payload.departureTime = parseLocalInput(departureDateTime);
@@ -315,6 +254,7 @@ function PlaceEditor({
                 placeholder="Search a place…"
               />
             </Field>
+            <TextField label="Address" placeholder="Optional" value={address} onChangeText={setAddress} />
             <DateField
               label="When"
               mode="datetime"
@@ -331,6 +271,7 @@ function PlaceEditor({
         {type === 'HOTEL' && (
           <>
             <TextField label="Hotel" value={name} onChangeText={setName} error={nameError} />
+            <TextField label="Address" placeholder="Optional" value={address} onChangeText={setAddress} />
             <DateField
               label="Check-in"
               mode="datetime"
@@ -346,6 +287,14 @@ function PlaceEditor({
               onChange={setCheckOutDateTime}
               defaultDay={checkInDateTime.slice(0, 10) || defaultDay}
               optional
+            />
+            <TextField
+              label="Booking reference"
+              placeholder="Optional, shown on the exported itinerary"
+              autoCapitalize="characters"
+              maxLength={60}
+              value={confirmationCode}
+              onChangeText={setConfirmationCode}
             />
           </>
         )}
@@ -374,7 +323,22 @@ function PlaceEditor({
               defaultDay={departureDateTime.slice(0, 10) || defaultDay}
               optional
             />
-            <TextField label="Flight" placeholder="Optional, e.g. SQ 638" value={name} onChangeText={setName} />
+            <TextField
+              label="Flight number"
+              placeholder="Optional, e.g. SQ 638"
+              autoCapitalize="characters"
+              maxLength={20}
+              value={flightNumber}
+              onChangeText={(v) => setFlightNumber(v.toUpperCase())}
+            />
+            <TextField
+              label="Booking reference"
+              placeholder="Optional, shown on the exported itinerary"
+              autoCapitalize="characters"
+              maxLength={60}
+              value={confirmationCode}
+              onChangeText={setConfirmationCode}
+            />
           </>
         )}
 
@@ -404,6 +368,7 @@ export function ItineraryTab({
   // null = closed, 'new' = adding, else the place being edited.
   const [editing, setEditing] = useState<Place | 'new' | null>(null);
   const [showDiscover, setShowDiscover] = useState(false);
+  const [showExport, setShowExport] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -546,6 +511,13 @@ export function ItineraryTab({
         <Button label="Add to itinerary" onPress={() => setEditing('new')} style={{ flex: 1 }} />
         <Button label="Discover places" variant="secondary" onPress={() => setShowDiscover(true)} style={{ flex: 1 }} />
       </View>
+      <Button
+        label="Export as PDF"
+        variant="text"
+        onPress={() => setShowExport(true)}
+        style={styles.exportLink}
+        accessibilityLabel="Export the itinerary as a PDF"
+      />
 
       {days.length === 0 ? (
         <View>
@@ -617,6 +589,8 @@ export function ItineraryTab({
         )}
       </Modal>
 
+      <ExportSheet visible={showExport} trip={trip} days={days} onClose={() => setShowExport(false)} />
+
       <DiscoverSheet
         visible={showDiscover}
         tripId={tripId}
@@ -631,7 +605,8 @@ export function ItineraryTab({
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
-    planActions: { flexDirection: 'row', gap: 10, marginTop: 4, marginBottom: 24 },
+    planActions: { flexDirection: 'row', gap: 10, marginTop: 4 },
+    exportLink: { alignSelf: 'center', marginTop: 10, marginBottom: 20 },
     error: { color: colors.owe, fontSize: typeScale.footnote, marginBottom: 12 },
     empty: { fontSize: typeScale.subhead, lineHeight: 21, color: colors.inkSoft, paddingVertical: 8 },
 

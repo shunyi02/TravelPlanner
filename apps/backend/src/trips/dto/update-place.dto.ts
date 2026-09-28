@@ -1,4 +1,4 @@
-import { ArrayUnique, IsArray, IsEnum, IsISO8601, IsNumber, IsOptional, IsString, MinLength } from 'class-validator';
+import { ArrayUnique, IsArray, IsEnum, IsISO8601, IsNumber, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import { PlaceType } from './create-place.dto';
 
 export class UpdatePlaceDto {
@@ -50,6 +50,24 @@ export class UpdatePlaceDto {
   @IsOptional()
   @IsISO8601()
   checkOut?: string;
+
+  /** Hotel or stop address. An empty string clears it. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  address?: string;
+
+  /** Booking reference for a hotel or flight. An empty string clears it. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  confirmationCode?: string;
+
+  /** e.g. "SQ 850". An empty string clears it. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  flightNumber?: string;
 
   /** If provided (including []), replaces this item's assignees entirely.
    *  Omitted leaves them unchanged. Empty means "everyone". */

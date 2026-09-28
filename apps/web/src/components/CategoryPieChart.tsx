@@ -1,6 +1,6 @@
 import { EXPENSE_CATEGORIES } from '@travel-planner/shared';
 import type { Expense } from '../api';
-import { CATEGORICAL_HUES, NEUTRAL_HUE } from '../palette';
+import { CATEGORICAL_HUES, NEUTRAL_HUE } from '@travel-planner/shared';
 import { PieChart, type PieSlice } from './PieChart';
 
 /**

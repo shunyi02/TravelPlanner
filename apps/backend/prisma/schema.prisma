@@ -103,6 +103,10 @@ model Place {
   // hotel-only
   checkIn   DateTime?
   checkOut  DateTime?
+  // booking details, shown on the exported itinerary
+  address          String? // hotel or stop address
+  confirmationCode String? // booking reference for a hotel or flight
+  flightNumber     String? // e.g. "SQ 850"
   /** Which trip members this item is for — empty means everyone (the
    *  default). Same shape as ExpenseSplit: a subset-of-members join table,
    *  used here for splitting a large group's itinerary across sub-groups

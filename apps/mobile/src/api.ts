@@ -139,6 +139,9 @@ export interface Place {
   arrivalAirport: string | null;
   checkIn: string | null;
   checkOut: string | null;
+  address: string | null;
+  confirmationCode: string | null;
+  flightNumber: string | null;
   /** Which trip members this item is for. Empty means everyone. */
   assignments: Array<{ userId: string }>;
 }
@@ -268,6 +271,9 @@ export const api = {
       arrivalAirport?: string;
       checkIn?: string;
       checkOut?: string;
+      address?: string;
+      confirmationCode?: string;
+      flightNumber?: string;
       /** Trip member IDs this item is for. Omitted/empty means everyone. */
       assigneeIds?: string[];
     },
@@ -288,6 +294,10 @@ export const api = {
       arrivalAirport: string;
       checkIn: string;
       checkOut: string;
+      /** An empty string clears it. */
+      address: string;
+      confirmationCode: string;
+      flightNumber: string;
       /** If provided (including []), replaces this item's assignees entirely. */
       assigneeIds: string[];
     }>,
