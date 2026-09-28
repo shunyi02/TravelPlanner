@@ -175,6 +175,18 @@ export interface TripDetail extends Trip {
   invites: TripInvite[];
 }
 
+/** One thing to remember to bring, on the trip's shared packing checklist. */
+export interface ChecklistItem {
+  id: string;
+  tripId: string;
+  label: string;
+  category: string;
+  /** The member bringing it for the group. Null means everyone packs their own. */
+  assigneeId: string | null;
+  packed: boolean;
+  createdAt: string;
+}
+
 export interface CurrentUser {
   id: string;
   email: string;
@@ -370,6 +382,20 @@ export const api = {
       assigneeIds: string[];
     }>,
   ) => request<Place>(`/trips/${tripId}/places/${placeId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  listChecklist: (tripId: string) => request<ChecklistItem[]>(`/trips/${tripId}/checklist`),
+  addChecklistItem: (tripId: string, data: { label: string; category?: string; assigneeId?: string }) =>
+    request<ChecklistItem>(`/trips/${tripId}/checklist`, { method: 'POST', body: JSON.stringify(data) }),
+  updateChecklistItem: (
+    tripId: string,
+    itemId: string,
+    /** assigneeId: null clears it. */
+    data: Partial<{ label: string; category: string; assigneeId: string | null; packed: boolean }>,
+  ) =>
+    request<ChecklistItem>(`/trips/${tripId}/checklist/${itemId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteChecklistItem: (tripId: string, itemId: string) =>
+    request<void>(`/trips/${tripId}/checklist/${itemId}`, { method: 'DELETE' }),
+  unpackChecklist: (tripId: string) =>
+    request<ChecklistItem[]>(`/trips/${tripId}/checklist/unpack-all`, { method: 'POST' }),
   deleteTrip: (tripId: string) =>
   request<void>(`/trips/${tripId}`, { method: 'DELETE' }),
   deletePlace: (tripId: string, placeId: string) =>

@@ -5,6 +5,7 @@ import { api, type TripDetail, type Expense } from '../../src/api';
 import { useAuth } from '../../src/authContext';
 import { ItineraryTab } from '../../src/components/ItineraryTab';
 import { BookingsTab } from '../../src/components/BookingsTab';
+import { ChecklistTab } from '../../src/components/ChecklistTab';
 import { ExpensesTab } from '../../src/components/ExpensesTab';
 import { BalancesTab } from '../../src/components/BalancesTab';
 import { MembersTab } from '../../src/components/MembersTab';
@@ -17,7 +18,7 @@ import { TextField } from '../../src/components/Field';
 
 /** Three top-level groups; the ones holding more than one view get a segmented control. */
 const GROUPS = {
-  plan: { label: 'Plan', views: ['itinerary', 'bookings'] },
+  plan: { label: 'Plan', views: ['itinerary', 'bookings', 'checklist'] },
   money: { label: 'Money', views: ['expenses', 'balances', 'report'] },
   people: { label: 'People', views: ['members'] },
 } as const;
@@ -28,6 +29,7 @@ type TripView = (typeof GROUPS)[Group]['views'][number];
 const VIEW_LABELS: Record<TripView, string> = {
   itinerary: 'Itinerary',
   bookings: 'Bookings',
+  checklist: 'Checklist',
   expenses: 'Expenses',
   balances: 'Balances',
   report: 'Report',
@@ -169,6 +171,7 @@ export default function TripDetailScreen() {
           />
         )}
         {view === 'bookings' && <BookingsTab places={trip.places} memberNames={memberNames} />}
+        {view === 'checklist' && <ChecklistTab tripId={tripId} memberNames={memberNames} currentUserId={currentUser?.id} />}
         {view === 'expenses' && (
           <ExpensesTab
             tripId={tripId}

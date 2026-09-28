@@ -19,6 +19,7 @@ import './styles/trip-dates.css';
 import './styles/discover.css';
 import './styles/export.css';
 import './styles/bookings.css';
+import './styles/checklist.css';
 import './styles/settings.css';
 import './styles/profile.css';
 import './styles/landing.css';

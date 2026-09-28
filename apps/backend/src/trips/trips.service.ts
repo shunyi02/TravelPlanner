@@ -6,7 +6,9 @@ import { CreatePlaceDto } from './dto/create-place.dto';
 import { UpdatePlaceDto } from './dto/update-place.dto';
 import { CreateAccommodationDto } from './dto/create-accommodation.dto';
 import { AddManualMemberDto } from './dto/add-manual-member.dto';
+import { CreateChecklistItemDto, UpdateChecklistItemDto } from './dto/checklist-item.dto';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { DEFAULT_CHECKLIST_CATEGORY } from '@travel-planner/shared';
 import { UpdateTripDto } from './dto/update-trip.dto';
 
 /** A place's booking details for Prisma: omitted stays unchanged, and an
@@ -91,15 +93,16 @@ export class TripsService {
   }
 
   /**
-   * Clones a trip's structure — members, itinerary places, accommodations —
-   * as a new trip owned by the requester. Expenses and pending invites are
+   * Clones a trip's structure — members, itinerary places, accommodations,
+   * the packing checklist (all unticked) — as a new trip owned by the
+   * requester. Expenses and pending invites are
    * intentionally left behind: a duplicate is a fresh trip to plan, not a
    * copy of what was already spent or who was mid-invite.
    */
   async duplicate(tripId: string, requesterId: string) {
     const trip = await this.prisma.trip.findUnique({
       where: { id: tripId },
-      include: { members: true, places: true, accommodations: true },
+      include: { members: true, places: true, accommodations: true, checklistItems: { orderBy: { createdAt: 'asc' } } },
     });
     if (!trip) throw new NotFoundException('Trip not found');
     if (!trip.members.some((m) => m.userId === requesterId)) {
@@ -153,6 +156,18 @@ export class TripsService {
             checkOutDate: a.checkOutDate,
             notes: a.notes,
           })),
+        },
+        // The list is ordered by createdAt, so copy it to keep the same order
+        // (rows inserted in one statement would otherwise tie).
+        checklistItems: {
+          createMany: {
+            data: trip.checklistItems.map((c) => ({
+              label: c.label,
+              category: c.category,
+              assigneeId: c.assigneeId,
+              createdAt: c.createdAt,
+            })),
+          },
         },
       },
       include: { members: true },
@@ -356,6 +371,55 @@ export class TripsService {
       orderBy: { order: 'asc' },
       include: { assignments: true },
     });
+  }
+
+  /** The trip's packing checklist, oldest first; the client groups it by category. */
+  async listChecklist(tripId: string, userId: string) {
+    await this.assertMember(tripId, userId);
+    return this.prisma.checklistItem.findMany({ where: { tripId }, orderBy: { createdAt: 'asc' } });
+  }
+
+  async addChecklistItem(tripId: string, userId: string, dto: CreateChecklistItemDto) {
+    await this.assertMember(tripId, userId);
+    if (dto.assigneeId) await this.assertValidAssignees(tripId, [dto.assigneeId]);
+
+    return this.prisma.checklistItem.create({
+      data: {
+        tripId,
+        label: dto.label.trim(),
+        category: dto.category ?? DEFAULT_CHECKLIST_CATEGORY,
+        assigneeId: dto.assigneeId,
+      },
+    });
+  }
+
+  async updateChecklistItem(tripId: string, userId: string, itemId: string, dto: UpdateChecklistItemDto) {
+    await this.assertMember(tripId, userId);
+    const item = await this.prisma.checklistItem.findUnique({ where: { id: itemId } });
+    if (!item || item.tripId !== tripId) throw new NotFoundException('Checklist item not found');
+    if (dto.assigneeId) await this.assertValidAssignees(tripId, [dto.assigneeId]);
+
+    return this.prisma.checklistItem.update({
+      where: { id: itemId },
+      data: {
+        label: dto.label?.trim(),
+        category: dto.category,
+        assigneeId: dto.assigneeId,
+        packed: dto.packed,
+      },
+    });
+  }
+
+  async deleteChecklistItem(tripId: string, userId: string, itemId: string) {
+    await this.assertMember(tripId, userId);
+    await this.prisma.checklistItem.deleteMany({ where: { id: itemId, tripId } });
+  }
+
+  /** Unticks every item, e.g. to repack for the trip home. */
+  async unpackChecklist(tripId: string, userId: string) {
+    await this.assertMember(tripId, userId);
+    await this.prisma.checklistItem.updateMany({ where: { tripId }, data: { packed: false } });
+    return this.listChecklist(tripId, userId);
   }
 
   private async assertMember(tripId: string, userId: string) {

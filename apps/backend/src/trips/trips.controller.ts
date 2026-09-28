@@ -7,6 +7,7 @@ import { UpdatePlaceDto } from './dto/update-place.dto';
 import { CreateAccommodationDto } from './dto/create-accommodation.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
 import { AddManualMemberDto } from './dto/add-manual-member.dto';
+import { CreateChecklistItemDto, UpdateChecklistItemDto } from './dto/checklist-item.dto';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -122,6 +123,45 @@ export class TripsController {
     @Param('accommodationId') accommodationId: string,
   ) {
     return this.tripsService.deleteAccommodation(tripId, userId, accommodationId);
+  }
+
+  @Get(':tripId/checklist')
+  listChecklist(@CurrentUser() userId: string, @Param('tripId') tripId: string) {
+    return this.tripsService.listChecklist(tripId, userId);
+  }
+
+  @Post(':tripId/checklist')
+  addChecklistItem(
+    @CurrentUser() userId: string,
+    @Param('tripId') tripId: string,
+    @Body() dto: CreateChecklistItemDto,
+  ) {
+    return this.tripsService.addChecklistItem(tripId, userId, dto);
+  }
+
+  @Post(':tripId/checklist/unpack-all')
+  unpackChecklist(@CurrentUser() userId: string, @Param('tripId') tripId: string) {
+    return this.tripsService.unpackChecklist(tripId, userId);
+  }
+
+  @Patch(':tripId/checklist/:itemId')
+  updateChecklistItem(
+    @CurrentUser() userId: string,
+    @Param('tripId') tripId: string,
+    @Param('itemId') itemId: string,
+    @Body() dto: UpdateChecklistItemDto,
+  ) {
+    return this.tripsService.updateChecklistItem(tripId, userId, itemId, dto);
+  }
+
+  @Delete(':tripId/checklist/:itemId')
+  @HttpCode(204)
+  deleteChecklistItem(
+    @CurrentUser() userId: string,
+    @Param('tripId') tripId: string,
+    @Param('itemId') itemId: string,
+  ) {
+    return this.tripsService.deleteChecklistItem(tripId, userId, itemId);
   }
 
   @Patch(':tripId/places/:placeId')

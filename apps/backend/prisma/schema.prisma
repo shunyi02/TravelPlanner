@@ -21,6 +21,7 @@ model User {
   expensesPaid  Expense[]           @relation("PaidBy")
   splits        ExpenseSplit[]
   placeAssignments PlaceAssignment[]
+  checklistItems ChecklistItem[]
   refreshTokens RefreshToken[]
   resetTokens   PasswordResetToken[]
   createdAt     DateTime            @default(now())
@@ -50,6 +51,7 @@ model Trip {
   accommodations Accommodation[]
   expenses  Expense[]
   invites   TripInvite[]
+  checklistItems ChecklistItem[]
   createdAt DateTime     @default(now())
 }
 
@@ -122,6 +124,24 @@ model PlaceAssignment {
   userId  String
 
   @@unique([placeId, userId])
+}
+
+// One shared packing list per trip: things to remember to bring.
+model ChecklistItem {
+  id        String   @id @default(uuid())
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  tripId    String
+  label     String
+  /** A plain string from CHECKLIST_CATEGORIES in the shared package, like
+   *  Expense.category — adding a category later doesn't need a migration. */
+  category  String   @default("Other")
+  /** The member bringing it for the group. Null means everyone packs their own. */
+  assignee   User?   @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
+  assigneeId String?
+  packed    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([tripId])
 }
 
 model Accommodation {

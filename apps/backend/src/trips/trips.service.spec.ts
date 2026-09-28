@@ -177,6 +177,9 @@ describe('TripsService.duplicate', () => {
       members: [{ userId: OWNER_ID, role: 'owner' }, { userId: 'member-2', role: 'member' }],
       places: [{ id: 'place-1', type: 'STOP', name: 'Shibuya', lat: 1, lng: 2, visitDate: null, order: 0, notes: null }],
       accommodations: [{ id: 'accom-1', name: 'Hotel', checkInDate: new Date(), checkOutDate: new Date(), notes: null }],
+      checklistItems: [
+        { id: 'item-1', label: 'Passport', category: 'Documents', assigneeId: null, packed: true, createdAt: new Date() },
+      ],
       ...overrides,
     };
   }
@@ -197,7 +200,7 @@ describe('TripsService.duplicate', () => {
     await expect(service.duplicate(TRIP_ID, OWNER_ID)).rejects.toThrow('Trip not found');
   });
 
-  it('clones members, places and accommodations, making the requester owner', async () => {
+  it('clones members, places, accommodations and the checklist, making the requester owner', async () => {
     const create = mockFn().mockImplementation((args: any) => Promise.resolve({ id: 'trip-2', ...args.data }));
     const { service } = makeDeps({
       prisma: {
@@ -218,6 +221,84 @@ describe('TripsService.duplicate', () => {
     expect(data.places.create).toHaveLength(1);
     expect(data.places.create[0].name).toBe('Shibuya');
     expect(data.accommodations.create).toHaveLength(1);
+    // The copy starts unpacked: `packed` is left to its default.
+    expect(data.checklistItems.createMany.data).toEqual([
+      expect.objectContaining({ label: 'Passport', category: 'Documents' }),
+    ]);
+    expect(data.checklistItems.createMany.data[0]).not.toHaveProperty('packed');
+  });
+});
+
+describe('TripsService checklist', () => {
+  it('adds an item under the default category, trimmed, with no assignee', async () => {
+    const create = mockFn().mockImplementation((args: any) => Promise.resolve({ id: 'item-1', ...args.data }));
+    const { service, prisma } = makeDeps({ prisma: { checklistItem: { create } } });
+
+    await service.addChecklistItem(TRIP_ID, OWNER_ID, { label: '  Sunscreen ' });
+
+    expect(create.mock.calls[0][0].data).toEqual({
+      tripId: TRIP_ID,
+      label: 'Sunscreen',
+      category: 'Other',
+      assigneeId: undefined,
+    });
+    expect(prisma.tripMember.findMany).not.toHaveBeenCalled();
+  });
+
+  it('rejects an assignee who is not a member of the trip', async () => {
+    const create = mockFn();
+    const { service } = makeDeps({ prisma: { checklistItem: { create } } });
+
+    await expect(
+      service.addChecklistItem(TRIP_ID, OWNER_ID, { label: 'Tent', assigneeId: 'outsider' }),
+    ).rejects.toThrow(BadRequestException);
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('rejects a requester who is not a member of the trip', async () => {
+    const { service } = makeDeps({
+      prisma: { tripMember: { findUnique: mockFn().mockResolvedValue(null) } },
+    });
+
+    await expect(service.listChecklist(TRIP_ID, 'outsider')).rejects.toThrow(ForbiddenException);
+  });
+
+  it('ticks an item and clears its assignee with null', async () => {
+    const update = mockFn().mockImplementation((args: any) => Promise.resolve({ id: 'item-1', ...args.data }));
+    const { service } = makeDeps({
+      prisma: {
+        checklistItem: { findUnique: mockFn().mockResolvedValue({ id: 'item-1', tripId: TRIP_ID }), update },
+      },
+    });
+
+    await service.updateChecklistItem(TRIP_ID, OWNER_ID, 'item-1', { packed: true, assigneeId: null });
+
+    expect(update.mock.calls[0][0].data).toMatchObject({ packed: true, assigneeId: null, label: undefined });
+  });
+
+  it('404s when the item belongs to a different trip', async () => {
+    const update = mockFn();
+    const { service } = makeDeps({
+      prisma: {
+        checklistItem: { findUnique: mockFn().mockResolvedValue({ id: 'item-1', tripId: 'other-trip' }), update },
+      },
+    });
+
+    await expect(service.updateChecklistItem(TRIP_ID, OWNER_ID, 'item-1', { packed: true })).rejects.toThrow(
+      'Checklist item not found',
+    );
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('unpacks only this trip’s items', async () => {
+    const updateMany = mockFn().mockResolvedValue({ count: 3 });
+    const { service } = makeDeps({
+      prisma: { checklistItem: { updateMany, findMany: mockFn().mockResolvedValue([]) } },
+    });
+
+    await service.unpackChecklist(TRIP_ID, OWNER_ID);
+
+    expect(updateMany).toHaveBeenCalledWith({ where: { tripId: TRIP_ID }, data: { packed: false } });
   });
 });
 

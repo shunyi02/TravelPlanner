@@ -4,13 +4,14 @@ import { api, type TripDetail as TripDetailType, type Expense } from '../api';
 import { useAuth } from '../authContext';
 import { ItineraryTab } from '../components/ItineraryTab';
 import { BookingsTab } from '../components/BookingsTab';
+import { ChecklistTab } from '../components/ChecklistTab';
 import { ExpensesTab } from '../components/ExpensesTab';
 import { BalancesTab } from '../components/BalancesTab';
 import { ReportTab } from '../components/ReportTab';
 import { TripHero } from '../components/TripHero';
 import { notifyTripChanged, onTripChanged } from '../tripEvents';
 
-type Tab = 'itinerary' | 'bookings' | 'expenses' | 'balances' | 'report';
+type Tab = 'itinerary' | 'bookings' | 'checklist' | 'expenses' | 'balances' | 'report';
 
 export function TripDetailPage() {
   const { tripId } = useParams<{ tripId: string }>();
@@ -81,6 +82,9 @@ export function TripDetailPage() {
         <button className={tab === 'bookings' ? 'active' : ''} onClick={() => setTab('bookings')}>
           Bookings
         </button>
+        <button className={tab === 'checklist' ? 'active' : ''} onClick={() => setTab('checklist')}>
+          Checklist
+        </button>
         <button className={tab === 'expenses' ? 'active' : ''} onClick={() => setTab('expenses')}>
           Expenses
         </button>
@@ -103,6 +107,7 @@ export function TripDetailPage() {
         />
       )}
       {tab === 'bookings' && <BookingsTab places={trip.places} memberNames={memberNames} />}
+      {tab === 'checklist' && <ChecklistTab tripId={tripId} memberNames={memberNames} />}
       {tab === 'expenses' && (
         <ExpensesTab
           tripId={tripId}
