@@ -4,7 +4,7 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 import * as ImagePicker from 'expo-image-picker';
 import { api } from '../src/api';
 import { useAuth } from '../src/authContext';
-import { useTheme, type ThemeColors } from '../src/theme';
+import { radius, typeScale, useTheme, type ThemeColors } from '../src/theme';
 import { initials } from '../src/initials';
 import { Button } from '../src/components/Button';
 
@@ -109,12 +109,12 @@ function createStyles(colors: ThemeColors) {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    avatarInitials: { fontSize: 22, fontWeight: '700', color: colors.route },
-    label: { fontSize: 12, color: colors.inkSoft, marginTop: 16, marginBottom: 6 },
+    avatarInitials: { fontSize: typeScale.title2, fontWeight: '700', color: colors.route },
+    label: { fontSize: typeScale.caption, color: colors.inkSoft, marginTop: 16, marginBottom: 6 },
     input: {
       borderWidth: 1,
       borderColor: colors.rule,
-      borderRadius: 6,
+      borderRadius: radius.sm,
       paddingHorizontal: 12,
       paddingVertical: 10,
       backgroundColor: colors.surface,
@@ -130,8 +130,8 @@ function createStyles(colors: ThemeColors) {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.rule,
     },
-    linkRowText: { fontSize: 16, color: colors.ink },
-    linkRowChevron: { fontSize: 22, color: colors.inkSoft },
+    linkRowText: { fontSize: typeScale.body, color: colors.ink },
+    linkRowChevron: { fontSize: typeScale.title2, color: colors.inkSoft },
     logout: { alignSelf: 'flex-start', marginTop: 20 },
   });
 }

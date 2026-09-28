@@ -1,8 +1,5 @@
 import { Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from 'react-native';
-import { useTheme } from '../theme';
-
-/** Text on a filled accent button. Every theme's accent is dark enough for white. */
-const ON_ACCENT = '#ffffff';
+import { radius, typeScale, useTheme } from '../theme';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'text';
 
@@ -60,7 +57,7 @@ export function Button({
       <Text
         style={[
           size === 'sm' || variant === 'text' ? styles.labelSm : styles.labelMd,
-          { color: variant === 'primary' ? ON_ACCENT : accent },
+          { color: variant === 'primary' ? colors.onRoute : accent },
         ]}
         numberOfLines={1}
       >
@@ -74,20 +71,20 @@ const styles = StyleSheet.create({
   md: {
     minHeight: 44,
     paddingHorizontal: 18,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },
   sm: {
     minHeight: 36,
     paddingHorizontal: 14,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },
   text: { paddingVertical: 6, alignItems: 'center', justifyContent: 'center' },
-  labelMd: { fontSize: 15, fontWeight: '600' },
-  labelSm: { fontSize: 14, fontWeight: '600' },
+  labelMd: { fontSize: typeScale.subhead, fontWeight: '600' },
+  labelSm: { fontSize: typeScale.subhead, fontWeight: '600' },
   disabled: { opacity: 0.5 },
   pressed: { opacity: 0.85, transform: [{ scale: 0.98 }] },
   pressedText: { opacity: 0.55 },

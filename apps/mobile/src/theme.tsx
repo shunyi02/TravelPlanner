@@ -1,137 +1,84 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { Platform } from 'react-native';
+import { useColorScheme } from 'react-native';
+import {
+  DEFAULT_THEME_ID,
+  THEME_DEFINITIONS,
+  themeDefinitionById,
+  type Appearance,
+  type ThemePalette,
+} from '@travel-planner/shared';
 import { storage } from './storage';
 
-export interface ThemeColors {
-  bg: string;
-  surface: string;
-  ink: string;
-  inkSoft: string;
-  rule: string;
-  route: string;
-  routeSoft: string;
-  ledger: string;
-  ledgerSoft: string;
-  owe: string;
-  oweSoft: string;
-  /** Dark banner background (trip hero). */
-  hero: string;
-  /** Warm highlight on the hero and for the selected day. */
-  highlight: string;
+export type { Appearance };
+
+export interface ThemeColors extends ThemePalette {
+  /** Label color on a solid `route` fill. */
+  onRoute: string;
+  /** The hero hue as text on a surface: the hero itself in light mode, ink in dark mode. */
+  heroText: string;
+  /** Text on the dark hero banner, in every mode. */
+  onHero: string;
+  onHeroSoft: string;
 }
 
-export interface Theme {
-  id: string;
-  name: string;
-  colors: ThemeColors;
+export type ColorMode = 'light' | 'dark';
+
+/** The palette (shared with web) plus the tokens web derives in base.css. */
+function colorsFor(themeId: string, mode: ColorMode): ThemeColors {
+  const palette = themeDefinitionById(themeId)[mode];
+  return {
+    ...palette,
+    onRoute: mode === 'dark' ? '#121214' : '#ffffff',
+    heroText: mode === 'dark' ? palette.ink : palette.hero,
+    onHero: '#f6f0e1',
+    onHeroSoft: 'rgba(246, 240, 225, 0.7)',
+  };
 }
 
-export const THEMES: Theme[] = [
-  {
-    id: 'forest',
-    name: 'Forest',
-    colors: {
-      bg: '#fbfaf7',
-      surface: '#ffffff',
-      ink: '#1f2a24',
-      inkSoft: '#57635c',
-      rule: '#ddd6c9',
-      route: '#2b6e5e',
-      routeSoft: '#e4efec',
-      ledger: '#a6791e',
-      ledgerSoft: '#f6efe0',
-      owe: '#9c4a3c',
-      oweSoft: '#f5e8e5',
-      hero: '#11302a',
-      highlight: '#ecb34f',
-    },
-  },
-  {
-    id: 'ocean',
-    name: 'Ocean',
-    colors: {
-      bg: '#f7fafc',
-      surface: '#ffffff',
-      ink: '#1b2733',
-      inkSoft: '#54626f',
-      rule: '#d7e1e8',
-      route: '#2064a6',
-      routeSoft: '#e3edf6',
-      ledger: '#9c7a1e',
-      ledgerSoft: '#f5eede',
-      owe: '#a4433a',
-      oweSoft: '#f5e6e4',
-      hero: '#12283d',
-      highlight: '#ecb34f',
-    },
-  },
-  {
-    id: 'plum',
-    name: 'Plum',
-    colors: {
-      bg: '#faf8fb',
-      surface: '#ffffff',
-      ink: '#291f2e',
-      inkSoft: '#645868',
-      rule: '#e0d4e3',
-      route: '#6d3f8f',
-      routeSoft: '#ede2f2',
-      ledger: '#a1791e',
-      ledgerSoft: '#f5efe0',
-      owe: '#a23f4e',
-      oweSoft: '#f5e3e6',
-      hero: '#281a33',
-      highlight: '#e9b457',
-    },
-  },
-  {
-    id: 'clay',
-    name: 'Clay',
-    colors: {
-      bg: '#fdf8f4',
-      surface: '#ffffff',
-      ink: '#2c2320',
-      inkSoft: '#6b5c55',
-      rule: '#ead9cd',
-      route: '#b1552e',
-      routeSoft: '#f5e5da',
-      ledger: '#8c7a1e',
-      ledgerSoft: '#f0eddb',
-      owe: '#9c3c3c',
-      oweSoft: '#f4e0e0',
-      hero: '#35211a',
-      highlight: '#e9b457',
-    },
-  },
-];
+/** Type scale, after iOS text styles. The system font everywhere, as on web: hierarchy comes from size and weight. */
+export const typeScale = {
+  caption: 12,
+  footnote: 13,
+  subhead: 15,
+  body: 17,
+  title2: 22,
+  title1: 28,
+  largeTitle: 34,
+} as const;
 
-/** System fonts only — no font assets to load. */
-export const fonts = {
-  serif: Platform.select({ ios: 'Georgia', android: 'serif', default: 'Georgia, serif' }),
-  mono: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'ui-monospace, Menlo, monospace' }),
-};
+/** Corner radii, matching web's --radius-* tokens. */
+export const radius = {
+  sm: 8,
+  md: 14,
+  lg: 20,
+  pill: 999,
+} as const;
 
-export const DEFAULT_THEME_ID = 'forest';
 const THEME_STORAGE_KEY = 'theme';
-
-function themeById(id: string): Theme {
-  return THEMES.find((t) => t.id === id) ?? THEMES[0];
-}
+const APPEARANCE_STORAGE_KEY = 'appearance';
 
 const ThemeContext = createContext<{
   themeId: string;
   setThemeId: (id: string) => void;
+  appearance: Appearance;
+  setAppearance: (appearance: Appearance) => void;
 }>({
   themeId: DEFAULT_THEME_ID,
   setThemeId: () => {},
+  appearance: 'system',
+  setAppearance: () => {},
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [themeId, setThemeIdState] = useState(DEFAULT_THEME_ID);
+  const [appearance, setAppearanceState] = useState<Appearance>('system');
 
   useEffect(() => {
     storage.getItemAsync(THEME_STORAGE_KEY).then((stored) => {
       if (stored) setThemeIdState(stored);
+    });
+    storage.getItemAsync(APPEARANCE_STORAGE_KEY).then((stored) => {
+      if (stored === 'light' || stored === 'dark') setAppearanceState(stored);
     });
   }, []);
 
@@ -140,17 +87,32 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     storage.setItemAsync(THEME_STORAGE_KEY, id).catch(() => {});
   };
 
-  return <ThemeContext.Provider value={{ themeId, setThemeId }}>{children}</ThemeContext.Provider>;
+  const setAppearance = (next: Appearance) => {
+    setAppearanceState(next);
+    storage.setItemAsync(APPEARANCE_STORAGE_KEY, next).catch(() => {});
+  };
+
+  return (
+    <ThemeContext.Provider value={{ themeId, setThemeId, appearance, setAppearance }}>{children}</ThemeContext.Provider>
+  );
 }
 
-/** The active theme's colors — a drop-in replacement for the old static `colors` export. */
+/** Light or dark, from the Settings choice or else the OS. */
+export function useColorMode(): ColorMode {
+  const { appearance } = useContext(ThemeContext);
+  const system = useColorScheme();
+  if (appearance !== 'system') return appearance;
+  return system === 'dark' ? 'dark' : 'light';
+}
+
+/** The active theme's colors in the active mode. */
 export function useTheme(): ThemeColors {
   const { themeId } = useContext(ThemeContext);
-  return themeById(themeId).colors;
+  return colorsFor(themeId, useColorMode());
 }
 
-/** For the Settings screen only: the full theme list plus the setter. */
-export function useThemeSetting(): { themeId: string; setThemeId: (id: string) => void; themes: Theme[] } {
-  const { themeId, setThemeId } = useContext(ThemeContext);
-  return { themeId, setThemeId, themes: THEMES };
+/** For the Settings screen only: the choices plus their setters. */
+export function useThemeSetting() {
+  const { themeId, setThemeId, appearance, setAppearance } = useContext(ThemeContext);
+  return { themeId, setThemeId, appearance, setAppearance, themes: THEME_DEFINITIONS };
 }

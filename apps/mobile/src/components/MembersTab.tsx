@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import type { TripDetail } from '../api';
 import { api } from '../api';
-import { useTheme, type ThemeColors } from '../theme';
+import { radius, typeScale, useTheme, type ThemeColors } from '../theme';
 import { Button } from './Button';
 
 export function MembersTab({
@@ -128,20 +128,20 @@ function createStyles(colors: ThemeColors) {
     borderBottomWidth: 1,
     borderBottomColor: colors.rule,
   },
-  rowTitle: { fontSize: 15, fontWeight: '500', color: colors.ink },
-  rowSub: { fontSize: 12, color: colors.inkSoft, marginTop: 2 },
+  rowTitle: { fontSize: typeScale.subhead, fontWeight: '500', color: colors.ink },
+  rowSub: { fontSize: typeScale.caption, color: colors.inkSoft, marginTop: 2 },
   badge: {
     backgroundColor: colors.ledgerSoft,
     borderRadius: 4,
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
-  badgeText: { fontSize: 11, color: colors.inkSoft },
+  badgeText: { fontSize: typeScale.caption, color: colors.inkSoft },
   form: { flexDirection: 'row', gap: 8, marginTop: 16 },
   input: {
     borderWidth: 1,
     borderColor: colors.rule,
-    borderRadius: 6,
+    borderRadius: radius.sm,
     paddingHorizontal: 12,
     paddingVertical: 10,
     backgroundColor: colors.surface,

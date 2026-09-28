@@ -4,12 +4,12 @@ import type { TripDetail } from '../api';
 import { api } from '../api';
 import {
   alreadyPlanned,
-  CATEGORIES,
+  DISCOVER_CATEGORIES,
   distanceKm,
-  fetchSuggestions,
-  type CategoryId,
-  type Suggestion,
-} from '../discoverPlaces';
+  fetchPlaceSuggestions,
+  type DiscoverCategoryId,
+  type PlaceSuggestion,
+} from '@travel-planner/shared';
 import { LocationSearchField } from './LocationSearchField';
 
 interface Area {
@@ -77,8 +77,8 @@ export function DiscoverPanel({
   const [areaId, setAreaId] = useState<string | null>(areas[0]?.id ?? null);
   const [searching, setSearching] = useState(areas.length === 0);
   const [query, setQuery] = useState('');
-  const [category, setCategory] = useState<CategoryId>('landmarks');
-  const [results, setResults] = useState<Suggestion[] | null>(null);
+  const [category, setCategory] = useState<DiscoverCategoryId>('landmarks');
+  const [results, setResults] = useState<PlaceSuggestion[] | null>(null);
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const [reload, setReload] = useState(0);
   const [addDay, setAddDay] = useState(viewedDay ?? '');
@@ -111,7 +111,7 @@ export function DiscoverPanel({
     let current = true;
     setStatus('loading');
     setResults(null);
-    fetchSuggestions(area.lat, area.lng, category)
+    fetchPlaceSuggestions(area.lat, area.lng, category)
       .then((r) => {
         if (!current) return;
         setResults(r);
@@ -124,7 +124,7 @@ export function DiscoverPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [area?.lat, area?.lng, category, reload]);
 
-  const handleAdd = async (s: Suggestion) => {
+  const handleAdd = async (s: PlaceSuggestion) => {
     setBusyId(s.id);
     setActionError(null);
     try {
@@ -146,7 +146,7 @@ export function DiscoverPanel({
     }
   };
 
-  const handleUndo = async (s: Suggestion) => {
+  const handleUndo = async (s: PlaceSuggestion) => {
     const entry = added.get(s.id);
     if (!entry) return;
     setBusyId(s.id);
@@ -240,7 +240,7 @@ export function DiscoverPanel({
           </div>
 
           <div className="discover-categories" role="group" aria-label="Category">
-            {CATEGORIES.map((c) => (
+            {DISCOVER_CATEGORIES.map((c) => (
               <button
                 type="button"
                 key={c.id}
@@ -296,7 +296,7 @@ export function DiscoverPanel({
             <p className="discover-empty">
               {hiddenCount > 0
                 ? `Everything well-known here is already in your plan. Try another category.`
-                : `No well-known ${CATEGORIES.find((c) => c.id === category)!.label.toLowerCase()} near ${area.label}. Try another category or area.`}
+                : `No well-known ${DISCOVER_CATEGORIES.find((c) => c.id === category)!.label.toLowerCase()} near ${area.label}. Try another category or area.`}
             </p>
           ) : (
             <>

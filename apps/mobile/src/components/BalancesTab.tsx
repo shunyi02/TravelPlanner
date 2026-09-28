@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { Balance, Settlement } from '@travel-planner/shared';
 import { api } from '../api';
-import { useTheme, type ThemeColors } from '../theme';
+import { radius, typeScale, useTheme, type ThemeColors } from '../theme';
 
 export function BalancesTab({ tripId, memberNames }: { tripId: string; memberNames: Record<string, string> }) {
   const colors = useTheme();
@@ -64,13 +64,13 @@ function createStyles(colors: ThemeColors) {
       borderBottomWidth: 1,
       borderBottomColor: colors.rule,
     },
-    rowTitle: { fontSize: 15, fontWeight: '500', color: colors.ink },
+    rowTitle: { fontSize: typeScale.subhead, fontWeight: '500', color: colors.ink },
     amount: { fontVariant: ['tabular-nums'] },
     settlementNote: {
       backgroundColor: colors.ledgerSoft,
       borderWidth: 1,
       borderColor: colors.rule,
-      borderRadius: 6,
+      borderRadius: radius.sm,
       padding: 14,
       marginTop: 12,
       gap: 4,

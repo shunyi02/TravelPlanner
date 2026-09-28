@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { findAirport, searchAirports } from '../airports';
-import { useTheme, type ThemeColors } from '../theme';
+import { radius, typeScale, useTheme, type ThemeColors } from '../theme';
+import { Tappable } from './Tappable';
 
 /** A plain text input for an IATA airport code, with an autosuggest dropdown
  *  (code/name/city match) and a resolved "code — name, city" hint once the
@@ -40,7 +41,7 @@ export function AirportField({
       {open && results.length > 0 && (
         <View style={styles.dropdown}>
           {results.map((a) => (
-            <Pressable
+            <Tappable
               key={a.code}
               style={styles.dropdownItem}
               onPress={() => {
@@ -52,7 +53,7 @@ export function AirportField({
                 <Text style={{ fontWeight: '700' }}>{a.code}</Text> — {a.name}
                 {a.city ? `, ${a.city}` : ''}
               </Text>
-            </Pressable>
+            </Tappable>
           ))}
         </View>
       )}
@@ -71,7 +72,7 @@ function createStyles(colors: ThemeColors) {
     input: {
       borderWidth: 1,
       borderColor: colors.rule,
-      borderRadius: 6,
+      borderRadius: radius.sm,
       paddingHorizontal: 12,
       paddingVertical: 10,
       backgroundColor: colors.surface,
@@ -85,10 +86,10 @@ function createStyles(colors: ThemeColors) {
       backgroundColor: colors.surface,
       borderWidth: 1,
       borderColor: colors.rule,
-      borderRadius: 6,
+      borderRadius: radius.sm,
       marginTop: 4,
       zIndex: 10,
-      elevation: 4,
+      boxShadow: '0 8px 24px rgba(0, 0, 0, 0.1)',
     },
     dropdownItem: {
       paddingHorizontal: 12,
@@ -96,7 +97,7 @@ function createStyles(colors: ThemeColors) {
       borderBottomWidth: 1,
       borderBottomColor: colors.rule,
     },
-    dropdownText: { color: colors.ink, fontSize: 13 },
-    hint: { fontSize: 12, color: colors.inkSoft, marginTop: 4 },
+    dropdownText: { color: colors.ink, fontSize: typeScale.footnote },
+    hint: { fontSize: typeScale.caption, color: colors.inkSoft, marginTop: 4 },
   });
 }

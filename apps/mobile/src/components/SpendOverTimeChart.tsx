@@ -2,7 +2,7 @@ import { Fragment, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import Svg, { Line, Path, Text as SvgText } from 'react-native-svg';
 import type { Expense } from '../api';
-import { useTheme, type ThemeColors } from '../theme';
+import { typeScale, useTheme, type ThemeColors } from '../theme';
 
 const BAR_WIDTH = 24;
 const BAR_GAP = 16;
@@ -79,7 +79,7 @@ export function SpendOverTimeChart({ expenses, currency }: { expenses: Expense[]
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     container: { marginVertical: 12 },
-    title: { fontSize: 13, color: colors.inkSoft, marginBottom: 8 },
-    tooltip: { fontSize: 12, color: colors.ink, marginTop: 6 },
+    title: { fontSize: typeScale.footnote, color: colors.inkSoft, marginBottom: 8 },
+    tooltip: { fontSize: typeScale.caption, color: colors.ink, marginTop: 6 },
   });
 }

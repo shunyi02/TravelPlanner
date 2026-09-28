@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import type { Place, PlaceType, TripDetail } from '../api';
 import { api } from '../api';
-import { useTheme, type ThemeColors } from '../theme';
+import { radius, typeScale, useTheme, type ThemeColors } from '../theme';
 import { Button } from './Button';
+import { useDialog } from './Dialog';
 import { DayWeather } from './DayWeather';
 import type { DayForecast } from '../weather';
 import { fetchWeather } from '../weather';
 import { RouteMap, type RouteStop } from './RouteMap';
-import { SuggestedStopsPanel } from './SuggestedStopsPanel';
+import { DiscoverSheet } from './DiscoverSheet';
 import { LocationSearchField } from './LocationSearchField';
 import { AirportField } from './AirportField';
+import { Tappable } from './Tappable';
 
 function daysBetween(start: string, end: string): string[] {
   const days: string[] = [];
@@ -238,11 +240,11 @@ function PlaceEditor({
     <View style={styles.editor}>
       <View style={styles.typeRow}>
         {(['STOP', 'HOTEL', 'FLIGHT'] as PlaceType[]).map((t) => (
-          <Pressable key={t} style={[styles.typeButton, type === t && styles.typeButtonActive]} onPress={() => setType(t)}>
+          <Tappable key={t} style={[styles.typeButton, type === t && styles.typeButtonActive]} onPress={() => setType(t)}>
             <Text style={[styles.typeButtonText, type === t && styles.typeButtonTextActive]}>
               {t === 'STOP' ? 'Stop' : t === 'HOTEL' ? 'Hotel' : 'Flight'}
             </Text>
-          </Pressable>
+          </Tappable>
         ))}
       </View>
 
@@ -360,11 +362,13 @@ export function ItineraryTab({
   onChange: () => void;
 }) {
   const colors = useTheme();
+  const showDialog = useDialog();
   const styles = createStyles(colors);
   const [startDate, setStartDate] = useState(trip.startDate?.slice(0, 10) ?? '');
   const [endDate, setEndDate] = useState(trip.endDate?.slice(0, 10) ?? '');
   const [dateError, setDateError] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showDiscover, setShowDiscover] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -421,26 +425,30 @@ export function ItineraryTab({
   };
 
   const handleDelete = (place: Place) => {
-    Alert.alert('Remove item', `Remove "${place.name}" from the itinerary?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: async () => {
-          setDeleteError(null);
-          setDeletingId(place.id);
-          try {
-            await api.deletePlace(tripId, place.id);
-            if (expandedId === place.id) setExpandedId(null);
-            onChange();
-          } catch (err) {
-            setDeleteError(err instanceof Error ? err.message : 'Could not remove item');
-          } finally {
-            setDeletingId(null);
-          }
+    showDialog({
+      title: 'Remove item',
+      message: `Remove "${place.name}" from the itinerary?`,
+      actions: [
+        {
+          label: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            setDeleteError(null);
+            setDeletingId(place.id);
+            try {
+              await api.deletePlace(tripId, place.id);
+              if (expandedId === place.id) setExpandedId(null);
+              onChange();
+            } catch (err) {
+              setDeleteError(err instanceof Error ? err.message : 'Could not remove item');
+            } finally {
+              setDeletingId(null);
+            }
+          },
         },
-      },
-    ]);
+        { label: 'Cancel', style: 'cancel' },
+      ],
+    });
   };
 
   const renderRow = (place: Place, opts?: { day?: string; index?: number }) => {
@@ -468,7 +476,7 @@ export function ItineraryTab({
 
     return (
       <View key={place.id}>
-        <Pressable style={styles.row} onPress={() => setExpandedId(isExpanded ? null : place.id)}>
+        <Tappable style={styles.row} onPress={() => setExpandedId(isExpanded ? null : place.id)}>
           {opts?.index !== undefined && <Text style={styles.stopIndex}>{opts.index + 1}</Text>}
           <View style={{ flex: 1 }}>
             <Text style={styles.rowTitle}>
@@ -481,7 +489,7 @@ export function ItineraryTab({
               </Text>
             ) : null}
           </View>
-        </Pressable>
+        </Tappable>
         {isExpanded && (
           <View style={styles.rowActions}>
             <Button label="Edit" variant="text" onPress={() => setEditingId(place.id)} />
@@ -520,20 +528,23 @@ export function ItineraryTab({
       {dateError ? <Text style={{ color: colors.owe, marginBottom: 16 }}>{dateError}</Text> : null}
       {deleteError ? <Text style={{ color: colors.owe, marginBottom: 16 }}>{deleteError}</Text> : null}
 
-      <SuggestedStopsPanel
-        tripId={tripId}
-        trip={trip}
-        existingPlaceNames={places.map((p) => p.name)}
-        onAdded={onChange}
-      />
-
       <RouteMap stops={routeStops} />
 
-      <Button
-        label={showAddForm ? 'Close' : 'Add to itinerary'}
-        variant="secondary"
-        onPress={() => setShowAddForm(!showAddForm)}
-        style={{ alignSelf: 'flex-start', marginBottom: 16 }}
+      <View style={styles.planActions}>
+        <Button
+          label={showAddForm ? 'Close' : 'Add to itinerary'}
+          variant="secondary"
+          onPress={() => setShowAddForm(!showAddForm)}
+        />
+        <Button label="Discover places" variant="secondary" onPress={() => setShowDiscover(true)} />
+      </View>
+      <DiscoverSheet
+        visible={showDiscover}
+        tripId={tripId}
+        trip={trip}
+        days={days}
+        onAdded={onChange}
+        onClose={() => setShowDiscover(false)}
       />
 
       {showAddForm && (
@@ -582,9 +593,10 @@ export function ItineraryTab({
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
+    planActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
     dateForm: { flexDirection: 'row', gap: 8, marginBottom: 16 },
     empty: { color: colors.inkSoft, paddingVertical: 16 },
-    dayHeader: { fontSize: 15, fontWeight: '600', color: colors.ink, marginBottom: 8 },
+    dayHeader: { fontSize: typeScale.subhead, fontWeight: '600', color: colors.ink, marginBottom: 8 },
     row: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -593,14 +605,14 @@ function createStyles(colors: ThemeColors) {
       borderBottomColor: colors.rule,
       gap: 8,
     },
-    stopIndex: { color: colors.inkSoft, fontSize: 12, width: 18 },
-    rowTitle: { fontSize: 15, fontWeight: '500', color: colors.ink },
-    rowSub: { fontSize: 12, color: colors.inkSoft, marginTop: 2 },
+    stopIndex: { color: colors.inkSoft, fontSize: typeScale.caption, width: 18 },
+    rowTitle: { fontSize: typeScale.subhead, fontWeight: '500', color: colors.ink },
+    rowSub: { fontSize: typeScale.caption, color: colors.inkSoft, marginTop: 2 },
     rowActions: { flexDirection: 'row', gap: 16, paddingVertical: 8, paddingLeft: 12 },
     input: {
       borderWidth: 1,
       borderColor: colors.rule,
-      borderRadius: 6,
+      borderRadius: radius.sm,
       paddingHorizontal: 12,
       paddingVertical: 10,
       backgroundColor: colors.surface,
@@ -610,7 +622,7 @@ function createStyles(colors: ThemeColors) {
     editor: {
       borderWidth: 1,
       borderColor: colors.rule,
-      borderRadius: 8,
+      borderRadius: radius.sm,
       padding: 12,
       marginBottom: 16,
       backgroundColor: colors.surface,
@@ -619,14 +631,14 @@ function createStyles(colors: ThemeColors) {
     typeButton: {
       borderWidth: 1,
       borderColor: colors.rule,
-      borderRadius: 6,
+      borderRadius: radius.sm,
       paddingHorizontal: 12,
       paddingVertical: 6,
     },
     typeButtonActive: { backgroundColor: colors.route, borderColor: colors.route },
-    typeButtonText: { fontSize: 12, color: colors.ink },
-    typeButtonTextActive: { color: '#fff' },
-    hint: { fontSize: 12, color: colors.inkSoft, marginTop: -4, marginBottom: 8 },
+    typeButtonText: { fontSize: typeScale.caption, color: colors.ink },
+    typeButtonTextActive: { color: colors.onRoute },
+    hint: { fontSize: typeScale.caption, color: colors.inkSoft, marginTop: -4, marginBottom: 8 },
     resultRow: {
       borderWidth: 1,
       borderColor: colors.rule,
@@ -634,6 +646,6 @@ function createStyles(colors: ThemeColors) {
       paddingHorizontal: 10,
       paddingVertical: 8,
     },
-    resultText: { fontSize: 13, color: colors.ink },
+    resultText: { fontSize: typeScale.footnote, color: colors.ink },
   });
 }

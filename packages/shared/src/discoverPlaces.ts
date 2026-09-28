@@ -15,7 +15,7 @@
  * it and thinned by a minimum (relaxed when a small place has few results).
  */
 
-export interface Suggestion {
+export interface PlaceSuggestion {
   id: string;
   name: string;
   lat: number;
@@ -30,14 +30,14 @@ export interface Suggestion {
   sitelinks: number;
 }
 
-export type CategoryId = 'landmarks' | 'nature' | 'museums' | 'shopping' | 'city-walk';
+export type DiscoverCategoryId = 'landmarks' | 'nature' | 'museums' | 'shopping' | 'city-walk';
 
 /** Each category maps to Wikidata wdt:P31 ("instance of") types. The
  *  sitelink sort is what keeps quality high within a category, not this list.
  *  Generic types like "intersection" are deliberately left out: they caught
  *  Shibuya Crossing but also every famous junction in a city, and the
  *  crossing is tagged "tourist attraction" as well. */
-export const CATEGORIES: Array<{ id: CategoryId; label: string; types: Record<string, string> }> = [
+export const DISCOVER_CATEGORIES: Array<{ id: DiscoverCategoryId; label: string; types: Record<string, string> }> = [
   {
     id: 'landmarks',
     label: 'Landmarks',
@@ -119,11 +119,11 @@ export function distanceKm(aLat: number, aLng: number, bLat: number, bLng: numbe
   return 2 * 6371 * Math.asin(Math.sqrt(h));
 }
 
-const cache = new Map<string, Promise<Suggestion[]>>();
+const cache = new Map<string, Promise<PlaceSuggestion[]>>();
 
 /** Suggestions near a point for one category, best-known first. Cached for
  *  the session per point and category, so switching back is instant. */
-export function fetchSuggestions(lat: number, lng: number, category: CategoryId): Promise<Suggestion[]> {
+export function fetchPlaceSuggestions(lat: number, lng: number, category: DiscoverCategoryId): Promise<PlaceSuggestion[]> {
   const key = `${lat.toFixed(4)},${lng.toFixed(4)},${category}`;
   let pending = cache.get(key);
   if (!pending) {
@@ -135,8 +135,8 @@ export function fetchSuggestions(lat: number, lng: number, category: CategoryId)
   return pending;
 }
 
-async function runQuery(lat: number, lng: number, category: CategoryId): Promise<Suggestion[]> {
-  const types = CATEGORIES.find((c) => c.id === category)!.types;
+async function runQuery(lat: number, lng: number, category: DiscoverCategoryId): Promise<PlaceSuggestion[]> {
+  const types = DISCOVER_CATEGORIES.find((c) => c.id === category)!.types;
   const query = `
     PREFIX wd: <http://www.wikidata.org/entity/>
     PREFIX wdt: <http://www.wikidata.org/prop/direct/>
@@ -166,7 +166,7 @@ async function runQuery(lat: number, lng: number, category: CategoryId): Promise
   const data = await res.json();
   const bindings: Array<Record<string, { value: string } | undefined>> = data.results?.bindings ?? [];
 
-  const byId = new Map<string, Suggestion>();
+  const byId = new Map<string, PlaceSuggestion>();
   const seenNames = new Set<string>();
   for (const b of bindings) {
     const id = b.place!.value.split('/').pop()!;
@@ -204,7 +204,7 @@ async function runQuery(lat: number, lng: number, category: CategoryId): Promise
  *  within ~200 m of an existing stop (catches "Shibuya scramble crossing" vs a
  *  stop someone typed as "Shibuya Crossing"). */
 export function alreadyPlanned(
-  s: Suggestion,
+  s: PlaceSuggestion,
   existing: Array<{ name: string; type: string; lat: number | null; lng: number | null }>,
 ): boolean {
   const name = s.name.toLowerCase();

@@ -1,20 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Animated, FlatList, Image, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { Animated, FlatList, Image, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 import { api, type Trip } from '../src/api';
-import { fonts, useTheme, type ThemeColors } from '../src/theme';
+import { radius, typeScale, useTheme, type ThemeColors } from '../src/theme';
 import { useAuth } from '../src/authContext';
 import { formatShort, tripStatus } from '../src/tripDates';
 import { initials } from '../src/initials';
 import { AddTripModal } from '../src/components/AddTripModal';
+import { BrandMark } from '../src/components/BrandMark';
 import { Button } from '../src/components/Button';
+import { useDialog } from '../src/components/Dialog';
 
 export default function TripListScreen() {
   const colors = useTheme();
   const styles = createStyles(colors);
   const router = useRouter();
+  const showDialog = useDialog();
   const insets = useSafeAreaInsets();
   const { currentUser } = useAuth();
   const [trips, setTrips] = useState<Trip[]>([]);
@@ -62,15 +65,21 @@ export default function TripListScreen() {
       load();
       router.push(`/trip/${copy.id}`);
     } catch (err) {
-      Alert.alert('Could not duplicate trip', err instanceof Error ? err.message : 'Something went wrong');
+      showDialog({
+        title: 'Could not duplicate trip',
+        message: err instanceof Error ? err.message : 'Something went wrong. Try again.',
+      });
     }
   };
 
   const openTripMenu = (trip: Trip) => {
-    Alert.alert(trip.name, undefined, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Duplicate trip', onPress: () => handleDuplicate(trip) },
-    ]);
+    showDialog({
+      title: trip.name,
+      actions: [
+        { label: 'Duplicate trip', onPress: () => handleDuplicate(trip) },
+        { label: 'Cancel', style: 'cancel' },
+      ],
+    });
   };
 
   const headerAvatar = () => (
@@ -134,7 +143,7 @@ export default function TripListScreen() {
 
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ title: 'Your trips', headerRight: headerAvatar }} />
+      <Stack.Screen options={{ title: 'Cuti', headerTitle: () => <BrandMark />, headerRight: headerAvatar }} />
       {body}
 
       {hasTrips && (
@@ -161,56 +170,60 @@ function TripCard({
   const styles = createStyles(colors);
   const status = tripStatus(trip.startDate, trip.endDate);
   const eyebrow = [
-    trip.destinationName?.toUpperCase(),
-    trip.startDate && trip.endDate ? `${formatShort(trip.startDate)} — ${formatShort(trip.endDate)}` : 'DATES NOT SET',
+    trip.destinationName,
+    trip.startDate && trip.endDate ? `${formatShort(trip.startDate)} – ${formatShort(trip.endDate)}` : 'Dates not set',
   ]
     .filter(Boolean)
-    .join('  ·  ');
+    .join(' · ');
 
+  // The menu button sits beside the card's Pressable, not inside it: on web both render as <button>, and a
+  // button nested in a button is invalid HTML.
   return (
-    <Pressable
-      onPress={onPress}
-      onLongPress={onMore}
-      accessibilityRole="button"
-      accessibilityLabel={[trip.name, trip.destinationName, status].filter(Boolean).join(', ')}
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-    >
-      <View style={styles.cover}>
-        {trip.coverPhoto ? (
-          <Image source={{ uri: trip.coverPhoto }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-        ) : (
-          // No photo: the trip hero's dark band and ring, so the card still reads as this trip's banner.
-          <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
-            <Circle cx="100%" cy="-20" r="150" stroke={colors.highlight} strokeOpacity={0.55} strokeWidth={1} fill="none" />
-          </Svg>
-        )}
-        {status && (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{status}</Text>
-          </View>
-        )}
-      </View>
-
-      <View style={styles.cardBody}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.eyebrow} numberOfLines={1}>
-            {eyebrow}
-          </Text>
-          <Text style={styles.cardTitle} numberOfLines={2}>
-            {trip.name}
-          </Text>
+    <View>
+      <Pressable
+        onPress={onPress}
+        onLongPress={onMore}
+        accessibilityRole="button"
+        accessibilityLabel={[trip.name, trip.destinationName, status].filter(Boolean).join(', ')}
+        style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      >
+        <View style={styles.cover}>
+          {trip.coverPhoto ? (
+            <Image source={{ uri: trip.coverPhoto }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+          ) : (
+            // No photo: the trip hero's dark band and ring, so the card still reads as this trip's banner.
+            <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
+              <Circle cx="100%" cy="-20" r="150" stroke={colors.highlight} strokeOpacity={0.55} strokeWidth={1} fill="none" />
+            </Svg>
+          )}
+          {status && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{status}</Text>
+            </View>
+          )}
         </View>
-        <Pressable
-          onPress={onMore}
-          accessibilityRole="button"
-          accessibilityLabel={`More options for ${trip.name}`}
-          hitSlop={10}
-          style={({ pressed }) => [styles.moreButton, pressed && { opacity: 0.55 }]}
-        >
-          <Text style={styles.moreGlyph}>⋯</Text>
-        </Pressable>
-      </View>
-    </Pressable>
+
+        <View style={[styles.cardBody, styles.cardBodyWithMenu]}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.eyebrow} numberOfLines={1}>
+              {eyebrow}
+            </Text>
+            <Text style={styles.cardTitle} numberOfLines={2}>
+              {trip.name}
+            </Text>
+          </View>
+        </View>
+      </Pressable>
+      <Pressable
+        onPress={onMore}
+        accessibilityRole="button"
+        accessibilityLabel={`More options for ${trip.name}`}
+        hitSlop={10}
+        style={({ pressed }) => [styles.moreButton, pressed && { opacity: 0.55 }]}
+      >
+        <Text style={styles.moreGlyph}>⋯</Text>
+      </Pressable>
+    </View>
   );
 }
 
@@ -247,6 +260,9 @@ function SkeletonList({ colors }: { colors: ThemeColors }) {
   );
 }
 
+const COVER_HEIGHT = 132;
+const MORE_BUTTON_SIZE = 32;
+
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.bg },
@@ -254,40 +270,51 @@ function createStyles(colors: ThemeColors) {
 
     card: {
       backgroundColor: colors.surface,
-      borderRadius: 14,
+      borderRadius: radius.lg,
       overflow: 'hidden',
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.rule,
+      // Borderless on the tinted bg, as on web; a faint shadow lifts it.
+      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.06)',
     },
     cardPressed: { opacity: 0.92, transform: [{ scale: 0.99 }] },
-    cover: { height: 132, backgroundColor: colors.hero },
+    cover: { height: COVER_HEIGHT, backgroundColor: colors.hero },
     badge: {
       position: 'absolute',
       top: 12,
       left: 12,
       backgroundColor: colors.highlight,
-      borderRadius: 999,
+      borderRadius: radius.pill,
       paddingHorizontal: 12,
       paddingVertical: 5,
     },
-    badgeText: { color: colors.hero, fontWeight: '700', fontSize: 12 },
+    badgeText: { color: colors.hero, fontWeight: '700', fontSize: typeScale.caption },
     cardBody: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, padding: 16, paddingBottom: 18 },
-    eyebrow: { fontFamily: fonts.mono, fontSize: 11, letterSpacing: 1.5, color: colors.inkSoft },
+    eyebrow: { fontSize: typeScale.caption, fontWeight: '600', letterSpacing: 0.5, color: colors.ledger },
     cardTitle: {
-      fontFamily: fonts.serif,
-      fontSize: 22,
+      fontSize: typeScale.title2,
       lineHeight: 28,
-      fontWeight: '700',
+      fontWeight: '600',
+      letterSpacing: -0.3,
       color: colors.ink,
       marginTop: 6,
     },
-    moreButton: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+    // Room on the right for the menu button, which overlays the card's body.
+    cardBodyWithMenu: { paddingRight: 16 + MORE_BUTTON_SIZE + 12 },
+    moreButton: {
+      position: 'absolute',
+      top: COVER_HEIGHT + 16,
+      right: 16,
+      width: MORE_BUTTON_SIZE,
+      height: MORE_BUTTON_SIZE,
+      borderRadius: radius.sm,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     moreGlyph: { fontSize: 20, lineHeight: 22, color: colors.inkSoft },
     skeletonLine: { height: 11, borderRadius: 4, backgroundColor: colors.rule },
 
     state: { flex: 1, justifyContent: 'center', paddingHorizontal: 32, paddingBottom: 48 },
-    stateTitle: { fontFamily: fonts.serif, fontSize: 26, fontWeight: '700', color: colors.ink },
-    stateText: { fontSize: 15, lineHeight: 22, color: colors.inkSoft, marginTop: 10 },
+    stateTitle: { fontSize: typeScale.title1, fontWeight: '700', letterSpacing: -0.5, color: colors.ink },
+    stateText: { fontSize: typeScale.subhead, lineHeight: 22, color: colors.inkSoft, marginTop: 10 },
     stateButton: { alignSelf: 'flex-start', marginTop: 24 },
 
     bottomBar: {
@@ -308,6 +335,6 @@ function createStyles(colors: ThemeColors) {
       overflow: 'hidden',
     },
     headerAvatarImage: { width: 32, height: 32 },
-    headerAvatarInitials: { fontSize: 13, fontWeight: '700', color: colors.route },
+    headerAvatarInitials: { fontSize: typeScale.footnote, fontWeight: '700', color: colors.route },
   });
 }

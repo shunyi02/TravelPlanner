@@ -10,7 +10,7 @@ import { BalancesTab } from '../../src/components/BalancesTab';
 import { MembersTab } from '../../src/components/MembersTab';
 import { ReportTab } from '../../src/components/ReportTab';
 import { TripHero } from '../../src/components/TripHero';
-import { useTheme, type ThemeColors } from '../../src/theme';
+import { radius, typeScale, useTheme, type ThemeColors } from '../../src/theme';
 import { Button } from '../../src/components/Button';
 
 /** Three top-level groups; the ones holding more than one view get a segmented control. */
@@ -82,16 +82,24 @@ export default function TripDetailScreen() {
 
   if (error) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.empty}>Couldn't load trip: {error}</Text>
+      <View style={[styles.container, styles.state]}>
+        <Text style={styles.stateTitle}>Couldn't load this trip</Text>
+        <Text style={styles.stateText}>{error}</Text>
+        <Button label="Try again" variant="secondary" onPress={load} style={{ alignSelf: 'flex-start', marginTop: 20 }} />
       </View>
     );
   }
 
   if (!trip) {
+    // Shaped like the screen it stands in for: the hero, the group bar, then rows.
     return (
-      <View style={styles.container}>
-        <Text style={styles.empty}>Loading…</Text>
+      <View style={styles.container} accessibilityLabel="Loading trip">
+        <View style={styles.skeletonHero} />
+        <View style={styles.content}>
+          {[70, 45, 85, 55].map((w, i) => (
+            <View key={i} style={[styles.skeletonLine, { width: `${w}%` }]} />
+          ))}
+        </View>
       </View>
     );
   }
@@ -162,7 +170,15 @@ export default function TripDetailScreen() {
         )}
         {view === 'balances' && <BalancesTab tripId={tripId} memberNames={memberNames} />}
         {view === 'report' && (
-          <ReportTab tripId={tripId} trip={trip} expenses={expenses} memberNames={memberNames} onChange={load} />
+          <ReportTab
+            tripId={tripId}
+            trip={trip}
+            expenses={expenses}
+            memberNames={memberNames}
+            onChange={load}
+            onGoToExpenses={() => setViewByGroup((prev) => ({ ...prev, money: 'expenses' }))}
+            onGoToBalances={() => setViewByGroup((prev) => ({ ...prev, money: 'balances' }))}
+          />
         )}
         {view === 'members' && (
           <>
@@ -204,8 +220,12 @@ export default function TripDetailScreen() {
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
+    state: { justifyContent: 'center', paddingHorizontal: 32, paddingBottom: 48 },
+    stateTitle: { fontSize: typeScale.title1, fontWeight: '700', letterSpacing: -0.5, color: colors.ink, marginBottom: 8 },
+    stateText: { fontSize: typeScale.subhead, lineHeight: 21, color: colors.inkSoft },
+    skeletonHero: { height: 280, backgroundColor: colors.hero },
+    skeletonLine: { height: 14, borderRadius: 4, backgroundColor: colors.rule, marginBottom: 18 },
     container: { flex: 1, backgroundColor: colors.bg },
-    empty: { color: colors.inkSoft, padding: 20 },
     content: { padding: 20, paddingBottom: 48 },
 
     groupBar: {
@@ -216,7 +236,7 @@ function createStyles(colors: ThemeColors) {
       paddingHorizontal: 8,
     },
     groupTab: { flex: 1, alignItems: 'center', paddingTop: 14, minHeight: 48 },
-    groupLabel: { fontSize: 15, fontWeight: '500', color: colors.inkSoft },
+    groupLabel: { fontSize: typeScale.subhead, fontWeight: '500', color: colors.inkSoft },
     groupLabelActive: { color: colors.ink, fontWeight: '600' },
     groupUnderline: { height: 3, width: 28, borderRadius: 2, marginTop: 10, backgroundColor: 'transparent' },
     groupUnderlineActive: { backgroundColor: colors.route },
@@ -224,20 +244,16 @@ function createStyles(colors: ThemeColors) {
     segmented: {
       flexDirection: 'row',
       backgroundColor: colors.routeSoft,
-      borderRadius: 10,
+      borderRadius: radius.sm + 2,
       padding: 3,
       marginBottom: 20,
     },
-    segment: { flex: 1, minHeight: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+    segment: { flex: 1, minHeight: 36, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
     segmentActive: {
       backgroundColor: colors.surface,
-      shadowColor: colors.hero,
-      shadowOpacity: 0.12,
-      shadowRadius: 3,
-      shadowOffset: { width: 0, height: 1 },
-      elevation: 1,
+      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.12)',
     },
-    segmentLabel: { fontSize: 14, fontWeight: '500', color: colors.inkSoft },
+    segmentLabel: { fontSize: typeScale.footnote, fontWeight: '500', color: colors.inkSoft },
     segmentLabelActive: { color: colors.ink, fontWeight: '600' },
 
     settings: {
@@ -246,13 +262,13 @@ function createStyles(colors: ThemeColors) {
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: colors.rule,
     },
-    sectionLabel: { fontSize: 17, fontWeight: '600', color: colors.ink, marginBottom: 12 },
-    fieldLabel: { fontSize: 13, color: colors.inkSoft, marginBottom: 6 },
+    sectionLabel: { fontSize: typeScale.body, fontWeight: '600', color: colors.ink, marginBottom: 12 },
+    fieldLabel: { fontSize: typeScale.footnote, color: colors.inkSoft, marginBottom: 6 },
     currencyRow: { flexDirection: 'row', gap: 8 },
     currencyInput: {
       borderWidth: 1,
       borderColor: colors.rule,
-      borderRadius: 8,
+      borderRadius: radius.sm,
       paddingHorizontal: 12,
       minHeight: 44,
       backgroundColor: colors.surface,

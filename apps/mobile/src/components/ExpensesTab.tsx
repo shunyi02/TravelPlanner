@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { EXPENSE_CATEGORIES, DEFAULT_EXPENSE_CATEGORY } from '@travel-planner/shared';
 import type { Expense } from '../api';
 import { api } from '../api';
-import { useTheme, type ThemeColors } from '../theme';
+import { radius, typeScale, useTheme, type ThemeColors } from '../theme';
 import { Button } from './Button';
+import { useDialog } from './Dialog';
+import { Tappable } from './Tappable';
 
 type SplitMode = 'even' | 'custom';
 
@@ -58,11 +60,11 @@ function SplitEditor({
   return (
     <View>
       <View style={styles.splitModeRow}>
-        <Pressable style={styles.splitModeOption} onPress={() => onModeChange('even')}>
+        <Tappable style={styles.splitModeOption} onPress={() => onModeChange('even')}>
           <View style={[styles.radio, mode === 'even' && styles.radioActive]} />
           <Text style={styles.splitModeLabel}>Split evenly</Text>
-        </Pressable>
-        <Pressable
+        </Tappable>
+        <Tappable
           style={styles.splitModeOption}
           onPress={() => {
             onModeChange('custom');
@@ -71,7 +73,7 @@ function SplitEditor({
         >
           <View style={[styles.radio, mode === 'custom' && styles.radioActive]} />
           <Text style={styles.splitModeLabel}>Custom amounts</Text>
-        </Pressable>
+        </Tappable>
       </View>
       {mode === 'custom' && (
         <View style={{ marginTop: 8, gap: 6 }}>
@@ -117,7 +119,7 @@ function PayerPicker({
       <Text style={styles.payerLabel}>Paid by</Text>
       <View style={styles.payerRow}>
         {memberIds.map((id) => (
-          <Pressable
+          <Tappable
             key={id}
             style={[styles.payerChip, value === id && styles.payerChipActive]}
             onPress={() => onChange(id)}
@@ -125,7 +127,7 @@ function PayerPicker({
             <Text style={[styles.payerChipText, value === id && styles.payerChipTextActive]}>
               {memberNames[id] ?? id}
             </Text>
-          </Pressable>
+          </Tappable>
         ))}
       </View>
     </View>
@@ -140,13 +142,13 @@ function CategoryPicker({ value, onChange }: { value: string; onChange: (categor
       <Text style={styles.payerLabel}>Category</Text>
       <View style={styles.payerRow}>
         {EXPENSE_CATEGORIES.map((cat) => (
-          <Pressable
+          <Tappable
             key={cat}
             style={[styles.payerChip, value === cat && styles.payerChipActive]}
             onPress={() => onChange(cat)}
           >
             <Text style={[styles.payerChipText, value === cat && styles.payerChipTextActive]}>{cat}</Text>
-          </Pressable>
+          </Tappable>
         ))}
       </View>
     </View>
@@ -169,6 +171,7 @@ export function ExpensesTab({
   onChange: () => void;
 }) {
   const colors = useTheme();
+  const showDialog = useDialog();
   const styles = createStyles(colors);
   const memberIds = Object.keys(memberNames);
 
@@ -283,22 +286,26 @@ export function ExpensesTab({
   };
 
   const handleDelete = (expense: Expense) => {
-    Alert.alert('Delete expense', `Delete "${expense.description}"? This can't be undone.`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await api.deleteExpense(tripId, expense.id);
-            if (expandedId === expense.id) setExpandedId(null);
-            onChange();
-          } catch (err) {
-            setError(err instanceof Error ? err.message : 'Could not delete expense');
-          }
+    showDialog({
+      title: 'Delete expense',
+      message: `Delete "${expense.description}"? This can't be undone.`,
+      actions: [
+        {
+          label: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.deleteExpense(tripId, expense.id);
+              if (expandedId === expense.id) setExpandedId(null);
+              onChange();
+            } catch (err) {
+              setError(err instanceof Error ? err.message : 'Could not delete expense');
+            }
+          },
         },
-      },
-    ]);
+        { label: 'Cancel', style: 'cancel' },
+      ],
+    });
   };
 
   const handleToggleSettled = async (expense: Expense, splitUserId: string, settled: boolean) => {
@@ -317,7 +324,7 @@ export function ExpensesTab({
       ) : (
         expenses.map((expense) => (
           <View key={expense.id}>
-            <Pressable style={styles.row} onPress={() => toggleExpand(expense.id)}>
+            <Tappable style={styles.row} onPress={() => toggleExpand(expense.id)}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.rowTitle}>{expense.description}</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
@@ -330,7 +337,7 @@ export function ExpensesTab({
               <Text style={styles.amount}>
                 {expense.currency} {expense.amount}
               </Text>
-            </Pressable>
+            </Tappable>
 
             {expandedId === expense.id && editingId !== expense.id && (
               <View style={styles.breakdown}>
@@ -462,15 +469,15 @@ function createStyles(colors: ThemeColors) {
       borderBottomWidth: 1,
       borderBottomColor: colors.rule,
     },
-    rowTitle: { fontSize: 15, fontWeight: '500', color: colors.ink },
-    rowSub: { fontSize: 12, color: colors.inkSoft },
+    rowTitle: { fontSize: typeScale.subhead, fontWeight: '500', color: colors.ink },
+    rowSub: { fontSize: typeScale.caption, color: colors.inkSoft },
     categoryChip: {
       backgroundColor: colors.ledgerSoft,
       borderRadius: 4,
       paddingHorizontal: 6,
       paddingVertical: 1,
     },
-    categoryChipText: { fontSize: 11, color: colors.inkSoft },
+    categoryChipText: { fontSize: typeScale.caption, color: colors.inkSoft },
     amount: { fontVariant: ['tabular-nums'], color: colors.ink },
     breakdown: {
       paddingLeft: 12,
@@ -480,26 +487,26 @@ function createStyles(colors: ThemeColors) {
       gap: 8,
     },
     splitItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
-    splitItemLabel: { fontSize: 13, color: colors.inkSoft, flex: 1 },
+    splitItemLabel: { fontSize: typeScale.footnote, color: colors.inkSoft, flex: 1 },
     rowActions: { flexDirection: 'row', gap: 16, marginTop: 4 },
     textAction: { alignSelf: 'flex-start' },
     form: { flexDirection: 'row', gap: 8 },
-    payerLabel: { fontSize: 12, color: colors.inkSoft, marginTop: 10, marginBottom: 6 },
+    payerLabel: { fontSize: typeScale.caption, color: colors.inkSoft, marginTop: 10, marginBottom: 6 },
     payerRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     payerChip: {
       borderWidth: 1,
       borderColor: colors.rule,
-      borderRadius: 14,
+      borderRadius: radius.md,
       paddingHorizontal: 12,
       paddingVertical: 6,
     },
     payerChipActive: { backgroundColor: colors.route, borderColor: colors.route },
-    payerChipText: { fontSize: 13, color: colors.ink },
-    payerChipTextActive: { color: '#fff' },
+    payerChipText: { fontSize: typeScale.footnote, color: colors.ink },
+    payerChipTextActive: { color: colors.onRoute },
     input: {
       borderWidth: 1,
       borderColor: colors.rule,
-      borderRadius: 6,
+      borderRadius: radius.sm,
       paddingHorizontal: 12,
       paddingVertical: 10,
       backgroundColor: colors.surface,
@@ -508,11 +515,11 @@ function createStyles(colors: ThemeColors) {
     formButton: { marginTop: 10 },
     splitModeRow: { flexDirection: 'row', gap: 16, marginTop: 8 },
     splitModeOption: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    splitModeLabel: { fontSize: 13, color: colors.inkSoft },
+    splitModeLabel: { fontSize: typeScale.footnote, color: colors.inkSoft },
     radio: { width: 14, height: 14, borderRadius: 7, borderWidth: 1, borderColor: colors.rule },
     radioActive: { backgroundColor: colors.route, borderColor: colors.route },
     customSplitRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    customSplitLabel: { fontSize: 13, color: colors.ink },
+    customSplitLabel: { fontSize: typeScale.footnote, color: colors.ink },
     customSplitInput: {
       borderWidth: 1,
       borderColor: colors.rule,
@@ -523,6 +530,6 @@ function createStyles(colors: ThemeColors) {
       backgroundColor: colors.surface,
       color: colors.ink,
     },
-    splitRemaining: { fontSize: 12 },
+    splitRemaining: { fontSize: typeScale.caption },
   });
 }

@@ -1,9 +1,10 @@
-import { useMemo, useRef } from 'react';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { createElement, useMemo, useRef } from 'react';
+import { Linking, Platform, StyleSheet, Text, View } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { hueForIndex } from '../palette';
+import { hueForIndex, NEUTRAL_HUE } from '../palette';
 import { LEAFLET_CSS, LEAFLET_JS } from '../vendor/leaflet';
-import { useTheme, type ThemeColors } from '../theme';
+import { radius, typeScale, useTheme, type ThemeColors } from '../theme';
+import { Tappable } from './Tappable';
 
 export interface RouteStop {
   id: string;
@@ -45,10 +46,12 @@ function buildHtml(stops: RouteStop[], colorByGroup: Map<string, string>): strin
     lat: s.lat,
     lng: s.lng,
     order: s.order,
-    color: colorByGroup.get(s.colorGroup) ?? '#898781',
+    color: colorByGroup.get(s.colorGroup) ?? NEUTRAL_HUE,
     group: s.colorGroup,
     url: googleMapsStopUrl(s),
   }));
+  // Escape "<" so user text such as a stop named "</script>" stays data inside the page's script.
+  const pointsJson = JSON.stringify(points).replace(/</g, '\\u003c');
 
   return `<!DOCTYPE html>
 <html>
@@ -68,7 +71,7 @@ function buildHtml(stops: RouteStop[], colorByGroup: Map<string, string>): strin
   <div id="map"></div>
   <script>${LEAFLET_JS}</script>
   <script>
-    const points = ${JSON.stringify(points)};
+    const points = ${pointsJson};
     const map = L.map('map', { scrollWheelZoom: false, zoomControl: true });
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors',
@@ -94,7 +97,9 @@ function buildHtml(stops: RouteStop[], colorByGroup: Map<string, string>): strin
       });
       const marker = L.marker([p.lat, p.lng], { icon }).addTo(map);
       marker.on('click', () => {
-        window.ReactNativeWebView && window.ReactNativeWebView.postMessage(p.url);
+        // Native hands the link to the app; on web the map is an iframe, so open a tab directly.
+        if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(p.url);
+        else window.open(p.url, '_blank', 'noopener');
       });
     });
 
@@ -109,6 +114,8 @@ function buildHtml(stops: RouteStop[], colorByGroup: Map<string, string>): strin
 </html>`;
 }
 
+const MAP_HEIGHT = 220;
+
 export function RouteMap({ stops }: { stops: RouteStop[] }) {
   const colors = useTheme();
   const styles = createStyles(colors);
@@ -121,21 +128,33 @@ export function RouteMap({ stops }: { stops: RouteStop[] }) {
 
   return (
     <View style={styles.container}>
-      <WebView
-        ref={webviewRef}
-        source={{ html }}
-        style={styles.map}
-        scrollEnabled={false}
-        overScrollMode="never"
-        originWhitelist={['*']}
-        onMessage={(e) => {
-          Linking.openURL(e.nativeEvent.data).catch(() => {});
-        }}
-      />
+      {Platform.OS === 'web' ? (
+        // react-native-webview has no web implementation; an iframe renders the same page.
+        createElement('iframe', {
+          srcDoc: html,
+          title: 'Route map',
+          // Same origin as the app so tile requests carry a Referer: OSM's tile policy blocks requests
+          // without one. Safe only because buildHtml escapes the user text it embeds.
+          sandbox: 'allow-scripts allow-same-origin allow-popups',
+          style: { height: MAP_HEIGHT, width: '100%', border: `1px solid ${colors.rule}`, borderRadius: radius.sm },
+        })
+      ) : (
+        <WebView
+          ref={webviewRef}
+          source={{ html }}
+          style={styles.map}
+          scrollEnabled={false}
+          overScrollMode="never"
+          originWhitelist={['*']}
+          onMessage={(e) => {
+            Linking.openURL(e.nativeEvent.data).catch(() => {});
+          }}
+        />
+      )}
       {stops.length > 1 && (
-        <Pressable onPress={() => Linking.openURL(googleMapsRouteUrl(stops)).catch(() => {})}>
+        <Tappable onPress={() => Linking.openURL(googleMapsRouteUrl(stops)).catch(() => {})}>
           <Text style={styles.link}>Open full route in Google Maps ↗</Text>
-        </Pressable>
+        </Tappable>
       )}
     </View>
   );
@@ -144,7 +163,7 @@ export function RouteMap({ stops }: { stops: RouteStop[] }) {
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     container: { marginVertical: 8 },
-    map: { height: 220, width: '100%', borderRadius: 8, borderWidth: 1, borderColor: colors.rule },
-    link: { color: colors.route, fontSize: 13, marginTop: 6, textAlign: 'center' },
+    map: { height: MAP_HEIGHT, width: '100%', borderRadius: radius.sm, borderWidth: 1, borderColor: colors.rule },
+    link: { color: colors.route, fontSize: typeScale.footnote, marginTop: 6, textAlign: 'center' },
   });
 }

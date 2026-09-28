@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useTheme, type ThemeColors } from '../theme';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { radius, typeScale, useTheme, type ThemeColors } from '../theme';
+import { Tappable } from './Tappable';
 
 interface NominatimResult {
   place_id: number;
@@ -91,9 +92,9 @@ export function LocationSearchField({
       />
       {searching && <Text style={styles.hint}>Searching…</Text>}
       {results.map((r) => (
-        <Pressable key={r.place_id} onPress={() => pick(r)} style={styles.resultRow}>
+        <Tappable key={r.place_id} onPress={() => pick(r)} style={styles.resultRow}>
           <Text style={styles.resultText}>{r.display_name}</Text>
-        </Pressable>
+        </Tappable>
       ))}
       {lat !== undefined && lng !== undefined && (
         <Text style={[styles.hint, { color: colors.route }]}>
@@ -109,14 +110,14 @@ function createStyles(colors: ThemeColors) {
     input: {
       borderWidth: 1,
       borderColor: colors.rule,
-      borderRadius: 6,
+      borderRadius: radius.sm,
       paddingHorizontal: 12,
       paddingVertical: 10,
       backgroundColor: colors.surface,
       color: colors.ink,
     },
-    hint: { fontSize: 12, color: colors.inkSoft, marginTop: 4 },
+    hint: { fontSize: typeScale.caption, color: colors.inkSoft, marginTop: 4 },
     resultRow: { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.rule },
-    resultText: { fontSize: 13, color: colors.ink },
+    resultText: { fontSize: typeScale.footnote, color: colors.ink },
   });
 }

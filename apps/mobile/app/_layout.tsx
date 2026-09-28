@@ -3,10 +3,11 @@ import { ActivityIndicator, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { ThemeProvider, useTheme } from '../src/theme';
+import { ThemeProvider, useColorMode, useTheme } from '../src/theme';
 import { api, initAuth, setSessionExpiredHandler, type CurrentUser } from '../src/api';
 import { AuthScreen } from '../src/components/AuthScreen';
 import { AuthContext } from '../src/authContext';
+import { DialogProvider } from '../src/components/Dialog';
 
 export default function RootLayout() {
   return (
@@ -18,6 +19,8 @@ export default function RootLayout() {
 
 function RootLayoutInner() {
   const colors = useTheme();
+  // Light status bar text on a dark background, and the reverse.
+  const statusBarStyle = useColorMode() === 'dark' ? 'light' : 'dark';
   const [checking, setChecking] = useState(true);
   const [authed, setAuthed] = useState(false);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
@@ -56,7 +59,7 @@ function RootLayoutInner() {
   if (!authed) {
     return (
       <SafeAreaProvider>
-        <StatusBar style="dark" />
+        <StatusBar style={statusBarStyle} />
         <AuthScreen
           onAuthed={() => {
             setAuthed(true);
@@ -70,20 +73,22 @@ function RootLayoutInner() {
   return (
     <SafeAreaProvider>
       <AuthContext.Provider value={{ logout, currentUser, setCurrentUser }}>
-        <StatusBar style="dark" />
-        <Stack
-          screenOptions={{
-            headerStyle: { backgroundColor: colors.surface },
-            headerTintColor: colors.ink,
-            headerTitleStyle: { fontWeight: '600' },
-            contentStyle: { backgroundColor: colors.bg },
-          }}
-        >
-          <Stack.Screen name="index" options={{ title: 'Travel Planner' }} />
-          <Stack.Screen name="trip/[tripId]" options={{ title: '' }} />
-          <Stack.Screen name="profile" options={{ title: 'Profile' }} />
-          <Stack.Screen name="settings" options={{ title: 'Settings' }} />
-        </Stack>
+        <DialogProvider>
+          <StatusBar style={statusBarStyle} />
+          <Stack
+            screenOptions={{
+              headerStyle: { backgroundColor: colors.surface },
+              headerTintColor: colors.ink,
+              headerTitleStyle: { fontWeight: '600' },
+              contentStyle: { backgroundColor: colors.bg },
+            }}
+          >
+            <Stack.Screen name="index" options={{ title: 'Cuti' }} />
+            <Stack.Screen name="trip/[tripId]" options={{ title: '' }} />
+            <Stack.Screen name="profile" options={{ title: 'Profile' }} />
+            <Stack.Screen name="settings" options={{ title: 'Settings' }} />
+          </Stack>
+        </DialogProvider>
       </AuthContext.Provider>
     </SafeAreaProvider>
   );

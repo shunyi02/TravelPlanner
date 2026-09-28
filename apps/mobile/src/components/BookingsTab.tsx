@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import type { Place } from '../api';
-import { fonts, useTheme, type ThemeColors } from '../theme';
+import { radius, typeScale, useTheme, type ThemeColors } from '../theme';
 
 function formatTime(iso: string | null): string {
   if (!iso) return '--:--';
@@ -215,40 +215,40 @@ function createStyles(colors: ThemeColors) {
       justifyContent: 'space-between',
       marginBottom: 12,
     },
-    sectionTitle: { fontFamily: fonts.serif, fontSize: 24, fontWeight: '700', color: colors.hero },
-    sectionMeta: { fontFamily: fonts.mono, fontSize: 13, letterSpacing: 1.5, color: colors.inkSoft },
+    sectionTitle: { fontSize: typeScale.title2, fontWeight: '700', letterSpacing: -0.3, color: colors.heroText },
+    sectionMeta: { fontSize: typeScale.footnote, fontWeight: '500', color: colors.inkSoft },
     card: {
       backgroundColor: colors.surface,
       borderColor: colors.rule,
       borderWidth: 1,
-      borderRadius: 20,
+      borderRadius: radius.lg,
       paddingHorizontal: 16,
       paddingVertical: 14,
       marginBottom: 12,
     },
     head: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    name: { flex: 1, fontWeight: '700', color: colors.ink, fontSize: 15 },
-    date: { fontFamily: fonts.mono, fontSize: 13, color: colors.inkSoft },
-    badge: { backgroundColor: colors.highlight, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+    name: { flex: 1, fontWeight: '700', color: colors.ink, fontSize: typeScale.subhead },
+    date: { fontSize: typeScale.footnote, fontVariant: ['tabular-nums'], color: colors.inkSoft },
+    badge: { backgroundColor: colors.highlight, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 },
     badgePast: { backgroundColor: colors.bg, borderColor: colors.rule, borderWidth: 1 },
-    badgeText: { color: colors.hero, fontWeight: '700', fontSize: 12 },
+    badgeText: { color: colors.hero, fontWeight: '700', fontSize: typeScale.caption },
     badgeTextPast: { color: colors.inkSoft },
     route: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16, marginBottom: 4 },
     end: { flex: 1, alignItems: 'center' },
-    big: { fontFamily: fonts.mono, fontSize: 24, fontWeight: '600', color: colors.hero },
-    place: { fontSize: 13, color: colors.inkSoft, marginTop: 4, textAlign: 'center' },
+    big: { fontSize: typeScale.title2, fontWeight: '700', fontVariant: ['tabular-nums'], color: colors.heroText },
+    place: { fontSize: typeScale.footnote, color: colors.inkSoft, marginTop: 4, textAlign: 'center' },
     link: { width: 76, alignItems: 'center' },
     linkLineRow: { flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch', gap: 4 },
     // Solid hairlines: RN's single-side dashed borders render inconsistently.
     linkLine: { flex: 1, height: 1, backgroundColor: colors.rule },
-    linkIcon: { fontSize: 16, color: colors.hero },
-    linkLabel: { fontFamily: fonts.mono, fontSize: 12, color: colors.inkSoft, marginTop: 4 },
+    linkIcon: { fontSize: 16, color: colors.heroText },
+    linkLabel: { fontSize: typeScale.caption, color: colors.inkSoft, marginTop: 4 },
     foot: {
       marginTop: 12,
       paddingTop: 12,
       borderTopWidth: 1,
       borderTopColor: colors.rule,
-      fontSize: 13,
+      fontSize: typeScale.footnote,
       color: colors.inkSoft,
     },
   });

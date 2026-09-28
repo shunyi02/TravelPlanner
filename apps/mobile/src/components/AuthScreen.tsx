@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { MIN_SIGNUP_AGE, isOldEnoughToSignUp } from '@travel-planner/shared';
 import { api } from '../api';
-import { useTheme, type ThemeColors } from '../theme';
+import { radius, typeScale, useTheme, type ThemeColors } from '../theme';
 import { Button } from './Button';
+import { Tappable } from './Tappable';
 
 /** Pastes either a bare reset token or the whole emailed link (which points at
  *  the web app's `?token=...`) — mobile has no in-app way to auto-detect the
@@ -116,9 +117,9 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
         style={styles.submit}
       />
 
-      <Pressable onPress={onBack}>
+      <Tappable onPress={onBack}>
         <Text style={styles.switchText}>Back to login</Text>
-      </Pressable>
+      </Tappable>
     </View>
   );
 }
@@ -210,16 +211,16 @@ export function AuthScreen({ onAuthed }: { onAuthed: () => void }) {
       />
 
       {mode === 'login' && (
-        <Pressable onPress={() => setMode('forgot')}>
+        <Tappable onPress={() => setMode('forgot')}>
           <Text style={styles.switchText}>Forgot password?</Text>
-        </Pressable>
+        </Tappable>
       )}
 
-      <Pressable onPress={() => setMode(mode === 'login' ? 'register' : 'login')}>
+      <Tappable onPress={() => setMode(mode === 'login' ? 'register' : 'login')}>
         <Text style={styles.switchText}>
           {mode === 'login' ? "Don't have an account? Sign up" : 'Already have an account? Log in'}
         </Text>
-      </Pressable>
+      </Tappable>
     </View>
   );
 }
@@ -227,12 +228,12 @@ export function AuthScreen({ onAuthed }: { onAuthed: () => void }) {
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', padding: 24, gap: 12 },
-    title: { fontSize: 26, fontWeight: '600', color: colors.ink, marginBottom: 12 },
-    sectionLabel: { fontSize: 13, fontWeight: '600', color: colors.inkSoft },
+    title: { fontSize: typeScale.title1, fontWeight: '600', color: colors.ink, marginBottom: 12 },
+    sectionLabel: { fontSize: typeScale.footnote, fontWeight: '600', color: colors.inkSoft },
     input: {
       borderWidth: 1,
       borderColor: colors.rule,
-      borderRadius: 6,
+      borderRadius: radius.sm,
       paddingHorizontal: 12,
       paddingVertical: 12,
       backgroundColor: colors.surface,

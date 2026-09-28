@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Image, Modal, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { api } from '../api';
-import { useTheme, type ThemeColors } from '../theme';
+import { radius, typeScale, useTheme, type ThemeColors } from '../theme';
 import { Button } from './Button';
 
 export function AddTripModal({
@@ -122,14 +122,14 @@ export function AddTripModal({
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
-    backdrop: { flex: 1, backgroundColor: 'rgba(31,42,36,0.45)', justifyContent: 'center', padding: 24 },
-    sheet: { backgroundColor: colors.surface, borderRadius: 8, padding: 20, gap: 12 },
-    title: { fontSize: 20, fontWeight: '600', color: colors.ink },
-    preview: { width: '100%', height: 140, borderRadius: 6 },
+    backdrop: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.4)', justifyContent: 'center', padding: 24 },
+    sheet: { backgroundColor: colors.surface, borderRadius: radius.sm, padding: 20, gap: 12 },
+    title: { fontSize: typeScale.title2, fontWeight: '600', color: colors.ink },
+    preview: { width: '100%', height: 140, borderRadius: radius.sm },
     input: {
       borderWidth: 1,
       borderColor: colors.rule,
-      borderRadius: 6,
+      borderRadius: radius.sm,
       paddingHorizontal: 12,
       paddingVertical: 10,
       backgroundColor: colors.surface,

@@ -1,11 +1,8 @@
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import type { TripDetail } from '../api';
-import { fonts, useTheme, type ThemeColors } from '../theme';
+import { radius, typeScale, useTheme, type ThemeColors } from '../theme';
 import { dayCount, formatShort, tripStatus } from '../tripDates';
-
-const CREAM = '#f6f0e1';
-const CREAM_SOFT = 'rgba(246, 240, 225, 0.72)';
 
 /** Full-bleed dark banner at the top of the itinerary: dates, title, and three stat cards. */
 export function TripHero({ trip }: { trip: TripDetail }) {
@@ -19,11 +16,12 @@ export function TripHero({ trip }: { trip: TripDetail }) {
   const status = tripStatus(trip.startDate, trip.endDate);
 
   const eyebrow = [
-    trip.destinationName?.toUpperCase(),
+    trip.destinationName,
     trip.startDate && trip.endDate ? `${formatShort(trip.startDate)} — ${formatShort(trip.endDate)}` : null,
   ]
     .filter(Boolean)
-    .join('  ·  ');
+    .join('  ·  ')
+    .toUpperCase();
 
   const subtitle = [
     `${trip.members.length} ${trip.members.length === 1 ? 'traveler' : 'travelers'}`,
@@ -81,29 +79,34 @@ function createStyles(colors: ThemeColors) {
       overflow: 'hidden',
     },
     topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-    eyebrow: { flex: 1, fontFamily: fonts.mono, fontSize: 13, letterSpacing: 2, color: CREAM_SOFT },
-    badge: { backgroundColor: colors.highlight, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8 },
-    badgeText: { color: colors.hero, fontWeight: '700', fontSize: 13 },
+    eyebrow: { flex: 1, fontSize: typeScale.footnote, fontWeight: '600', letterSpacing: 1.5, color: colors.onHeroSoft },
+    badge: { backgroundColor: colors.highlight, borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 8 },
+    badgeText: { color: colors.hero, fontWeight: '700', fontSize: typeScale.footnote },
     title: {
-      fontFamily: fonts.serif,
-      fontSize: 40,
-      lineHeight: 48,
+      fontSize: typeScale.largeTitle,
+      lineHeight: 40,
       fontWeight: '700',
-      color: CREAM,
+      letterSpacing: -0.5,
+      color: colors.onHero,
       marginTop: 36,
     },
-    subtitle: { fontSize: 15, color: CREAM_SOFT, marginTop: 8 },
+    subtitle: { fontSize: typeScale.subhead, color: colors.onHeroSoft, marginTop: 8 },
     statRow: { flexDirection: 'row', gap: 10, marginTop: 24 },
     stat: {
       flex: 1,
       backgroundColor: 'rgba(255, 255, 255, 0.08)',
       borderColor: 'rgba(255, 255, 255, 0.14)',
       borderWidth: 1,
-      borderRadius: 14,
+      borderRadius: radius.md,
       paddingHorizontal: 12,
       paddingVertical: 14,
     },
-    statValue: { fontFamily: fonts.mono, fontSize: 20, fontWeight: '700', color: colors.highlight },
-    statLabel: { fontSize: 12, color: CREAM_SOFT, marginTop: 6 },
+    statValue: {
+      fontSize: typeScale.title2,
+      fontWeight: '700',
+      fontVariant: ['tabular-nums'],
+      color: colors.highlight,
+    },
+    statLabel: { fontSize: typeScale.caption, color: colors.onHeroSoft, marginTop: 6 },
   });
 }
