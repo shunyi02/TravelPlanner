@@ -11,8 +11,26 @@ import { MembersTab } from '../../src/components/MembersTab';
 import { ReportTab } from '../../src/components/ReportTab';
 import { TripHero } from '../../src/components/TripHero';
 import { useTheme, type ThemeColors } from '../../src/theme';
+import { Button } from '../../src/components/Button';
 
-type Tab = 'itinerary' | 'bookings' | 'expenses' | 'balances' | 'report' | 'members';
+/** Three top-level groups; the ones holding more than one view get a segmented control. */
+const GROUPS = {
+  plan: { label: 'Plan', views: ['itinerary', 'bookings'] },
+  money: { label: 'Money', views: ['expenses', 'balances', 'report'] },
+  people: { label: 'People', views: ['members'] },
+} as const;
+
+type Group = keyof typeof GROUPS;
+type TripView = (typeof GROUPS)[Group]['views'][number];
+
+const VIEW_LABELS: Record<TripView, string> = {
+  itinerary: 'Itinerary',
+  bookings: 'Bookings',
+  expenses: 'Expenses',
+  balances: 'Balances',
+  report: 'Report',
+  members: 'Members',
+};
 
 export default function TripDetailScreen() {
   const colors = useTheme();
@@ -22,7 +40,13 @@ export default function TripDetailScreen() {
   const { currentUser } = useAuth();
   const [trip, setTrip] = useState<TripDetail | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [tab, setTab] = useState<Tab>('itinerary');
+  const [group, setGroup] = useState<Group>('plan');
+  // Remember the last view inside each group, so hopping Plan → Money → Plan lands where you left off.
+  const [viewByGroup, setViewByGroup] = useState<Record<Group, TripView>>({
+    plan: 'itinerary',
+    money: 'expenses',
+    people: 'members',
+  });
   const [error, setError] = useState<string | null>(null);
   const [currencyInput, setCurrencyInput] = useState('');
   const [currencyError, setCurrencyError] = useState<string | null>(null);
@@ -74,60 +98,105 @@ export default function TripDetailScreen() {
 
   const memberNames = Object.fromEntries(trip.members.map((m) => [m.userId, m.user.name]));
   const isOwner = trip.members.find((m) => m.userId === currentUser?.id)?.role === 'owner';
+  const view = viewByGroup[group];
+  const groupViews = GROUPS[group].views;
 
   return (
-    <ScrollView style={styles.container}>
+    // Child 1 (the group bar) pins under the navigation header once the hero scrolls away.
+    <ScrollView style={styles.container} stickyHeaderIndices={[1]}>
       <TripHero trip={trip} />
-      <View style={{ padding: 20 }}>
-      {isOwner ? (
-        <View style={styles.currencyRow}>
-          <TextInput
-            style={styles.currencyInput}
-            placeholder="Currency"
-            placeholderTextColor={colors.inkSoft}
-            autoCapitalize="characters"
-            maxLength={3}
-            value={currencyInput}
-            onChangeText={(v) => setCurrencyInput(v.toUpperCase())}
+
+      <View style={styles.groupBar} accessibilityRole="tablist">
+        {(Object.keys(GROUPS) as Group[]).map((g) => {
+          const active = g === group;
+          return (
+            <Pressable
+              key={g}
+              style={({ pressed }) => [styles.groupTab, pressed && !active && { opacity: 0.6 }]}
+              onPress={() => setGroup(g)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: active }}
+            >
+              <Text style={[styles.groupLabel, active && styles.groupLabelActive]}>{GROUPS[g].label}</Text>
+              <View style={[styles.groupUnderline, active && styles.groupUnderlineActive]} />
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <View style={styles.content}>
+        {groupViews.length > 1 && (
+          <View style={styles.segmented} accessibilityRole="tablist">
+            {groupViews.map((v) => {
+              const active = v === view;
+              return (
+                <Pressable
+                  key={v}
+                  style={({ pressed }) => [
+                    styles.segment,
+                    active && styles.segmentActive,
+                    pressed && !active && { opacity: 0.6 },
+                  ]}
+                  onPress={() => setViewByGroup((prev) => ({ ...prev, [group]: v }))}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: active }}
+                >
+                  <Text style={[styles.segmentLabel, active && styles.segmentLabelActive]}>{VIEW_LABELS[v]}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
+
+        {view === 'itinerary' && <ItineraryTab tripId={tripId} trip={trip} places={trip.places} onChange={load} />}
+        {view === 'bookings' && <BookingsTab places={trip.places} memberNames={memberNames} />}
+        {view === 'expenses' && (
+          <ExpensesTab
+            tripId={tripId}
+            expenses={expenses}
+            memberNames={memberNames}
+            currency={trip.currency}
+            currentUserId={currentUser?.id}
+            onChange={load}
           />
-          <Pressable style={styles.currencySaveButton} onPress={handleSaveCurrency}>
-            <Text style={styles.currencySaveButtonText}>Save</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <Text style={styles.currencyReadOnly}>{trip.currency}</Text>
-      )}
-      {currencyError && <Text style={{ color: colors.owe, marginBottom: 12 }}>{currencyError}</Text>}
+        )}
+        {view === 'balances' && <BalancesTab tripId={tripId} memberNames={memberNames} />}
+        {view === 'report' && (
+          <ReportTab tripId={tripId} trip={trip} expenses={expenses} memberNames={memberNames} onChange={load} />
+        )}
+        {view === 'members' && (
+          <>
+            <MembersTab tripId={tripId} trip={trip} isOwner={isOwner} onChange={load} />
 
-      {/* Six tabs overflow a phone's width, so the row scrolls sideways. */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabScroll} contentContainerStyle={styles.tabRow}>
-        {(['itinerary', 'bookings', 'expenses', 'balances', 'report', 'members'] as const).map((t) => (
-          <Pressable key={t} style={styles.tabButton} onPress={() => setTab(t)}>
-            <Text style={[styles.tabLabel, tab === t && styles.tabLabelActive]}>
-              {t[0].toUpperCase() + t.slice(1)}
-            </Text>
-            {tab === t && <View style={styles.tabUnderline} />}
-          </Pressable>
-        ))}
-      </ScrollView>
-
-      {tab === 'itinerary' && <ItineraryTab tripId={tripId} trip={trip} places={trip.places} onChange={load} />}
-      {tab === 'bookings' && <BookingsTab places={trip.places} memberNames={memberNames} />}
-      {tab === 'expenses' && (
-        <ExpensesTab
-          tripId={tripId}
-          expenses={expenses}
-          memberNames={memberNames}
-          currency={trip.currency}
-          currentUserId={currentUser?.id}
-          onChange={load}
-        />
-      )}
-      {tab === 'balances' && <BalancesTab tripId={tripId} memberNames={memberNames} />}
-      {tab === 'report' && (
-        <ReportTab tripId={tripId} trip={trip} expenses={expenses} memberNames={memberNames} onChange={load} />
-      )}
-      {tab === 'members' && <MembersTab tripId={tripId} trip={trip} isOwner={isOwner} onChange={load} />}
+            {/* Owner-only trip settings live with the other owner controls, not above every tab.
+                Everyone else already sees the currency in the hero. */}
+            {isOwner && (
+              <View style={styles.settings}>
+                <Text style={styles.sectionLabel}>Trip settings</Text>
+                <Text style={styles.fieldLabel}>Currency</Text>
+                <View style={styles.currencyRow}>
+                  <TextInput
+                    style={styles.currencyInput}
+                    placeholder="USD"
+                    placeholderTextColor={colors.inkSoft}
+                    autoCapitalize="characters"
+                    maxLength={3}
+                    value={currencyInput}
+                    onChangeText={(v) => setCurrencyInput(v.toUpperCase())}
+                    accessibilityLabel="Trip currency"
+                  />
+                  <Button
+                    label="Save"
+                    variant="secondary"
+                    onPress={handleSaveCurrency}
+                    disabled={currencyInput.trim() === trip.currency}
+                  />
+                </View>
+                {currencyError && <Text style={styles.error}>{currencyError}</Text>}
+              </View>
+            )}
+          </>
+        )}
       </View>
     </ScrollView>
   );
@@ -135,45 +204,62 @@ export default function TripDetailScreen() {
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg },
-  empty: { color: colors.inkSoft, padding: 20 },
-  tabScroll: {
-    flexGrow: 0,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.rule,
-    marginBottom: 20,
-  },
-  tabRow: {
-    flexDirection: 'row',
-    gap: 24,
-  },
-  tabButton: { paddingBottom: 10 },
-  tabLabel: { color: colors.inkSoft, fontWeight: '500' },
-  tabLabelActive: { color: colors.ink },
-  tabUnderline: {
-    height: 2,
-    backgroundColor: colors.route,
-    marginTop: 8,
-  },
-  currencyRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
-  currencyInput: {
-    borderWidth: 1,
-    borderColor: colors.rule,
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: colors.surface,
-    color: colors.ink,
-    width: 90,
-  },
-  currencySaveButton: {
-    backgroundColor: colors.route,
-    borderRadius: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    justifyContent: 'center',
-  },
-  currencySaveButtonText: { color: '#fff', fontWeight: '600' },
-  currencyReadOnly: { color: colors.inkSoft, marginBottom: 16 },
+    container: { flex: 1, backgroundColor: colors.bg },
+    empty: { color: colors.inkSoft, padding: 20 },
+    content: { padding: 20, paddingBottom: 48 },
+
+    groupBar: {
+      flexDirection: 'row',
+      backgroundColor: colors.bg,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.rule,
+      paddingHorizontal: 8,
+    },
+    groupTab: { flex: 1, alignItems: 'center', paddingTop: 14, minHeight: 48 },
+    groupLabel: { fontSize: 15, fontWeight: '500', color: colors.inkSoft },
+    groupLabelActive: { color: colors.ink, fontWeight: '600' },
+    groupUnderline: { height: 3, width: 28, borderRadius: 2, marginTop: 10, backgroundColor: 'transparent' },
+    groupUnderlineActive: { backgroundColor: colors.route },
+
+    segmented: {
+      flexDirection: 'row',
+      backgroundColor: colors.routeSoft,
+      borderRadius: 10,
+      padding: 3,
+      marginBottom: 20,
+    },
+    segment: { flex: 1, minHeight: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+    segmentActive: {
+      backgroundColor: colors.surface,
+      shadowColor: colors.hero,
+      shadowOpacity: 0.12,
+      shadowRadius: 3,
+      shadowOffset: { width: 0, height: 1 },
+      elevation: 1,
+    },
+    segmentLabel: { fontSize: 14, fontWeight: '500', color: colors.inkSoft },
+    segmentLabelActive: { color: colors.ink, fontWeight: '600' },
+
+    settings: {
+      marginTop: 32,
+      paddingTop: 20,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.rule,
+    },
+    sectionLabel: { fontSize: 17, fontWeight: '600', color: colors.ink, marginBottom: 12 },
+    fieldLabel: { fontSize: 13, color: colors.inkSoft, marginBottom: 6 },
+    currencyRow: { flexDirection: 'row', gap: 8 },
+    currencyInput: {
+      borderWidth: 1,
+      borderColor: colors.rule,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      minHeight: 44,
+      backgroundColor: colors.surface,
+      color: colors.ink,
+      width: 90,
+      fontVariant: ['tabular-nums'],
+    },
+    error: { color: colors.owe, marginTop: 8 },
   });
 }
