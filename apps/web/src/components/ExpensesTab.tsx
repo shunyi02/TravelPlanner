@@ -1,28 +1,21 @@
-import { useState } from 'react';
-import { EXPENSE_CATEGORIES, DEFAULT_EXPENSE_CATEGORY } from '@travel-planner/shared';
-import type { Expense } from '../api';
-import { api } from '../api';
-import { dateKey, formatDateTime, formatDayHeading, fromDatetimeLocalValue, toDatetimeLocalValue } from '../format';
-import { CategoryPieChart } from './CategoryPieChart';
-import { AddExpenseModal } from './AddExpenseModal';
-import {
-  computeTotal,
-  expenseDateBounds,
-  looksEven,
-  nowForInput,
-  sumAmounts,
-  toShares,
-  SplitEditor,
-  type AmountMode,
-  type SplitMode,
-} from './expenseShared';
-import { ConfirmDialog } from './ConfirmDialog';
+import { useEffect, useRef, useState } from 'react';
+import { CaretRight, DownloadSimple, MagnifyingGlass, Plus, Receipt } from '@phosphor-icons/react';
+import { EXPENSE_CATEGORIES } from '@travel-planner/shared';
+import { api, type Expense } from '../api';
+import { categoryColor, categoryIcon } from '../expenseCategoryStyle';
+import { dateKey, formatDayHeading, formatMoney } from '../format';
+import { ExpenseDetail, ExpensePanel } from './ExpensePanel';
+import { ExpenseForm } from './ExpenseForm';
+import { expenseDateBounds } from './expenseShared';
+
+/** How long "Undo" stays offered before a deletion is sent to the server. */
+const UNDO_MS = 5000;
+
+type PanelState = { kind: 'add' } | { kind: 'view'; id: string } | { kind: 'edit'; id: string } | null;
 
 /** Groups expenses by calendar day (in the viewer's local time), preserving
  *  first-seen order, each with its day heading and spending total. */
-function groupByDay(
-  expenses: Expense[],
-): Array<{ key: string; heading: string; items: Expense[]; total: number }> {
+function groupByDay(expenses: Expense[]): Array<{ key: string; heading: string; items: Expense[]; total: number }> {
   const groups: Array<{ key: string; heading: string; items: Expense[]; total: number }> = [];
   for (const expense of expenses) {
     const key = dateKey(expense.expenseDate);
@@ -36,6 +29,9 @@ function groupByDay(
   }
   return groups;
 }
+
+/** Splits someone other than the payer still owes. */
+const openSplits = (e: Expense) => e.splits.filter((s) => s.userId !== e.paidById && !s.settled);
 
 function csvCell(value: string): string {
   return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
@@ -76,6 +72,7 @@ export function ExpensesTab({
   expenses,
   memberNames,
   currency,
+  budget,
   currentUserId,
   tripStartDate,
   tripEndDate,
@@ -85,6 +82,7 @@ export function ExpensesTab({
   expenses: Expense[];
   memberNames: Record<string, string>;
   currency: string;
+  budget?: string | null;
   currentUserId?: string;
   tripStartDate?: string | null;
   tripEndDate?: string | null;
@@ -94,157 +92,41 @@ export function ExpensesTab({
   // Bounds for the expense date pickers, so logged expenses stay within the trip's travel dates.
   const { min: minExpenseDate, max: maxExpenseDate } = expenseDateBounds(tripStartDate, tripEndDate);
 
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [panel, setPanel] = useState<PanelState>(null);
   const [error, setError] = useState<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<Expense | null>(null);
-
+  const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterPaidBy, setFilterPaidBy] = useState('all');
   const [unsettledOnly, setUnsettledOnly] = useState(false);
+  // A deletion waiting out its undo window; it's already hidden from the list.
+  const [deleted, setDeleted] = useState<Expense | null>(null);
+  const deleteTimer = useRef<number | undefined>(undefined);
+  const flushDelete = useRef<() => void>(() => {});
 
-  const filteredExpenses = expenses.filter((e) => {
+  // Leaving the tab mid-undo still deletes the expense.
+  useEffect(() => () => flushDelete.current(), []);
+
+  const visible = expenses.filter((e) => e.id !== deleted?.id);
+  const query = search.trim().toLowerCase();
+  const filtered = visible.filter((e) => {
+    if (query && !e.description.toLowerCase().includes(query)) return false;
     if (filterCategory !== 'all' && e.category !== filterCategory) return false;
     if (filterPaidBy !== 'all' && e.paidById !== filterPaidBy) return false;
-    if (unsettledOnly && !e.splits.some((s) => s.userId !== e.paidById && !s.settled)) return false;
+    if (unsettledOnly && openSplits(e).length === 0) return false;
     return true;
   });
-  const filtersActive = filterCategory !== 'all' || filterPaidBy !== 'all' || unsettledOnly;
-  const dayGroups = groupByDay(filteredExpenses);
-
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editDescription, setEditDescription] = useState('');
-  const [editAmount, setEditAmount] = useState('');
-  const [editPaidById, setEditPaidById] = useState('');
-  const [editCategory, setEditCategory] = useState<string>(DEFAULT_EXPENSE_CATEGORY);
-  const [editExpenseDate, setEditExpenseDate] = useState(nowForInput());
-  const [editAmountMode, setEditAmountMode] = useState<AmountMode>('base');
-  const [editServicePct, setEditServicePct] = useState('');
-  const [editTaxPct, setEditTaxPct] = useState('');
-  const [editSplitMode, setEditSplitMode] = useState<SplitMode>('even');
-  const [initialEditSplitMode, setInitialEditSplitMode] = useState<SplitMode>('even');
-  const [editCustomAmounts, setEditCustomAmounts] = useState<Record<string, string>>({});
-  const [showEditSplitEditor, setShowEditSplitEditor] = useState(false);
-  const [editReceiptPhoto, setEditReceiptPhoto] = useState<string | null>(null);
-
-  const handleEditReceiptFile = (file: File | null) => {
-    if (!file) {
-      setEditReceiptPhoto(null);
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => setEditReceiptPhoto(reader.result as string);
-    reader.readAsDataURL(file);
+  const filtersActive = query !== '' || filterCategory !== 'all' || filterPaidBy !== 'all' || unsettledOnly;
+  const clearFilters = () => {
+    setSearch('');
+    setFilterCategory('all');
+    setFilterPaidBy('all');
+    setUnsettledOnly(false);
   };
+  const dayGroups = groupByDay(filtered);
 
-  const editSvcNum = Number(editServicePct) || 0;
-  const editTaxNum = Number(editTaxPct) || 0;
-  const editMultiplier = editAmountMode === 'base' ? (1 + editSvcNum / 100) * (1 + editTaxNum / 100) : 1;
-  const editTotal =
-    editAmountMode === 'base' ? computeTotal(Number(editAmount) || 0, editSvcNum, editTaxNum) : Number(editAmount) || 0;
-
-  const toggleExpand = (expenseId: string) => {
-    setExpandedId(expandedId === expenseId ? null : expenseId);
-    setEditingId(null);
-    setError(null);
-  };
-
-  const startEdit = (expense: Expense) => {
-    setExpandedId(expense.id);
-    setEditingId(expense.id);
-    setError(null);
-    setEditDescription(expense.description);
-    setEditAmount(expense.subtotal ?? expense.amount);
-    setEditAmountMode(expense.subtotal != null ? 'base' : 'total');
-    setEditServicePct(expense.servicePct ?? '');
-    setEditTaxPct(expense.taxPct ?? '');
-    setEditPaidById(expense.paidById);
-    setEditCategory(expense.category);
-    setEditExpenseDate(toDatetimeLocalValue(expense.expenseDate));
-    const mode: SplitMode = looksEven(expense, memberIds) ? 'even' : 'custom';
-    setEditSplitMode(mode);
-    setInitialEditSplitMode(mode);
-    setEditCustomAmounts(Object.fromEntries(expense.splits.map((s) => [s.userId, s.amountOwed])));
-    setShowEditSplitEditor(mode === 'custom');
-    setEditReceiptPhoto(expense.receiptPhoto);
-  };
-
-  const handleSaveEdit = async (expense: Expense) => {
-    setError(null);
-    const parsedAmount = Number(editAmount);
-    if (!editDescription.trim() || !parsedAmount || parsedAmount <= 0) return;
-    // Only enforce trip-date bounds when the date was actually changed — an
-    // expense logged before the trip dates were set/narrowed shouldn't block
-    // unrelated edits.
-    const dateChanged = editExpenseDate !== toDatetimeLocalValue(expense.expenseDate);
-    if (
-      dateChanged &&
-      ((minExpenseDate && editExpenseDate < minExpenseDate) || (maxExpenseDate && editExpenseDate > maxExpenseDate))
-    ) {
-      setError('Expense date must fall within the trip dates.');
-      return;
-    }
-
-    const hasTax = editAmountMode === 'base' && (editSvcNum > 0 || editTaxNum > 0);
-    const newTotal = Number(editTotal.toFixed(2));
-    const newSubtotal = hasTax ? parsedAmount : null;
-    const newServicePct = hasTax && editSvcNum > 0 ? editSvcNum : null;
-    const newTaxPct = hasTax && editTaxNum > 0 ? editTaxNum : null;
-    const baseForSplit = editAmountMode === 'base' ? parsedAmount : newTotal;
-
-    const data: {
-      description?: string;
-      amount?: number;
-      paidById?: string;
-      category?: string;
-      expenseDate?: string;
-      subtotal?: number | null;
-      servicePct?: number | null;
-      taxPct?: number | null;
-      receiptPhoto?: string | null;
-      splits?: Array<{ userId: string; share: number }>;
-    } = {};
-    if (editDescription.trim() !== expense.description) data.description = editDescription.trim();
-    if (editReceiptPhoto !== expense.receiptPhoto) data.receiptPhoto = editReceiptPhoto;
-    if (newTotal !== Number(expense.amount)) data.amount = newTotal;
-    if (newSubtotal !== (expense.subtotal != null ? Number(expense.subtotal) : null)) data.subtotal = newSubtotal;
-    if (newServicePct !== (expense.servicePct != null ? Number(expense.servicePct) : null)) data.servicePct = newServicePct;
-    if (newTaxPct !== (expense.taxPct != null ? Number(expense.taxPct) : null)) data.taxPct = newTaxPct;
-    if (editPaidById !== expense.paidById) data.paidById = editPaidById;
-    if (editCategory !== expense.category) data.category = editCategory;
-    const editExpenseDateIso = fromDatetimeLocalValue(editExpenseDate);
-    if (editExpenseDateIso !== new Date(expense.expenseDate).toISOString()) data.expenseDate = editExpenseDateIso;
-
-    if (showEditSplitEditor && editSplitMode === 'custom') {
-      if (Math.abs(baseForSplit - sumAmounts(editCustomAmounts)) > 0.01) {
-        setError(hasTax ? 'Custom amounts must add up to the base fare.' : 'Custom amounts must add up to the total.');
-        return;
-      }
-      data.splits = toShares(editCustomAmounts);
-    } else if (initialEditSplitMode === 'custom') {
-      // User explicitly switched this expense back to an even split.
-      data.splits = memberIds.map((id) => ({ userId: id, share: 1 / memberIds.length }));
-    }
-
-    try {
-      await api.updateExpense(tripId, expense.id, data);
-      setEditingId(null);
-      onChange();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save expense');
-    }
-  };
-
-  const handleDelete = async (expense: Expense) => {
-    setConfirmDelete(null);
-    try {
-      await api.deleteExpense(tripId, expense.id);
-      if (expandedId === expense.id) setExpandedId(null);
-      onChange();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not delete expense');
-    }
-  };
+  const money = (amount: number) => formatMoney(amount, currency);
+  const name = (id: string) => (id === currentUserId ? 'You' : (memberNames[id] ?? 'Former member'));
+  const panelExpense = panel && panel.kind !== 'add' ? expenses.find((e) => e.id === panel.id) : undefined;
 
   const handleToggleSettled = async (expense: Expense, splitUserId: string, settled: boolean) => {
     try {
@@ -255,355 +137,326 @@ export function ExpensesTab({
     }
   };
 
+  const handleDelete = (expense: Expense) => {
+    flushDelete.current();
+    setPanel(null);
+    setDeleted(expense);
+    const send = () => {
+      window.clearTimeout(deleteTimer.current);
+      flushDelete.current = () => {};
+      api
+        .deleteExpense(tripId, expense.id)
+        .then(onChange)
+        .catch((err) => setError(err instanceof Error ? err.message : 'Could not delete expense'))
+        .finally(() => setDeleted((d) => (d?.id === expense.id ? null : d)));
+    };
+    flushDelete.current = send;
+    deleteTimer.current = window.setTimeout(send, UNDO_MS);
+  };
+
+  const undoDelete = () => {
+    window.clearTimeout(deleteTimer.current);
+    flushDelete.current = () => {};
+    setDeleted(null);
+  };
+
+  const formProps = {
+    tripId,
+    memberIds,
+    memberNames,
+    currency,
+    currentUserId,
+    minExpenseDate,
+    maxExpenseDate,
+  };
+
   return (
-    <div>
-      <div className="no-print tab-toolbar">
-        <div className="btn-row">
-          <button className="btn" onClick={() => setShowAddModal(true)}>
-            + Add expense
-          </button>
-          {expenses.length > 0 && (
+    <div className="expenses">
+      {visible.length > 0 && (
+        <ExpenseSummary expenses={visible} currency={currency} budget={budget} currentUserId={currentUserId} />
+      )}
+
+      <div className="expenses-toolbar no-print">
+        <button type="button" className="btn btn-icon" onClick={() => setPanel({ kind: 'add' })}>
+          <Plus size={16} weight="bold" aria-hidden /> Add expense
+        </button>
+        {visible.length > 0 && (
+          <>
+            <label className="expenses-search">
+              <MagnifyingGlass size={16} aria-hidden />
+              <span className="visually-hidden">Search expenses</span>
+              <input
+                type="search"
+                placeholder="Search expenses"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </label>
             <button
               type="button"
-              className="btn btn-outline"
-              onClick={() => exportExpensesCsv(filteredExpenses, memberNames)}
+              className="text-btn expenses-export"
+              onClick={() => exportExpensesCsv(filtered, memberNames)}
             >
-              Export CSV
+              <DownloadSimple size={15} aria-hidden /> Export CSV
+            </button>
+          </>
+        )}
+      </div>
+
+      {visible.length > 0 && (
+        <div className="filter-row expenses-filters no-print">
+          <div className="filter-select-wrap">
+            <select aria-label="Category" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
+              <option value="all">All categories</option>
+              {EXPENSE_CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="filter-select-wrap">
+            <select aria-label="Paid by" value={filterPaidBy} onChange={(e) => setFilterPaidBy(e.target.value)}>
+              <option value="all">Paid by anyone</option>
+              {memberIds.map((id) => (
+                <option key={id} value={id}>
+                  Paid by {name(id) === 'You' ? 'you' : name(id)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            type="button"
+            className={`filter-pill${unsettledOnly ? ' active' : ''}`}
+            aria-pressed={unsettledOnly}
+            onClick={() => setUnsettledOnly((v) => !v)}
+          >
+            Unsettled
+          </button>
+          {filtersActive && (
+            <button type="button" className="text-btn" onClick={clearFilters}>
+              Clear filters
             </button>
           )}
         </div>
-        {expenses.length > 0 && (
-          <div className="filter-row">
-            <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
-              <option value="all">All categories</option>
-              {EXPENSE_CATEGORIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
+      )}
+
+      {error && <p className="form-error">{error}</p>}
+
+      {visible.length === 0 ? (
+        <div className="expenses-empty">
+          <Receipt size={40} weight="duotone" aria-hidden />
+          <h3>No expenses yet</h3>
+          <p>Log what the group spends, and we'll work out who owes whom.</p>
+          <button type="button" className="btn btn-icon" onClick={() => setPanel({ kind: 'add' })}>
+            <Plus size={16} weight="bold" aria-hidden /> Log the first expense
+          </button>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="expenses-empty expenses-empty-compact">
+          <p>No expenses match these filters.</p>
+          <button type="button" className="btn btn-outline btn-sm" onClick={clearFilters}>
+            Clear filters
+          </button>
+        </div>
+      ) : (
+        dayGroups.map((group) => (
+          <section key={group.key} className="day-group" aria-labelledby={`day-${group.key}`}>
+            <header className="day-group-header">
+              <h3 className="day-group-date" id={`day-${group.key}`}>
+                {group.heading}
+              </h3>
+              <span className="amount">{money(group.total)}</span>
+            </header>
+            <ul className="expense-list">
+              {group.items.map((expense) => (
+                <li key={expense.id}>
+                  <ExpenseRow
+                    expense={expense}
+                    payer={name(expense.paidById)}
+                    onOpen={() => setPanel({ kind: 'view', id: expense.id })}
+                  />
+                </li>
               ))}
-            </select>
-            <select value={filterPaidBy} onChange={(e) => setFilterPaidBy(e.target.value)}>
-              <option value="all">Paid by anyone</option>
-              {memberIds.map((id) => (
-                <option key={id} value={id}>Paid by {memberNames[id] ?? id}</option>
-              ))}
-            </select>
-            <label className="filter-checkbox">
-              <input type="checkbox" checked={unsettledOnly} onChange={(e) => setUnsettledOnly(e.target.checked)} />
-              Unsettled only
-            </label>
-            {filtersActive && (
-              <button
-                type="button"
-                className="text-btn"
-                onClick={() => {
-                  setFilterCategory('all');
-                  setFilterPaidBy('all');
-                  setUnsettledOnly(false);
-                }}
-              >
-                Clear filters
-              </button>
-            )}
-          </div>
+            </ul>
+          </section>
+        ))
+      )}
+
+      {panel?.kind === 'add' && (
+        <ExpensePanel title="Log expense" onClose={() => setPanel(null)}>
+          <ExpenseForm
+            {...formProps}
+            onCancel={() => setPanel(null)}
+            onSaved={() => {
+              setPanel(null);
+              onChange();
+            }}
+          />
+        </ExpensePanel>
+      )}
+      {panel?.kind === 'view' && panelExpense && (
+        <ExpensePanel title={panelExpense.description} onClose={() => setPanel(null)}>
+          <ExpenseDetail
+            expense={panelExpense}
+            memberNames={memberNames}
+            currentUserId={currentUserId}
+            onToggleSettled={(userId, settled) => handleToggleSettled(panelExpense, userId, settled)}
+            onEdit={() => setPanel({ kind: 'edit', id: panelExpense.id })}
+            onDelete={() => handleDelete(panelExpense)}
+          />
+        </ExpensePanel>
+      )}
+      {panel?.kind === 'edit' && panelExpense && (
+        <ExpensePanel title="Edit expense" onClose={() => setPanel(null)}>
+          <ExpenseForm
+            {...formProps}
+            expense={panelExpense}
+            onCancel={() => setPanel({ kind: 'view', id: panelExpense.id })}
+            onSaved={() => {
+              setPanel({ kind: 'view', id: panelExpense.id });
+              onChange();
+            }}
+          />
+        </ExpensePanel>
+      )}
+
+      <div className="undo-toast" role="status">
+        {deleted && (
+          <>
+            <span>Deleted “{deleted.description}”</span>
+            <button type="button" className="text-btn" onClick={undoDelete}>
+              Undo
+            </button>
+          </>
         )}
       </div>
-      {error && <p className="form-error spaced-below">{error}</p>}
+    </div>
+  );
+}
 
-      {expenses.length === 0 ? (
-        <p className="empty-state">No expenses logged yet.</p>
-      ) : filteredExpenses.length === 0 ? (
-        <p className="empty-state">No expenses match these filters.</p>
-      ) : (
-        <div>
-          {dayGroups.map((group) => (
-            <div key={group.key} className="day-group">
-              <div className="day-group-header">
-                <span className="day-group-date">{group.heading}</span>
-                <span className="amount">{currency} {group.total.toFixed(2)}</span>
-              </div>
-              {group.items.map((expense) => (
-            <div key={expense.id}>
-              <div className="ledger-row" onClick={() => toggleExpand(expense.id)}>
-                <div className="row-main">
-                  <span className="row-title">{expense.description}</span>
-                  <span className="row-sub">
-                    <span className="category-badge">{expense.category}</span>
-                    {' · paid by '}{memberNames[expense.paidById] ?? 'someone'}
-                    {' · '}{formatDateTime(expense.expenseDate)}
-                  </span>
-                </div>
-                <div className="expense-row-end">
-                  <div className="expense-row-amounts">
-                    <span className="amount">
-                      {expense.currency} {expense.amount}
-                    </span>
-                    {expense.subtotal != null && (
-                      <span className="amount-note">
-                        {expense.currency} {expense.subtotal} base
-                        {expense.servicePct != null && ` + ${expense.servicePct}% svc`}
-                        {expense.taxPct != null && ` + ${expense.taxPct}% tax`}
-                      </span>
-                    )}
-                  </div>
-                  <div className="ledger-row-actions">
-                    <button
-                      type="button"
-                      className="text-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        startEdit(expense);
-                      }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      className="text-btn text-btn-danger"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setConfirmDelete(expense);
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              </div>
+function ExpenseRow({ expense, payer, onOpen }: { expense: Expense; payer: string; onOpen: () => void }) {
+  const CategoryIcon = categoryIcon(expense.category);
+  const others = expense.splits.filter((s) => s.userId !== expense.paidById);
+  const owing = openSplits(expense).length;
+  const time = new Date(expense.expenseDate).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 
-              {expandedId === expense.id && editingId !== expense.id && (
-                <div className="modal-backdrop" onClick={() => setExpandedId(null)}>
-                  <div className="modal" onClick={(e) => e.stopPropagation()}>
-                    <h2 className="modal-title">{expense.description}</h2>
-                    <p className="expense-detail-meta">
-                      <span className="category-badge">{expense.category}</span>
-                      {' · paid by '}{memberNames[expense.paidById] ?? 'someone'}
-                      {' · '}{formatDateTime(expense.expenseDate)}
-                    </p>
+  return (
+    <button type="button" className="expense-row" onClick={onOpen}>
+      <span className="expense-cat-icon" style={{ color: categoryColor(expense.category) }} aria-hidden="true">
+        <CategoryIcon size={18} weight="duotone" />
+      </span>
+      <span className="expense-row-main">
+        <span className="expense-row-title">{expense.description}</span>
+        <span className="expense-row-sub">
+          {expense.category} · {time} · {payer === 'You' ? 'You paid' : `${payer} paid`}
+          {expense.receiptPhoto && (
+            <>
+              {' · '}
+              <Receipt size={13} aria-label="Has receipt" className="expense-row-receipt" />
+            </>
+          )}
+        </span>
+      </span>
+      <span className="expense-row-end">
+        <span className="expense-row-amount amount">{formatMoney(Number(expense.amount), expense.currency)}</span>
+        {others.length > 0 && (
+          <span className={`expense-status${owing ? ' is-open' : ' is-settled'}`}>
+            {owing ? `${owing} ${owing === 1 ? 'owes' : 'owe'}` : 'Settled'}
+          </span>
+        )}
+      </span>
+      <CaretRight size={14} aria-hidden className="expense-row-caret" />
+    </button>
+  );
+}
 
-                    {expense.receiptPhoto && (
-                      <a href={expense.receiptPhoto} target="_blank" rel="noreferrer">
-                        <img className="receipt-photo-preview" src={expense.receiptPhoto} alt="Receipt" />
-                      </a>
-                    )}
+/** Headline numbers for the whole trip, plus where the money went by category. */
+function ExpenseSummary({
+  expenses,
+  currency,
+  budget,
+  currentUserId,
+}: {
+  expenses: Expense[];
+  currency: string;
+  budget?: string | null;
+  currentUserId?: string;
+}) {
+  const money = (amount: number) => formatMoney(amount, currency);
+  const total = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
+  const myShare = expenses.reduce(
+    (sum, e) => sum + e.splits.filter((s) => s.userId === currentUserId).reduce((a, s) => a + Number(s.amountOwed), 0),
+    0,
+  );
+  const unsettled = expenses.reduce((sum, e) => sum + openSplits(e).reduce((a, s) => a + Number(s.amountOwed), 0), 0);
+  const budgetNum = budget != null ? Number(budget) : null;
+  const budgetPct = budgetNum ? (total / budgetNum) * 100 : null;
 
-                    <div className="expense-detail-amount">
-                      <span className="amount">{expense.currency} {expense.amount}</span>
-                      {expense.subtotal != null && (
-                        <span className="amount-note">
-                          {expense.currency} {expense.subtotal} base
-                          {expense.servicePct != null && ` + ${expense.servicePct}% svc`}
-                          {expense.taxPct != null && ` + ${expense.taxPct}% tax`}
-                        </span>
-                      )}
-                    </div>
+  const byCategory = [...EXPENSE_CATEGORIES, ...new Set(expenses.map((e) => e.category))]
+    .filter((cat, i, all) => all.indexOf(cat) === i)
+    .map((cat) => ({
+      cat,
+      amount: expenses.filter((e) => e.category === cat).reduce((sum, e) => sum + Number(e.amount), 0),
+    }))
+    .filter((c) => c.amount > 0)
+    .sort((a, b) => b.amount - a.amount);
 
-                    {expense.splits.filter((s) => s.userId !== expense.paidById).length === 0 ? (
-                      <p className="split-item">Nobody else owes anything on this one.</p>
-                    ) : (
-                      <div className="split-breakdown">
-                        {expense.splits
-                          .filter((s) => s.userId !== expense.paidById)
-                          .map((s) => (
-                            <div className="split-item" key={s.userId}>
-                              <span>
-                                {memberNames[s.userId] ?? s.userId} owes {expense.currency} {s.amountOwed}
-                              </span>
-                              <button
-                                type="button"
-                                className={`settle-btn ${s.settled ? 'settle-btn-settled' : ''}`}
-                                aria-pressed={s.settled}
-                                onClick={() => handleToggleSettled(expense, s.userId, !s.settled)}
-                              >
-                                {s.settled ? '✓ Settled' : 'Mark settled'}
-                              </button>
-                            </div>
-                          ))}
-                      </div>
-                    )}
+  return (
+    <section className="expense-summary card" aria-label="Spending summary">
+      <dl className="expense-summary-stats">
+        <div className="expense-stat expense-stat-lead">
+          <dt>Trip total</dt>
+          <dd className="amount">{money(total)}</dd>
+        </div>
+        {currentUserId && (
+          <div className="expense-stat">
+            <dt>Your share</dt>
+            <dd className="amount">{money(myShare)}</dd>
+          </div>
+        )}
+        <div className="expense-stat">
+          <dt>Still to settle</dt>
+          <dd className={`amount${unsettled > 0.005 ? ' is-open' : ''}`}>{unsettled > 0.005 ? money(unsettled) : 'All settled'}</dd>
+        </div>
+      </dl>
 
-                    <div className="form-actions">
-                      <button type="button" className="text-btn text-btn-danger" onClick={() => setConfirmDelete(expense)}>
-                        Delete
-                      </button>
-                      <button type="button" className="btn btn-outline" onClick={() => startEdit(expense)}>
-                        Edit
-                      </button>
-                      <button type="button" className="btn" onClick={() => setExpandedId(null)}>
-                        Close
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {editingId === expense.id && (
-                <div className="modal-backdrop" onClick={() => setEditingId(null)}>
-                  <div className="modal" onClick={(e) => e.stopPropagation()}>
-                    <h2 className="modal-title">Edit expense</h2>
-                    <div className="expense-form">
-                      <input
-                        value={editDescription}
-                        onChange={(e) => setEditDescription(e.target.value)}
-                        placeholder="Name"
-                      />
-
-                      <div className="receipt-photo-row">
-                        {editReceiptPhoto && <img className="receipt-photo-thumb" src={editReceiptPhoto} alt="" />}
-                        <label className="btn btn-outline">
-                          {editReceiptPhoto ? 'Change receipt photo' : 'Add receipt photo'}
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => handleEditReceiptFile(e.target.files?.[0] ?? null)}
-                            hidden
-                          />
-                        </label>
-                        {editReceiptPhoto && (
-                          <button type="button" className="text-btn text-btn-danger" onClick={() => setEditReceiptPhoto(null)}>
-                            Remove
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="expense-form-row">
-                        <input
-                          placeholder={editAmountMode === 'base' ? `Base fare (${currency})` : `Total (${currency})`}
-                          inputMode="decimal"
-                          value={editAmount}
-                          onChange={(e) => setEditAmount(e.target.value)}
-                          className="expense-amount-input"
-                        />
-                        <div className="segmented-control">
-                          <button
-                            type="button"
-                            className={editAmountMode === 'base' ? 'active' : ''}
-                            onClick={() => setEditAmountMode('base')}
-                          >
-                            Base fare
-                          </button>
-                          <button
-                            type="button"
-                            className={editAmountMode === 'total' ? 'active' : ''}
-                            onClick={() => setEditAmountMode('total')}
-                          >
-                            Total (tax incl.)
-                          </button>
-                        </div>
-                      </div>
-
-                      {editAmountMode === 'base' && (
-                        <div className="expense-form-row">
-                          <label className="field-label">
-                            Service %
-                            <input inputMode="decimal" value={editServicePct} onChange={(e) => setEditServicePct(e.target.value)} />
-                          </label>
-                          <label className="field-label">
-                            Tax %
-                            <input inputMode="decimal" value={editTaxPct} onChange={(e) => setEditTaxPct(e.target.value)} />
-                          </label>
-                        </div>
-                      )}
-
-                      {editAmountMode === 'base' && Number(editAmount) > 0 && (
-                        <p className="expense-total-preview">Total (incl. tax): {currency} {editTotal.toFixed(2)}</p>
-                      )}
-
-                      <div className="expense-form-row">
-                        <label className="field-label">
-                          Paid by
-                          <select value={editPaidById} onChange={(e) => setEditPaidById(e.target.value)}>
-                            {memberIds.map((id) => (
-                              <option key={id} value={id}>{memberNames[id] ?? id}</option>
-                            ))}
-                          </select>
-                        </label>
-                        <label className="field-label">
-                          Category
-                          <select value={editCategory} onChange={(e) => setEditCategory(e.target.value)}>
-                            {EXPENSE_CATEGORIES.map((c) => (
-                              <option key={c} value={c}>{c}</option>
-                            ))}
-                          </select>
-                        </label>
-                      </div>
-
-                      <label className="field-label">
-                        When
-                        <input
-                          type="datetime-local"
-                          value={editExpenseDate}
-                          onChange={(e) => setEditExpenseDate(e.target.value)}
-                          min={minExpenseDate}
-                          max={maxExpenseDate}
-                        />
-                      </label>
-
-                      <button
-                        type="button"
-                        className="text-btn align-start"
-                        onClick={() => setShowEditSplitEditor((v) => !v)}
-                      >
-                        {showEditSplitEditor ? 'Hide split options' : 'Split options'}
-                      </button>
-                      {showEditSplitEditor && (
-                        <SplitEditor
-                          memberIds={memberIds}
-                          memberNames={memberNames}
-                          total={editAmountMode === 'base' ? Number(editAmount) || 0 : editTotal}
-                          taxMultiplier={editMultiplier}
-                          currency={currency}
-                          mode={editSplitMode}
-                          onModeChange={setEditSplitMode}
-                          amounts={editCustomAmounts}
-                          onAmountsChange={setEditCustomAmounts}
-                        />
-                      )}
-
-                      {error && <p className="form-error">{error}</p>}
-
-                      <div className="form-actions">
-                        <button type="button" className="btn btn-outline" onClick={() => setEditingId(null)}>
-                          Cancel
-                        </button>
-                        <button type="button" className="btn" onClick={() => handleSaveEdit(expense)}>
-                          Save
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-              ))}
-            </div>
-          ))}
+      {budgetPct != null && budgetNum != null && (
+        <div className="expense-budget">
+          <div className="expense-budget-label">
+            <span>
+              {Math.round(budgetPct)}% of {money(budgetNum)} budget
+            </span>
+            <span className={budgetPct > 100 ? 'is-over' : ''}>
+              {budgetPct > 100 ? `${money(total - budgetNum)} over` : `${money(budgetNum - total)} left`}
+            </span>
+          </div>
+          <progress
+            className={budgetPct > 100 ? 'is-over' : ''}
+            max={100}
+            value={Math.min(budgetPct, 100)}
+            aria-label="Budget used"
+          />
         </div>
       )}
 
-      <CategoryPieChart expenses={filteredExpenses} currency={currency} />
-
-      {showAddModal && (
-        <AddExpenseModal
-          tripId={tripId}
-          memberIds={memberIds}
-          memberNames={memberNames}
-          currency={currency}
-          currentUserId={currentUserId}
-          minExpenseDate={minExpenseDate}
-          maxExpenseDate={maxExpenseDate}
-          onClose={() => setShowAddModal(false)}
-          onSaved={() => {
-            setShowAddModal(false);
-            onChange();
-          }}
-        />
-      )}
-      {confirmDelete && (
-        <ConfirmDialog
-          message={`Delete "${confirmDelete.description}"? This can't be undone.`}
-          onConfirm={() => handleDelete(confirmDelete)}
-          onCancel={() => setConfirmDelete(null)}
-        />
-      )}
-    </div>
+      <div className="expense-mix">
+        <div className="expense-mix-bar" aria-hidden="true">
+          {byCategory.map((c) => (
+            <span key={c.cat} style={{ flexGrow: c.amount, background: categoryColor(c.cat) }} />
+          ))}
+        </div>
+        <ul className="expense-mix-legend" aria-label="Spending by category">
+          {byCategory.map((c) => (
+            <li key={c.cat}>
+              <span className="expense-mix-dot" style={{ background: categoryColor(c.cat) }} aria-hidden="true" />
+              {c.cat}
+              <span className="amount">{money(c.amount)}</span>
+              <span className="expense-mix-pct">{Math.round((c.amount / total) * 100)}%</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
   );
 }

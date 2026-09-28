@@ -1,12 +1,18 @@
-import { useState } from 'react';
-import { Modal, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Image, Modal, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { EXPENSE_CATEGORIES, DEFAULT_EXPENSE_CATEGORY, formatMoney } from '@travel-planner/shared';
+import {
+  CATEGORICAL_HUES,
+  DEFAULT_EXPENSE_CATEGORY,
+  EXPENSE_CATEGORIES,
+  NEUTRAL_HUE,
+  formatMoney,
+} from '@travel-planner/shared';
 import type { Expense } from '../api';
 import { api } from '../api';
+import { Bed, Compass, ForkKnife, MagnifyingGlass, Receipt, ShoppingBag, Ticket, Train } from '../icons';
 import { radius, typeScale, useTheme, type ThemeColors } from '../theme';
 import { Button } from './Button';
-import { useDialog } from './Dialog';
 import { Field, TextField } from './Field';
 import { Tappable } from './Tappable';
 
@@ -254,11 +260,125 @@ function ExpenseForm({
   );
 }
 
+const CATEGORY_ICONS: Record<string, typeof Receipt> = {
+  Food: ForkKnife,
+  Transport: Train,
+  Accommodation: Bed,
+  Activities: Compass,
+  Shopping: ShoppingBag,
+  Tickets: Ticket,
+};
+
+/** Matches EXPENSE_CATEGORIES' order 1:1, same as web, so a category keeps its color. */
+const categoryColor = (category: string) => {
+  const i = (EXPENSE_CATEGORIES as readonly string[]).indexOf(category);
+  return i >= 0 ? (CATEGORICAL_HUES[i] ?? NEUTRAL_HUE) : NEUTRAL_HUE;
+};
+
+/** How long "Undo" stays offered before a deletion is sent to the server. */
+const UNDO_MS = 5000;
+
+/** Splits someone other than the payer still owes. */
+const openSplits = (e: Expense) => e.splits.filter((s) => s.userId !== e.paidById && !s.settled);
+
+/** Headline numbers for the whole trip, plus where the money went by category. */
+function Summary({
+  expenses,
+  currency,
+  budget,
+  currentUserId,
+}: {
+  expenses: Expense[];
+  currency: string;
+  budget?: string | null;
+  currentUserId?: string;
+}) {
+  const colors = useTheme();
+  const styles = createStyles(colors);
+  const money = (n: number) => formatMoney(n, currency);
+  const total = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
+  const myShare = expenses.reduce(
+    (sum, e) => sum + e.splits.filter((s) => s.userId === currentUserId).reduce((a, s) => a + Number(s.amountOwed), 0),
+    0,
+  );
+  const unsettled = expenses.reduce((sum, e) => sum + openSplits(e).reduce((a, s) => a + Number(s.amountOwed), 0), 0);
+  const budgetNum = budget != null ? Number(budget) : null;
+  const budgetPct = budgetNum ? (total / budgetNum) * 100 : null;
+  const byCategory = [...new Set<string>([...EXPENSE_CATEGORIES, ...expenses.map((e) => e.category)])]
+    .map((cat) => ({ cat, amount: expenses.filter((e) => e.category === cat).reduce((s, e) => s + Number(e.amount), 0) }))
+    .filter((c) => c.amount > 0)
+    .sort((a, b) => b.amount - a.amount);
+
+  return (
+    <View style={styles.summary}>
+      <Text style={styles.statLabel}>Trip total</Text>
+      <Text style={styles.statLead}>{money(total)}</Text>
+      <View style={styles.statRow}>
+        {currentUserId && (
+          <View style={{ flex: 1 }}>
+            <Text style={styles.statLabel}>Your share</Text>
+            <Text style={styles.statValue}>{money(myShare)}</Text>
+          </View>
+        )}
+        <View style={{ flex: 1 }}>
+          <Text style={styles.statLabel}>Still to settle</Text>
+          <Text style={[styles.statValue, unsettled > 0.005 && { color: colors.ledger }]}>
+            {unsettled > 0.005 ? money(unsettled) : 'All settled'}
+          </Text>
+        </View>
+      </View>
+
+      {budgetPct != null && budgetNum != null && (
+        <View style={styles.budget}>
+          <View style={styles.budgetLabels}>
+            <Text style={styles.statLabel}>
+              {Math.round(budgetPct)}% of {money(budgetNum)} budget
+            </Text>
+            <Text style={[styles.statLabel, budgetPct > 100 && { color: colors.owe, fontWeight: '600' }]}>
+              {budgetPct > 100 ? `${money(total - budgetNum)} over` : `${money(budgetNum - total)} left`}
+            </Text>
+          </View>
+          <View
+            style={styles.track}
+            accessibilityRole="progressbar"
+            accessibilityLabel="Budget used"
+            accessibilityValue={{ min: 0, max: 100, now: Math.min(Math.round(budgetPct), 100) }}
+          >
+            <View
+              style={[
+                styles.trackFill,
+                { width: `${Math.min(budgetPct, 100)}%`, backgroundColor: budgetPct > 100 ? colors.owe : colors.route },
+              ]}
+            />
+          </View>
+        </View>
+      )}
+
+      <View style={styles.mixBar} importantForAccessibility="no-hide-descendants">
+        {byCategory.map((c) => (
+          <View key={c.cat} style={{ flexGrow: c.amount, minWidth: 4, backgroundColor: categoryColor(c.cat) }} />
+        ))}
+      </View>
+      <View style={styles.mixLegend}>
+        {byCategory.map((c) => (
+          <View key={c.cat} style={styles.mixItem}>
+            <View style={[styles.mixDot, { backgroundColor: categoryColor(c.cat) }]} />
+            <Text style={styles.mixText}>
+              {c.cat} <Text style={styles.mixAmount}>{money(c.amount)}</Text> {Math.round((c.amount / total) * 100)}%
+            </Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 export function ExpensesTab({
   tripId,
   expenses,
   memberNames,
   currency,
+  budget,
   currentUserId,
   onChange,
 }: {
@@ -266,39 +386,49 @@ export function ExpensesTab({
   expenses: Expense[];
   memberNames: Record<string, string>;
   currency: string;
+  budget?: string | null;
   currentUserId?: string;
   onChange: () => void;
 }) {
   const colors = useTheme();
-  const showDialog = useDialog();
   const styles = createStyles(colors);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   // null = closed, 'new' = adding, else the expense being edited.
   const [editing, setEditing] = useState<Expense | 'new' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [filterCategory, setFilterCategory] = useState<string | null>(null);
+  const [unsettledOnly, setUnsettledOnly] = useState(false);
+  // A deletion waiting out its undo window; it's already hidden from the list.
+  const [deleted, setDeleted] = useState<Expense | null>(null);
+  const deleteTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const flushDelete = useRef<() => void>(() => {});
   const name = (id: string) => (id === currentUserId ? 'You' : (memberNames[id] ?? 'Former member'));
 
+  // Leaving the tab mid-undo still deletes the expense.
+  useEffect(() => () => flushDelete.current(), []);
+
   const handleDelete = (expense: Expense) => {
-    showDialog({
-      title: 'Delete expense',
-      message: `Delete "${expense.description}"? This can't be undone.`,
-      actions: [
-        {
-          label: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.deleteExpense(tripId, expense.id);
-              if (expandedId === expense.id) setExpandedId(null);
-              onChange();
-            } catch (err) {
-              setError(err instanceof Error ? err.message : 'Could not delete expense');
-            }
-          },
-        },
-        { label: 'Cancel', style: 'cancel' },
-      ],
-    });
+    flushDelete.current();
+    setExpandedId(null);
+    setDeleted(expense);
+    const send = () => {
+      clearTimeout(deleteTimer.current);
+      flushDelete.current = () => {};
+      api
+        .deleteExpense(tripId, expense.id)
+        .then(onChange)
+        .catch((err) => setError(err instanceof Error ? err.message : 'Could not delete expense'))
+        .finally(() => setDeleted((d) => (d?.id === expense.id ? null : d)));
+    };
+    flushDelete.current = send;
+    deleteTimer.current = setTimeout(send, UNDO_MS);
+  };
+
+  const undoDelete = () => {
+    clearTimeout(deleteTimer.current);
+    flushDelete.current = () => {};
+    setDeleted(null);
   };
 
   const handleToggleSettled = async (expense: Expense, splitUserId: string, settled: boolean) => {
@@ -310,9 +440,20 @@ export function ExpensesTab({
     }
   };
 
+  const visible = expenses.filter((e) => e.id !== deleted?.id);
+  const query = search.trim().toLowerCase();
+  const filtered = visible.filter(
+    (e) =>
+      (!query || e.description.toLowerCase().includes(query)) &&
+      (!filterCategory || e.category === filterCategory) &&
+      (!unsettledOnly || openSplits(e).length > 0),
+  );
+  const filtersActive = query !== '' || filterCategory !== null || unsettledOnly;
+  const usedCategories = EXPENSE_CATEGORIES.filter((c) => visible.some((e) => e.category === c));
+
   // Newest day first, like a statement.
   const byDay = new Map<string, Expense[]>();
-  for (const e of [...expenses].sort((a, b) => b.expenseDate.localeCompare(a.expenseDate))) {
+  for (const e of [...filtered].sort((a, b) => b.expenseDate.localeCompare(a.expenseDate))) {
     const day = dayKey(e.expenseDate);
     if (!byDay.has(day)) byDay.set(day, []);
     byDay.get(day)!.push(e);
@@ -321,6 +462,9 @@ export function ExpensesTab({
   const renderExpense = (expense: Expense, last: boolean) => {
     const expanded = expandedId === expense.id;
     const others = expense.splits.filter((s) => s.userId !== expense.paidById);
+    const owing = openSplits(expense).length;
+    const CategoryIcon = CATEGORY_ICONS[expense.category] ?? Receipt;
+    const time = new Date(expense.expenseDate).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
     return (
       <View key={expense.id} style={[styles.rowWrap, !last && styles.rowDivider]}>
         <Tappable
@@ -329,19 +473,40 @@ export function ExpensesTab({
           accessibilityRole="button"
           accessibilityState={{ expanded }}
         >
+          <View style={styles.catIcon}>
+            <CategoryIcon size={18} weight="duotone" color={categoryColor(expense.category)} />
+          </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.rowTitle} numberOfLines={2}>
               {expense.description}
             </Text>
-            <Text style={styles.rowSub}>
-              {name(expense.paidById)} paid · {expense.category}
-            </Text>
+            <View style={styles.rowSubLine}>
+              <Text style={styles.rowSub}>
+                {time} · {name(expense.paidById)} paid
+              </Text>
+              {expense.receiptPhoto && <Receipt size={13} color={colors.inkSoft} />}
+            </View>
           </View>
-          <Text style={styles.amount}>{formatMoney(Number(expense.amount), expense.currency)}</Text>
+          <View style={styles.rowEnd}>
+            <Text style={styles.amount}>{formatMoney(Number(expense.amount), expense.currency)}</Text>
+            {others.length > 0 && (
+              <Text style={[styles.status, owing ? styles.statusOpen : styles.statusSettled]}>
+                {owing ? `${owing} ${owing === 1 ? 'owes' : 'owe'}` : 'Settled'}
+              </Text>
+            )}
+          </View>
         </Tappable>
 
         {expanded && (
           <View style={styles.breakdown}>
+            {expense.receiptPhoto && (
+              <Image
+                source={{ uri: expense.receiptPhoto }}
+                style={styles.receipt}
+                resizeMode="contain"
+                accessibilityLabel={`Receipt for ${expense.description}`}
+              />
+            )}
             {others.length === 0 ? (
               <Text style={styles.splitLabel}>Nobody else owes anything on this one.</Text>
             ) : (
@@ -375,15 +540,88 @@ export function ExpensesTab({
 
   return (
     <View>
-      <Button label="Log an expense" onPress={() => setEditing('new')} style={{ marginBottom: 20 }} />
+      {visible.length > 0 && (
+        <Summary expenses={visible} currency={currency} budget={budget} currentUserId={currentUserId} />
+      )}
+
+      <Button label="Log an expense" onPress={() => setEditing('new')} style={{ marginBottom: 16 }} />
       {error && <Text style={styles.error}>{error}</Text>}
 
-      {expenses.length === 0 ? (
+      {deleted && (
+        <View style={styles.toast} accessibilityLiveRegion="polite">
+          <Text style={styles.toastText} numberOfLines={1}>
+            Deleted “{deleted.description}”
+          </Text>
+          <Tappable onPress={undoDelete} hitSlop={8} accessibilityRole="button">
+            <Text style={styles.toastUndo}>Undo</Text>
+          </Tappable>
+        </View>
+      )}
+
+      {visible.length > 0 && (
+        <View style={styles.filters}>
+          <View style={styles.search}>
+            <MagnifyingGlass size={16} color={colors.inkSoft} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search expenses"
+              placeholderTextColor={colors.inkSoft}
+              value={search}
+              onChangeText={setSearch}
+              accessibilityLabel="Search expenses"
+              returnKeyType="search"
+            />
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterChips}>
+            <Tappable
+              style={[styles.chip, unsettledOnly && styles.chipSelected]}
+              onPress={() => setUnsettledOnly((v) => !v)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: unsettledOnly }}
+            >
+              <Text style={[styles.chipText, unsettledOnly && styles.chipTextSelected]}>Unsettled</Text>
+            </Tappable>
+            <View style={styles.chipDivider} />
+            {[null, ...usedCategories].map((c) => {
+              const selected = filterCategory === c;
+              return (
+                <Tappable
+                  key={c ?? 'all'}
+                  style={[styles.chip, selected && styles.chipSelected]}
+                  onPress={() => setFilterCategory(c)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: selected }}
+                >
+                  <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{c ?? 'All'}</Text>
+                </Tappable>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
+
+      {visible.length === 0 ? (
         <View style={styles.emptyState}>
+          <Receipt size={36} weight="duotone" color={colors.route} />
           <Text style={styles.emptyTitle}>No expenses yet</Text>
           <Text style={styles.emptyText}>
             Log what you spend as you go. Each expense is split between the group, and Balances works out who owes whom.
           </Text>
+        </View>
+      ) : filtered.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyText}>No expenses match these filters.</Text>
+          {filtersActive && (
+            <Button
+              label="Clear filters"
+              variant="text"
+              onPress={() => {
+                setSearch('');
+                setFilterCategory(null);
+                setUnsettledOnly(false);
+              }}
+            />
+          )}
         </View>
       ) : (
         [...byDay.entries()].map(([day, list]) => {
@@ -429,9 +667,58 @@ export function ExpensesTab({
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     error: { fontSize: typeScale.footnote, color: colors.owe, marginBottom: 12 },
-    emptyState: { paddingVertical: 12 },
-    emptyTitle: { fontSize: typeScale.body, fontWeight: '600', color: colors.ink },
-    emptyText: { fontSize: typeScale.subhead, lineHeight: 21, color: colors.inkSoft, marginTop: 4 },
+    emptyState: { alignItems: 'center', paddingVertical: 24, paddingHorizontal: 12, gap: 4 },
+    emptyTitle: { fontSize: typeScale.body, fontWeight: '600', color: colors.ink, marginTop: 8 },
+    emptyText: { fontSize: typeScale.subhead, lineHeight: 21, color: colors.inkSoft, textAlign: 'center' },
+
+    summary: { borderRadius: radius.md, backgroundColor: colors.surface, padding: 16, marginBottom: 16 },
+    statLabel: { fontSize: typeScale.footnote, color: colors.inkSoft },
+    statLead: {
+      fontSize: typeScale.title1,
+      fontWeight: '700',
+      letterSpacing: -0.5,
+      color: colors.ink,
+      fontVariant: ['tabular-nums'],
+      marginBottom: 12,
+    },
+    statRow: { flexDirection: 'row', gap: 16 },
+    statValue: { fontSize: typeScale.body, fontWeight: '600', color: colors.ink, fontVariant: ['tabular-nums'], marginTop: 2 },
+    budget: { marginTop: 16, gap: 6 },
+    budgetLabels: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
+    track: { height: 8, borderRadius: 4, backgroundColor: colors.routeSoft, overflow: 'hidden' },
+    trackFill: { height: '100%', borderRadius: 4 },
+    mixBar: { flexDirection: 'row', gap: 2, height: 10, borderRadius: 5, overflow: 'hidden', marginTop: 16 },
+    mixLegend: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 16, rowGap: 6, marginTop: 10 },
+    mixItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    mixDot: { width: 8, height: 8, borderRadius: 2 },
+    mixText: { fontSize: typeScale.caption, color: colors.inkSoft, fontVariant: ['tabular-nums'] },
+    mixAmount: { fontWeight: '600', color: colors.ink },
+
+    toast: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 16,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderRadius: radius.md,
+      backgroundColor: colors.hero,
+      marginBottom: 16,
+    },
+    toastText: { flex: 1, fontSize: typeScale.subhead, color: '#ffffff' },
+    toastUndo: { fontSize: typeScale.subhead, fontWeight: '600', color: colors.highlight },
+
+    filters: { marginBottom: 16, gap: 10 },
+    search: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 14,
+      borderRadius: radius.pill,
+      backgroundColor: colors.surface,
+    },
+    searchInput: { flex: 1, minHeight: 42, fontSize: typeScale.subhead, color: colors.ink },
+    filterChips: { gap: 8, alignItems: 'center' },
+    chipDivider: { width: StyleSheet.hairlineWidth, height: 20, backgroundColor: colors.rule },
 
     day: { marginBottom: 20 },
     dayHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 },
@@ -440,9 +727,30 @@ function createStyles(colors: ThemeColors) {
     card: { borderRadius: radius.md, backgroundColor: colors.surface, overflow: 'hidden' },
     rowWrap: { paddingHorizontal: 14 },
     rowDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.rule },
-    row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 13 },
+    row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
+    catIcon: {
+      width: 34,
+      height: 34,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.bg,
+    },
     rowTitle: { fontSize: typeScale.subhead, fontWeight: '600', color: colors.ink },
-    rowSub: { fontSize: typeScale.footnote, color: colors.inkSoft, marginTop: 2 },
+    rowSubLine: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
+    rowSub: { fontSize: typeScale.footnote, color: colors.inkSoft },
+    rowEnd: { alignItems: 'flex-end', gap: 3 },
+    status: {
+      fontSize: typeScale.caption,
+      fontWeight: '500',
+      paddingHorizontal: 8,
+      paddingVertical: 1,
+      borderRadius: 10,
+      overflow: 'hidden',
+    },
+    statusOpen: { color: colors.ledger, backgroundColor: colors.ledgerSoft },
+    statusSettled: { color: colors.route, backgroundColor: colors.routeSoft },
+    receipt: { width: '100%', height: 180, borderRadius: radius.sm, backgroundColor: colors.bg },
     amount: { fontSize: typeScale.subhead, fontWeight: '600', fontVariant: ['tabular-nums'], color: colors.ink },
     breakdown: { paddingBottom: 12, gap: 10 },
     splitItem: { flexDirection: 'row', alignItems: 'center', gap: 10 },

@@ -178,6 +178,7 @@ export default function TripDetailScreen() {
             expenses={expenses}
             memberNames={memberNames}
             currency={trip.currency}
+            budget={trip.budget}
             currentUserId={currentUser?.id}
             onChange={load}
           />

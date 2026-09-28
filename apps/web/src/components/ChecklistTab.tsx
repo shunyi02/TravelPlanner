@@ -236,7 +236,7 @@ export function ChecklistTab({ tripId, memberNames }: { tripId: string; memberNa
         </div>
       )}
 
-      <div className="checklist-toast" role="status">
+      <div className="undo-toast" role="status">
         {removed && (
           <>
             <span>Removed “{removed.label}”</span>

@@ -10,7 +10,6 @@ import './styles/modal.css';
 import './styles/ledger.css';
 import './styles/balances.css';
 import './styles/expenses.css';
-import './styles/charts.css';
 import './styles/report.css';
 import './styles/trips.css';
 import './styles/trip-detail.css';

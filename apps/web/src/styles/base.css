@@ -553,3 +553,95 @@ label.btn {
   margin: 8px 0 24px;
   color: var(--ink-soft);
 }
+
+/* A button with a leading icon: keeps the icon and label on one centred line. */
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Bare square icon button (close, edit), with a quiet hover fill. */
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--ink-soft);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.icon-btn:hover {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+/* On/off filter chip, matching .filter-select-wrap's pill. */
+.filter-pill {
+  padding: 8px 16px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.filter-pill:hover {
+  background: var(--route-soft);
+  color: var(--route);
+}
+
+.filter-pill.active {
+  background: var(--route);
+  color: var(--on-route);
+}
+
+/* "Deleted X · Undo" toast at the bottom of the screen. Render it empty when
+ * idle so the role="status" region already exists when a message arrives. */
+.undo-toast:empty {
+  display: none;
+}
+
+.undo-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: var(--z-menu);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: calc(100vw - 32px);
+  padding: 12px 18px;
+  border-radius: var(--radius-md);
+  background: var(--hero);
+  color: #ffffff;
+  font-size: 14px;
+  box-shadow: var(--shadow-md);
+  transform: translateX(-50%);
+  animation: undo-toast-in 0.2s ease;
+}
+
+.undo-toast .text-btn {
+  color: var(--highlight);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+@keyframes undo-toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .undo-toast {
+    animation: none;
+  }
+}

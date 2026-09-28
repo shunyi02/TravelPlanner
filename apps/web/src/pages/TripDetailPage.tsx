@@ -114,6 +114,7 @@ export function TripDetailPage() {
           expenses={expenses}
           memberNames={memberNames}
           currency={trip.currency}
+          budget={trip.budget}
           currentUserId={currentUser?.id}
           tripStartDate={trip.startDate}
           tripEndDate={trip.endDate}

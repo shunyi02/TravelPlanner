@@ -1,15 +1,606 @@
-/* ExpensesTab: the split editor shown when logging or editing an expense.
- * Chart styles (pie, bar) live in charts.css — several tabs' charts share them. */
+/* ExpensesTab: summary card, toolbar, day-grouped ledger, and the slide-over
+ * panel that shows or edits one expense. */
 
-/* .filter-row / .filter-checkbox now live in base.css as shared primitives. */
+.expenses {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
 
-/* AddExpenseModal: the "Log expense" form. */
+/* Summary ------------------------------------------------------------- */
+
+.expense-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 20px 22px;
+}
+
+.expense-summary-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 40px;
+  margin: 0;
+}
+
+.expense-stat dt {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.expense-stat dd {
+  margin: 2px 0 0;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.expense-stat-lead dd {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--hero-text);
+}
+
+.expense-stat dd.is-open {
+  color: var(--ledger);
+}
+
+.expense-budget {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.expense-budget-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.expense-budget-label .is-over {
+  color: var(--owe);
+  font-weight: 600;
+}
+
+.expense-budget progress {
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--route-soft);
+  overflow: hidden;
+}
+
+.expense-budget progress::-webkit-progress-bar {
+  background: var(--route-soft);
+}
+
+.expense-budget progress::-webkit-progress-value {
+  background: var(--route);
+  border-radius: var(--radius-pill);
+}
+
+.expense-budget progress::-moz-progress-bar {
+  background: var(--route);
+  border-radius: var(--radius-pill);
+}
+
+.expense-budget progress.is-over::-webkit-progress-value {
+  background: var(--owe);
+}
+
+.expense-budget progress.is-over::-moz-progress-bar {
+  background: var(--owe);
+}
+
+/* Category mix: one stacked bar, with a legend that carries the numbers. */
+.expense-mix-bar {
+  display: flex;
+  gap: 2px;
+  height: 10px;
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.expense-mix-bar span {
+  min-width: 4px;
+}
+
+.expense-mix-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.expense-mix-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.expense-mix-legend .amount {
+  font-weight: 600;
+}
+
+.expense-mix-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.expense-mix-pct {
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Toolbar and filters ------------------------------------------------- */
+
+.expenses-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.expenses-search {
+  flex: 1 1 220px;
+  max-width: 360px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  color: var(--ink-soft);
+}
+
+.expenses-search:focus-within {
+  outline: 2px solid var(--route);
+  outline-offset: 2px;
+}
+
+/* Scoped under .expenses to outrank base.css's input styles (same specificity, later file). */
+.expenses .expenses-search input:not([type='radio']) {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 0;
+  border: none;
+  background: none;
+  outline: none;
+}
+
+.expenses-export {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.expenses-filters {
+  margin-top: -4px;
+}
+
+/* Day groups and rows ------------------------------------------------- */
+
+.day-group {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.day-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 14px 18px 10px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.day-group-date {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--hero-text);
+}
+
+.day-group-header .amount {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.expense-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.expense-list li + li {
+  border-top: 1px solid var(--rule);
+}
+
+.expense-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 12px 14px 12px 18px;
+  border: none;
+  background: none;
+  color: inherit;
+  text-align: left;
+  transition: background 0.15s ease;
+}
+
+.expense-row:hover {
+  background: var(--bg);
+}
+
+.expense-row:focus-visible {
+  outline-offset: -2px;
+}
+
+.expense-cat-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 11px;
+  background: var(--bg);
+}
+
+.expense-cat-icon-lg {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+}
+
+.expense-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.expense-row-title {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.expense-row-sub {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.expense-row-receipt {
+  vertical-align: -2px;
+}
+
+.expense-row-end {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.expense-row-amount {
+  font-weight: 600;
+}
+
+.expense-status {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+}
+
+.expense-status.is-open {
+  color: var(--ledger);
+  background: var(--ledger-soft);
+}
+
+.expense-status.is-settled {
+  color: var(--route);
+  background: var(--route-soft);
+}
+
+.expense-row-caret {
+  flex-shrink: 0;
+  color: var(--ink-soft);
+  transition: transform 0.15s ease;
+}
+
+.expense-row:hover .expense-row-caret {
+  transform: translateX(2px);
+}
+
+/* Empty states -------------------------------------------------------- */
+
+.expenses-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--ink-soft);
+}
+
+.expenses-empty svg {
+  color: var(--route);
+}
+
+.expenses-empty h3 {
+  margin: 8px 0 0;
+  font-family: var(--font-display);
+  font-size: 20px;
+  color: var(--ink);
+}
+
+.expenses-empty p {
+  margin: 0 0 12px;
+  max-width: 40ch;
+  text-wrap: pretty;
+}
+
+.expenses-empty-compact {
+  padding: 32px 24px;
+}
+
+/* Slide-over panel ---------------------------------------------------- */
+
+.panel-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(0, 0, 0, 0.32);
+  animation: panel-fade 0.2s ease;
+}
+
+.expense-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(440px, 100%);
+  height: 100%;
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  animation: panel-in 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.expense-panel:focus {
+  outline: none;
+}
+
+.expense-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 16px 14px 24px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.expense-panel-head .modal-title {
+  overflow-wrap: anywhere;
+}
+
+.expense-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px 28px;
+}
+
+@keyframes panel-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes panel-in {
+  from {
+    transform: translateX(32px);
+    opacity: 0;
+  }
+}
+
+/* A bottom sheet on narrow screens. */
+@media (max-width: 720px) {
+  .panel-backdrop {
+    align-items: flex-end;
+  }
+
+  .expense-panel {
+    width: 100%;
+    height: auto;
+    max-height: 90dvh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    animation-name: sheet-in;
+  }
+
+  @keyframes sheet-in {
+    from {
+      transform: translateY(40px);
+      opacity: 0;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-backdrop,
+  .expense-panel {
+    animation: none;
+  }
+}
+
+/* Expense detail ------------------------------------------------------ */
+
+.expense-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.expense-detail-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.expense-detail-amount {
+  margin: 10px 0 0;
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--hero-text);
+}
+
+.expense-detail-hero .amount-note {
+  margin: 0;
+}
+
+.expense-detail-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 14px 0;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+
+.expense-detail-facts dt {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.expense-detail-facts dd {
+  margin: 2px 0 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.expense-receipt {
+  display: block;
+}
+
+.expense-detail-heading {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.expense-detail-empty {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+.expense-split-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.expense-split-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+}
+
+.expense-split-row + .expense-split-row {
+  border-top: 1px solid var(--rule);
+}
+
+.expense-avatar {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: var(--bg);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.expense-split-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 500;
+}
+
+.expense-detail-actions {
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+.expense-detail-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Settle toggle: color + label say the state outright (amber "needs action"
+ * vs. green "done"), so nobody has to infer status from a bare checkbox. */
+.settle-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--ledger);
+  background: var(--ledger-soft);
+  color: var(--ledger);
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.settle-btn:hover {
+  opacity: 0.85;
+}
+
+.settle-btn-settled {
+  border-color: var(--route);
+  background: var(--route-soft);
+  color: var(--route);
+}
+
+/* Expense form (add and edit) ---------------------------------------- */
 
 .expense-form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-top: 16px;
+  gap: 14px;
 }
 
 .expense-form-row {
@@ -55,10 +646,9 @@
 .receipt-photo-preview {
   display: block;
   max-width: 100%;
-  max-height: 220px;
+  max-height: 240px;
   border-radius: var(--radius-md);
   border: 1px solid var(--rule);
-  margin: 4px 0 12px;
   object-fit: contain;
 }
 
@@ -68,111 +658,13 @@
   margin: 0;
 }
 
-/* .segmented-control itself now lives in base.css as a shared primitive. */
+.expense-total-preview strong {
+  color: var(--ink);
+}
 
 .amount-note {
-  font-size: 11px;
-  color: var(--ink-soft);
-  white-space: nowrap;
-}
-
-/* Expense detail popup (opened by clicking a logged expense). */
-
-.expense-detail-meta {
-  font-size: 13px;
-  color: var(--ink-soft);
-  margin: 4px 0 16px;
-}
-
-.expense-detail-amount {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 12px 0;
-  margin-bottom: 12px;
-  border-top: 1px solid var(--rule);
-  border-bottom: 1px solid var(--rule);
-}
-
-.expense-detail-amount .amount {
-  font-size: 22px;
-  font-weight: 600;
-}
-
-.day-group {
-  background: var(--surface);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  padding: 4px 16px;
-}
-
-.day-group + .day-group {
-  margin-top: 12px;
-}
-
-.day-group-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  padding: 12px 0 8px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink-soft);
-  border-bottom: 1px solid var(--rule);
-}
-
-.category-badge {
-  font-size: 11px;
-  color: var(--route);
-  background: var(--route-soft);
-  padding: 2px 6px;
-  border-radius: var(--radius-sm);
-  margin-right: 4px;
-}
-
-.split-breakdown {
-  margin: 4px 0 16px;
-  padding: 10px 0 10px 14px;
-  border-left: 2px solid var(--rule);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.split-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--ink-soft);
-}
-
-/* Settle toggle: color + label say the state outright (amber "needs action"
- * vs. green "done"), so nobody has to infer status from a bare checkbox. */
-.settle-btn {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 5px 12px;
-  border-radius: var(--radius-pill);
   font-size: 12px;
-  font-weight: 500;
-  border: 1px solid var(--owe);
-  background: var(--owe-soft);
-  color: var(--owe);
-  white-space: nowrap;
-}
-
-.settle-btn:hover {
-  opacity: 0.8;
-}
-
-.settle-btn-settled {
-  border-color: var(--route);
-  background: var(--route-soft);
-  color: var(--route);
+  color: var(--ink-soft);
 }
 
 .split-mode-row {
@@ -229,15 +721,22 @@
   color: var(--ink-soft);
 }
 
-/* ExpensesTab row: amounts stacked right-aligned, then the row's actions. */
-.expense-row-end {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+/* Used by ItineraryTab's item rows. */
+.category-badge {
+  font-size: 11px;
+  color: var(--route);
+  background: var(--route-soft);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  margin-right: 4px;
 }
 
-.expense-row-amounts {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+@media (max-width: 720px) {
+  .expense-detail-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .expenses-export {
+    margin-left: 0;
+  }
 }
