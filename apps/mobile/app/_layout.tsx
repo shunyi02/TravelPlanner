@@ -59,7 +59,8 @@ function RootLayoutInner() {
   if (!authed) {
     return (
       <SafeAreaProvider>
-        <StatusBar style={statusBarStyle} />
+        {/* The auth screens open on the dark banner in both modes. */}
+        <StatusBar style="light" />
         <AuthScreen
           onAuthed={() => {
             setAuthed(true);

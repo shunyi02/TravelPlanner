@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import type { Place } from '../api';
 import { radius, typeScale, useTheme, type ThemeColors } from '../theme';
+import { Airplane, Bed } from '../icons';
 
 function formatTime(iso: string | null): string {
   if (!iso) return '--:--';
@@ -76,7 +77,7 @@ function BookingCard({
   end: string | null;
   left: { big: string; small: string };
   right: { big: string; small: string };
-  icon: string;
+  icon: React.ReactNode;
   linkLabel: string | null;
 }) {
   const status = bookingStatus(start, end);
@@ -106,7 +107,7 @@ function BookingCard({
         <View style={styles.link}>
           <View style={styles.linkLineRow}>
             <View style={styles.linkLine} />
-            <Text style={styles.linkIcon}>{icon}</Text>
+            {icon}
             <View style={styles.linkLine} />
           </View>
           {linkLabel && <Text style={styles.linkLabel}>{linkLabel}</Text>}
@@ -162,7 +163,7 @@ export function BookingsTab({ places, memberNames }: { places: Place[]; memberNa
               end={p.arrivalTime}
               left={{ big: formatTime(p.departureTime), small: p.departureAirport ?? '—' }}
               right={{ big: formatTime(p.arrivalTime), small: p.arrivalAirport ?? '—' }}
-              icon="✈"
+              icon={<Airplane size={16} color={colors.heroText} weight="fill" />}
               linkLabel={formatDuration(p.departureTime, p.arrivalTime)}
             />
           ))}
@@ -194,7 +195,7 @@ export function BookingsTab({ places, memberNames }: { places: Place[]; memberNa
                   big: p.checkOut ? formatShortDate(p.checkOut) : '—',
                   small: `Check-out ${p.checkOut ? formatTime(p.checkOut) : ''}`,
                 }}
-                icon="🏨"
+                icon={<Bed size={16} color={colors.heroText} weight="fill" />}
                 linkLabel={nights !== null ? `${nights} night${nights === 1 ? '' : 's'}` : null}
               />
             );
@@ -241,7 +242,6 @@ function createStyles(colors: ThemeColors) {
     linkLineRow: { flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch', gap: 4 },
     // Solid hairlines: RN's single-side dashed borders render inconsistently.
     linkLine: { flex: 1, height: 1, backgroundColor: colors.rule },
-    linkIcon: { fontSize: 16, color: colors.heroText },
     linkLabel: { fontSize: typeScale.caption, color: colors.inkSoft, marginTop: 4 },
     foot: {
       marginTop: 12,

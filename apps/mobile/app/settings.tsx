@@ -1,6 +1,7 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { radius, typeScale, useColorMode, useTheme, useThemeSetting, type Appearance, type ThemeColors } from '../src/theme';
 import { Tappable } from '../src/components/Tappable';
+import { Check } from '../src/icons';
 
 const APPEARANCES: { id: Appearance; label: string }[] = [
   { id: 'system', label: 'System' },
@@ -55,7 +56,7 @@ export default function SettingsScreen() {
             >
               <View style={[styles.swatchDot, { backgroundColor: preview.route }]} />
               <Text style={[styles.swatchName, { color: preview.ink }]}>{theme.name}</Text>
-              {selected && <Text style={[styles.checkmark, { color: preview.route }]}>✓</Text>}
+              {selected && <Check size={16} color={preview.route} weight="bold" style={styles.checkmark} />}
             </Tappable>
           );
         })}
@@ -91,6 +92,6 @@ function createStyles(colors: ThemeColors) {
     swatchSelected: { borderWidth: 2, padding: 11 },
     swatchDot: { width: 20, height: 20, borderRadius: 10 },
     swatchName: { fontSize: typeScale.subhead, fontWeight: '600' },
-    checkmark: { position: 'absolute', top: 8, right: 10, fontSize: typeScale.body, fontWeight: '700' },
+    checkmark: { position: 'absolute', top: 10, right: 10 },
   });
 }

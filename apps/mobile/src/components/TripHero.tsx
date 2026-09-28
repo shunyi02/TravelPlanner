@@ -3,9 +3,12 @@ import Svg, { Circle } from 'react-native-svg';
 import type { TripDetail } from '../api';
 import { radius, typeScale, useTheme, type ThemeColors } from '../theme';
 import { dayCount, formatShort, tripStatus } from '../tripDates';
+import { CalendarBlank, PencilSimple } from '../icons';
+import { Tappable } from './Tappable';
 
-/** Full-bleed dark banner at the top of the itinerary: dates, title, and three stat cards. */
-export function TripHero({ trip }: { trip: TripDetail }) {
+/** Full-bleed dark banner at the top of the trip: dates, title, and three stat cards.
+ *  The dates double as the way to change them, as on web. */
+export function TripHero({ trip, onEditDates }: { trip: TripDetail; onEditDates: () => void }) {
   const colors = useTheme();
   const styles = createStyles(colors);
 
@@ -15,13 +18,7 @@ export function TripHero({ trip }: { trip: TripDetail }) {
   const days = trip.startDate && trip.endDate ? dayCount(trip.startDate, trip.endDate) : null;
   const status = tripStatus(trip.startDate, trip.endDate);
 
-  const eyebrow = [
-    trip.destinationName,
-    trip.startDate && trip.endDate ? `${formatShort(trip.startDate)} — ${formatShort(trip.endDate)}` : null,
-  ]
-    .filter(Boolean)
-    .join('  ·  ')
-    .toUpperCase();
+  const dateLabel = trip.startDate && trip.endDate ? `${formatShort(trip.startDate)} — ${formatShort(trip.endDate)}` : null;
 
   const subtitle = [
     `${trip.members.length} ${trip.members.length === 1 ? 'traveler' : 'travelers'}`,
@@ -42,9 +39,36 @@ export function TripHero({ trip }: { trip: TripDetail }) {
       </Svg>
 
       <View style={styles.topRow}>
-        <Text style={styles.eyebrow} numberOfLines={1}>
-          {eyebrow}
-        </Text>
+        <View style={styles.eyebrowRow}>
+          {trip.destinationName ? (
+            <>
+              <Text style={styles.eyebrow} numberOfLines={1}>
+                {trip.destinationName.toUpperCase()}
+              </Text>
+              {/* A spaced separator of its own: trailing spaces in a Text get trimmed on web. */}
+              <Text style={[styles.eyebrow, styles.separator]}>·</Text>
+            </>
+          ) : null}
+          <Tappable
+            onPress={onEditDates}
+            accessibilityRole="button"
+            accessibilityLabel={dateLabel ? `Trip dates ${dateLabel}. Change dates` : 'Add trip dates'}
+            hitSlop={8}
+            style={styles.dates}
+          >
+            {dateLabel ? (
+              <>
+                <Text style={styles.eyebrow}>{dateLabel.toUpperCase()}</Text>
+                <PencilSimple size={13} color={colors.onHeroSoft} weight="bold" />
+              </>
+            ) : (
+              <>
+                <CalendarBlank size={14} color={colors.highlight} weight="bold" />
+                <Text style={[styles.eyebrow, { color: colors.highlight }]}>ADD DATES</Text>
+              </>
+            )}
+          </Tappable>
+        </View>
         {status && (
           <View style={styles.badge}>
             <Text style={styles.badgeText}>{status}</Text>
@@ -79,7 +103,10 @@ function createStyles(colors: ThemeColors) {
       overflow: 'hidden',
     },
     topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-    eyebrow: { flex: 1, fontSize: typeScale.footnote, fontWeight: '600', letterSpacing: 1.5, color: colors.onHeroSoft },
+    eyebrowRow: { flex: 1, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' },
+    separator: { marginHorizontal: 8 },
+    dates: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    eyebrow: { fontSize: typeScale.footnote, fontWeight: '600', letterSpacing: 1.5, color: colors.onHeroSoft },
     badge: { backgroundColor: colors.highlight, borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 8 },
     badgeText: { color: colors.hero, fontWeight: '700', fontSize: typeScale.footnote },
     title: {

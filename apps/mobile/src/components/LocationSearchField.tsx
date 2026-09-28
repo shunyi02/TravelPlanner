@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { radius, typeScale, useTheme, type ThemeColors } from '../theme';
 import { Tappable } from './Tappable';
+import { Check } from '../icons';
+import { fieldStyles } from './Field';
 
 interface NominatimResult {
   place_id: number;
@@ -41,6 +43,8 @@ export function LocationSearchField({
 }) {
   const colors = useTheme();
   const styles = createStyles(colors);
+  const inputStyles = fieldStyles(colors);
+  const [focused, setFocused] = useState(false);
   const [results, setResults] = useState<NominatimResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [touched, setTouched] = useState(false);
@@ -81,7 +85,7 @@ export function LocationSearchField({
   return (
     <View>
       <TextInput
-        style={styles.input}
+        style={[inputStyles.input, focused && inputStyles.inputFocused]}
         placeholder={placeholder}
         placeholderTextColor={colors.inkSoft}
         value={query}
@@ -89,6 +93,8 @@ export function LocationSearchField({
           setTouched(true);
           onQueryChange(v);
         }}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
       />
       {searching && <Text style={styles.hint}>Searching…</Text>}
       {results.map((r) => (
@@ -97,9 +103,10 @@ export function LocationSearchField({
         </Tappable>
       ))}
       {lat !== undefined && lng !== undefined && (
-        <Text style={[styles.hint, { color: colors.route }]}>
-          📍 {lat.toFixed(5)}, {lng.toFixed(5)}
-        </Text>
+        <View style={styles.located}>
+          <Check size={13} color={colors.route} weight="bold" />
+          <Text style={[styles.hint, { color: colors.route, marginTop: 0 }]}>Location set</Text>
+        </View>
       )}
     </View>
   );
@@ -107,15 +114,7 @@ export function LocationSearchField({
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
-    input: {
-      borderWidth: 1,
-      borderColor: colors.rule,
-      borderRadius: radius.sm,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      backgroundColor: colors.surface,
-      color: colors.ink,
-    },
+    located: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6 },
     hint: { fontSize: typeScale.caption, color: colors.inkSoft, marginTop: 4 },
     resultRow: { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.rule },
     resultText: { fontSize: typeScale.footnote, color: colors.ink },

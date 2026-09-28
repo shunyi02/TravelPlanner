@@ -3,6 +3,7 @@ import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { findAirport, searchAirports } from '../airports';
 import { radius, typeScale, useTheme, type ThemeColors } from '../theme';
 import { Tappable } from './Tappable';
+import { fieldStyles } from './Field';
 
 /** A plain text input for an IATA airport code, with an autosuggest dropdown
  *  (code/name/city match) and a resolved "code — name, city" hint once the
@@ -19,6 +20,8 @@ export function AirportField({
 }) {
   const colors = useTheme();
   const styles = createStyles(colors);
+  const inputStyles = fieldStyles(colors);
+  const [focused, setFocused] = useState(false);
   const [open, setOpen] = useState(false);
   const results = open ? searchAirports(value) : [];
   const resolved = findAirport(value);
@@ -26,7 +29,7 @@ export function AirportField({
   return (
     <View style={{ zIndex: 1 }}>
       <TextInput
-        style={styles.input}
+        style={[inputStyles.input, focused && inputStyles.inputFocused]}
         placeholder={placeholder}
         placeholderTextColor={colors.inkSoft}
         value={value}
@@ -34,8 +37,14 @@ export function AirportField({
           onChange(v.toUpperCase());
           setOpen(true);
         }}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onFocus={() => {
+          setFocused(true);
+          setOpen(true);
+        }}
+        onBlur={() => {
+          setFocused(false);
+          setTimeout(() => setOpen(false), 150);
+        }}
         autoCapitalize="characters"
       />
       {open && results.length > 0 && (
@@ -69,15 +78,6 @@ export function AirportField({
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
-    input: {
-      borderWidth: 1,
-      borderColor: colors.rule,
-      borderRadius: radius.sm,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      backgroundColor: colors.surface,
-      color: colors.ink,
-    },
     dropdown: {
       position: 'absolute',
       top: '100%',

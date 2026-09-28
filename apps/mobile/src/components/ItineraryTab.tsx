@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Place, PlaceType, TripDetail } from '../api';
 import { api } from '../api';
 import { radius, typeScale, useTheme, type ThemeColors } from '../theme';
@@ -13,6 +14,9 @@ import { DiscoverSheet } from './DiscoverSheet';
 import { LocationSearchField } from './LocationSearchField';
 import { AirportField } from './AirportField';
 import { Tappable } from './Tappable';
+import { DateField } from './DateField';
+import { Field, TextField } from './Field';
+import { Airplane, Bed, CalendarBlank, MapPin } from '../icons';
 
 function daysBetween(start: string, end: string): string[] {
   const days: string[] = [];
@@ -25,10 +29,13 @@ function daysBetween(start: string, end: string): string[] {
   return days;
 }
 
-function formatDay(iso: string) {
+/** "Sat, 12 Dec" for a day heading. */
+function formatDayLong(iso: string) {
   return new Date(iso + 'T00:00:00Z').toLocaleDateString(undefined, {
+    weekday: 'short',
     day: 'numeric',
     month: 'short',
+    timeZone: 'UTC',
   });
 }
 
@@ -80,9 +87,12 @@ function placeSubtitle(place: Place, day?: string): string | null {
   if (place.type === 'FLIGHT') {
     const from = place.departureAirport ?? '?';
     const to = place.arrivalAirport ?? '?';
-    const dep = place.departureTime ? new Date(place.departureTime).toLocaleString() : '';
-    const arr = place.arrivalTime ? new Date(place.arrivalTime).toLocaleString() : '';
-    return `${from} → ${to}${dep ? ` · dep ${dep}` : ''}${arr ? ` · arr ${arr}` : ''}`;
+    const dep = formatTime(place.departureTime);
+    const arr = formatTime(place.arrivalTime);
+    const times = dep && arr ? `${dep} – ${arr}` : dep ? `Departs ${dep}` : arr ? `Arrives ${arr}` : '';
+    // Flights named after their route already say "SIN → NRT"; don't repeat it.
+    const route = place.name === flightLabel(from, to) ? null : `${from} → ${to}`;
+    return [route, times].filter(Boolean).join(' · ') || null;
   }
   if (place.type === 'HOTEL') {
     return hotelDayLabel(place, day);
@@ -132,8 +142,7 @@ function toRouteStops(list: Place[]): RouteStop[] {
   return result;
 }
 
-/** ISO datetime -> "YYYY-MM-DD HH:mm" in local time, for the plain-text date/time
- *  fields below (no native date picker is installed in this app). */
+/** ISO datetime -> "YYYY-MM-DD HH:mm" in local time, the value DateField works with. */
 function toLocalInput(iso: string): string {
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -148,7 +157,7 @@ function parseLocalInput(raw: string): string | undefined {
   const withSeconds = normalized.length === 16 ? `${normalized}:00` : normalized;
   const d = new Date(withSeconds);
   if (isNaN(d.getTime())) {
-    throw new Error(`Invalid date/time "${raw}" — use YYYY-MM-DD HH:mm`);
+    throw new Error(`Couldn't read the date "${raw}". Pick it again.`);
   }
   return d.toISOString();
 }
@@ -160,22 +169,38 @@ function flightLabel(from: string, to: string): string {
   return from || to ? `${from || '?'} → ${to || '?'}` : 'Flight';
 }
 
-/** Add/edit form for a single itinerary item. Used both for creating a new
- *  place (no `initial`) and editing an existing one (`initial` set, type
- *  switchable). */
+const TYPE_OPTIONS: { type: PlaceType; label: string }[] = [
+  { type: 'STOP', label: 'Stop' },
+  { type: 'HOTEL', label: 'Hotel' },
+  { type: 'FLIGHT', label: 'Flight' },
+];
+
+function TypeIcon({ type, color, size = 16 }: { type: PlaceType; color: string; size?: number }) {
+  if (type === 'FLIGHT') return <Airplane size={size} color={color} weight="fill" />;
+  if (type === 'HOTEL') return <Bed size={size} color={color} weight="fill" />;
+  return <MapPin size={size} color={color} weight="fill" />;
+}
+
+/** Add/edit form for a single itinerary item, shown in a sheet. Used both for
+ *  creating a new place (no `initial`) and editing an existing one (`initial`
+ *  set, type switchable). */
 function PlaceEditor({
   tripId,
   initial,
+  defaultDay,
   onCancel,
   onSaved,
 }: {
   tripId: string;
   initial?: Place;
-  onCancel?: () => void;
+  /** Where the date pickers open when a field is empty. */
+  defaultDay?: string;
+  onCancel: () => void;
   onSaved: () => void;
 }) {
   const colors = useTheme();
   const styles = createStyles(colors);
+  const insets = useSafeAreaInsets();
   const [type, setType] = useState<PlaceType>(initial?.type ?? 'STOP');
   const [name, setName] = useState(initial?.name ?? '');
   const [notes, setNotes] = useState(initial?.notes ?? '');
@@ -195,14 +220,16 @@ function PlaceEditor({
   const [lng, setLng] = useState<number | undefined>(initial?.lng ?? undefined);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
 
   const handleSave = async () => {
     setError(null);
     // Flights name themselves from their airports; stops and hotels need a name.
     if (type !== 'FLIGHT' && !name.trim()) {
-      setError('Name is required');
+      setNameError(type === 'HOTEL' ? 'Enter the hotel name.' : 'Search for a place, or type its name.');
       return;
     }
+    setNameError(null);
     setSaving(true);
     try {
       const payload: PlaceInput = {
@@ -230,122 +257,129 @@ function PlaceEditor({
       }
       onSaved();
     } catch (err) {
-      setError(err instanceof Error ? err.message : `Could not ${initial ? 'save' : 'add'} item`);
+      setError(err instanceof Error ? err.message : `Could not ${initial ? 'save' : 'add'} this item`);
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <View style={styles.editor}>
-      <View style={styles.typeRow}>
-        {(['STOP', 'HOTEL', 'FLIGHT'] as PlaceType[]).map((t) => (
-          <Tappable key={t} style={[styles.typeButton, type === t && styles.typeButtonActive]} onPress={() => setType(t)}>
-            <Text style={[styles.typeButtonText, type === t && styles.typeButtonTextActive]}>
-              {t === 'STOP' ? 'Stop' : t === 'HOTEL' ? 'Hotel' : 'Flight'}
-            </Text>
-          </Tappable>
-        ))}
+    <View style={styles.sheet}>
+      <View style={styles.sheetHead}>
+        <Button label="Cancel" variant="text" onPress={onCancel} />
+        <Text style={styles.sheetTitle}>{initial ? 'Edit item' : 'Add to itinerary'}</Text>
+        <Button label={saving ? 'Saving…' : initial ? 'Save' : 'Add'} variant="text" onPress={handleSave} disabled={saving} />
       </View>
 
-      {type === 'STOP' ? (
-        <LocationSearchField
-          query={locationQuery}
-          onQueryChange={(v) => {
-            setLocationQuery(v);
-            setName(v);
-            setLat(undefined);
-            setLng(undefined);
-          }}
-          onPick={(result) => {
-            setName(result.name);
-            setLat(result.lat);
-            setLng(result.lng);
-            setLocationQuery(result.displayName);
-          }}
-          lat={lat}
-          lng={lng}
-          placeholder="Search a place…"
-        />
-      ) : (
-        <TextInput
-          style={styles.input}
-          placeholder={type === 'FLIGHT' ? 'Flight number or airline (optional)' : 'Name'}
-          placeholderTextColor={colors.inkSoft}
-          value={name}
-          onChangeText={setName}
-        />
-      )}
+      <ScrollView
+        contentContainerStyle={[styles.sheetBody, { paddingBottom: insets.bottom + 32 }]}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.segmented} accessibilityRole="radiogroup" accessibilityLabel="Type">
+          {TYPE_OPTIONS.map((o) => {
+            const selected = type === o.type;
+            return (
+              <Tappable
+                key={o.type}
+                style={[styles.segment, selected && styles.segmentSelected]}
+                onPress={() => setType(o.type)}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: selected }}
+              >
+                <TypeIcon type={o.type} color={selected ? colors.route : colors.inkSoft} />
+                <Text style={[styles.segmentLabel, selected && styles.segmentLabelSelected]}>{o.label}</Text>
+              </Tappable>
+            );
+          })}
+        </View>
 
-      {type === 'STOP' && (
-        <>
-          <TextInput
-            style={styles.input}
-            placeholder="Visit date & time (YYYY-MM-DD HH:mm, optional)"
-            placeholderTextColor={colors.inkSoft}
-            value={visitDateTime}
-            onChangeText={setVisitDateTime}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Notes (optional)"
-            placeholderTextColor={colors.inkSoft}
-            value={notes}
-            onChangeText={setNotes}
-          />
-        </>
-      )}
+        {type === 'STOP' && (
+          <>
+            <Field label="Place" error={nameError}>
+              <LocationSearchField
+                query={locationQuery}
+                onQueryChange={(v) => {
+                  setLocationQuery(v);
+                  setName(v);
+                  setLat(undefined);
+                  setLng(undefined);
+                }}
+                onPick={(result) => {
+                  setName(result.name);
+                  setLat(result.lat);
+                  setLng(result.lng);
+                  setLocationQuery(result.displayName);
+                }}
+                lat={lat}
+                lng={lng}
+                placeholder="Search a place…"
+              />
+            </Field>
+            <DateField
+              label="When"
+              mode="datetime"
+              value={visitDateTime}
+              onChange={setVisitDateTime}
+              defaultDay={defaultDay}
+              optional
+              hint="Leave empty to keep it unscheduled."
+            />
+            <TextField label="Notes" placeholder="Optional" value={notes} onChangeText={setNotes} multiline />
+          </>
+        )}
 
-      {type === 'HOTEL' && (
-        <>
-          <TextInput
-            style={styles.input}
-            placeholder="Check-in (YYYY-MM-DD HH:mm)"
-            placeholderTextColor={colors.inkSoft}
-            value={checkInDateTime}
-            onChangeText={setCheckInDateTime}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Check-out (YYYY-MM-DD HH:mm)"
-            placeholderTextColor={colors.inkSoft}
-            value={checkOutDateTime}
-            onChangeText={setCheckOutDateTime}
-          />
-        </>
-      )}
+        {type === 'HOTEL' && (
+          <>
+            <TextField label="Hotel" value={name} onChangeText={setName} error={nameError} />
+            <DateField
+              label="Check-in"
+              mode="datetime"
+              value={checkInDateTime}
+              onChange={setCheckInDateTime}
+              defaultDay={defaultDay}
+              optional
+            />
+            <DateField
+              label="Check-out"
+              mode="datetime"
+              value={checkOutDateTime}
+              onChange={setCheckOutDateTime}
+              defaultDay={checkInDateTime.slice(0, 10) || defaultDay}
+              optional
+            />
+          </>
+        )}
 
-      {type === 'FLIGHT' && (
-        <>
-          <View style={{ marginBottom: 8 }}>
-            <AirportField value={departureAirport} onChange={setDepartureAirport} placeholder="Departure airport" />
-          </View>
-          <View style={{ marginBottom: 8 }}>
-            <AirportField value={arrivalAirport} onChange={setArrivalAirport} placeholder="Arrival airport" />
-          </View>
-          <TextInput
-            style={styles.input}
-            placeholder="Departure (YYYY-MM-DD HH:mm)"
-            placeholderTextColor={colors.inkSoft}
-            value={departureDateTime}
-            onChangeText={setDepartureDateTime}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Arrival (YYYY-MM-DD HH:mm)"
-            placeholderTextColor={colors.inkSoft}
-            value={arrivalDateTime}
-            onChangeText={setArrivalDateTime}
-          />
-        </>
-      )}
+        {type === 'FLIGHT' && (
+          <>
+            <Field label="From">
+              <AirportField value={departureAirport} onChange={setDepartureAirport} placeholder="City or airport code" />
+            </Field>
+            <Field label="To">
+              <AirportField value={arrivalAirport} onChange={setArrivalAirport} placeholder="City or airport code" />
+            </Field>
+            <DateField
+              label="Departs"
+              mode="datetime"
+              value={departureDateTime}
+              onChange={setDepartureDateTime}
+              defaultDay={defaultDay}
+              optional
+            />
+            <DateField
+              label="Arrives"
+              mode="datetime"
+              value={arrivalDateTime}
+              onChange={setArrivalDateTime}
+              defaultDay={departureDateTime.slice(0, 10) || defaultDay}
+              optional
+            />
+            <TextField label="Flight" placeholder="Optional, e.g. SQ 638" value={name} onChangeText={setName} />
+          </>
+        )}
 
-      {error && <Text style={{ color: colors.owe, marginTop: 4 }}>{error}</Text>}
-
-      <View style={styles.rowActions}>
-        <Button label={saving ? 'Saving…' : initial ? 'Save' : 'Add'} onPress={handleSave} disabled={saving} />
-        {onCancel && <Button label="Cancel" variant="secondary" onPress={onCancel} />}
-      </View>
+        {error && <Text style={styles.error}>{error}</Text>}
+      </ScrollView>
     </View>
   );
 }
@@ -355,26 +389,28 @@ export function ItineraryTab({
   trip,
   places,
   onChange,
+  onEditDates,
 }: {
   tripId: string;
   trip: TripDetail;
   places: Place[];
   onChange: () => void;
+  /** Opens the trip-dates editor (owned by the trip screen, next to the hero). */
+  onEditDates: () => void;
 }) {
   const colors = useTheme();
   const showDialog = useDialog();
   const styles = createStyles(colors);
-  const [startDate, setStartDate] = useState(trip.startDate?.slice(0, 10) ?? '');
-  const [endDate, setEndDate] = useState(trip.endDate?.slice(0, 10) ?? '');
-  const [dateError, setDateError] = useState<string | null>(null);
-  const [showAddForm, setShowAddForm] = useState(false);
+  // null = closed, 'new' = adding, else the place being edited.
+  const [editing, setEditing] = useState<Place | 'new' | null>(null);
   const [showDiscover, setShowDiscover] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [weather, setWeather] = useState<Map<string, DayForecast>>(new Map());
 
+  const startDate = trip.startDate?.slice(0, 10) ?? '';
+  const endDate = trip.endDate?.slice(0, 10) ?? '';
   const days = startDate && endDate ? daysBetween(startDate, endDate) : [];
 
   useEffect(() => {
@@ -411,19 +447,6 @@ export function ItineraryTab({
 
   const routeStops = toRouteStops(places);
 
-  const handleSaveDates = async () => {
-    setDateError(null);
-    try {
-      await api.updateTrip(tripId, {
-        startDate: startDate || undefined,
-        endDate: endDate || undefined,
-      });
-      onChange();
-    } catch (err) {
-      setDateError(err instanceof Error ? err.message : 'Could not save dates');
-    }
-  };
-
   const handleDelete = (place: Place) => {
     showDialog({
       title: 'Remove item',
@@ -451,40 +474,35 @@ export function ItineraryTab({
     });
   };
 
-  const renderRow = (place: Place, opts?: { day?: string; index?: number }) => {
-    if (editingId === place.id) {
-      return (
-        <PlaceEditor
-          key={place.id}
-          tripId={tripId}
-          initial={place}
-          onCancel={() => setEditingId(null)}
-          onSaved={() => {
-            setEditingId(null);
-            onChange();
-          }}
-        />
-      );
-    }
-
-    const subtitle = placeSubtitle(place, opts?.day);
+  const renderRow = (place: Place, opts: { day?: string; stopNumber?: number; last: boolean }) => {
+    const subtitle = placeSubtitle(place, opts.day);
     const isTransitionDay =
       place.type === 'HOTEL' &&
-      !!opts?.day &&
+      !!opts.day &&
       (opts.day === place.checkIn?.slice(0, 10) || opts.day === place.checkOut?.slice(0, 10));
     const isExpanded = expandedId === place.id;
 
     return (
-      <View key={place.id}>
-        <Tappable style={styles.row} onPress={() => setExpandedId(isExpanded ? null : place.id)}>
-          {opts?.index !== undefined && <Text style={styles.stopIndex}>{opts.index + 1}</Text>}
+      <View key={place.id} style={[styles.rowWrap, !opts.last && styles.rowDivider]}>
+        <Tappable
+          style={styles.row}
+          onPress={() => setExpandedId(isExpanded ? null : place.id)}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: isExpanded }}
+        >
+          <View style={[styles.badge, place.type !== 'STOP' && styles.badgeMuted]}>
+            {place.type === 'STOP' && opts.stopNumber !== undefined ? (
+              <Text style={styles.badgeNumber}>{opts.stopNumber}</Text>
+            ) : (
+              <TypeIcon type={place.type} color={place.type === 'STOP' ? colors.onRoute : colors.heroText} size={15} />
+            )}
+          </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.rowTitle}>
-              {place.type === 'FLIGHT' ? '✈ ' : place.type === 'HOTEL' ? '🏨 ' : ''}
+            <Text style={styles.rowTitle} numberOfLines={2}>
               {place.name}
             </Text>
             {subtitle ? (
-              <Text style={[styles.rowSub, isTransitionDay && { fontWeight: '600', color: colors.route }]}>
+              <Text style={[styles.rowSub, isTransitionDay && styles.rowSubStrong]} numberOfLines={2}>
                 {subtitle}
               </Text>
             ) : null}
@@ -492,7 +510,7 @@ export function ItineraryTab({
         </Tappable>
         {isExpanded && (
           <View style={styles.rowActions}>
-            <Button label="Edit" variant="text" onPress={() => setEditingId(place.id)} />
+            <Button label="Edit" variant="secondary" size="sm" onPress={() => setEditing(place)} />
             <Button
               label={deletingId === place.id ? 'Removing…' : 'Remove'}
               variant="text"
@@ -506,38 +524,99 @@ export function ItineraryTab({
     );
   };
 
+  /** Rows for one list, numbering only the stops (hotels and flights get icons). */
+  const renderRows = (list: Place[], day?: string) => {
+    let stopNumber = 0;
+    return list.map((place, i) =>
+      renderRow(place, {
+        day,
+        stopNumber: place.type === 'STOP' ? ++stopNumber : undefined,
+        last: i === list.length - 1,
+      }),
+    );
+  };
+
   return (
     <View>
-      <View style={styles.dateForm}>
-        <TextInput
-          style={[styles.input, { flex: 1 }]}
-          placeholder="Start (YYYY-MM-DD)"
-          placeholderTextColor={colors.inkSoft}
-          value={startDate}
-          onChangeText={setStartDate}
-        />
-        <TextInput
-          style={[styles.input, { flex: 1 }]}
-          placeholder="End (YYYY-MM-DD)"
-          placeholderTextColor={colors.inkSoft}
-          value={endDate}
-          onChangeText={setEndDate}
-        />
-        <Button label="Save" onPress={handleSaveDates} />
-      </View>
-      {dateError ? <Text style={{ color: colors.owe, marginBottom: 16 }}>{dateError}</Text> : null}
-      {deleteError ? <Text style={{ color: colors.owe, marginBottom: 16 }}>{deleteError}</Text> : null}
+      {deleteError ? <Text style={styles.error}>{deleteError}</Text> : null}
 
       <RouteMap stops={routeStops} />
 
       <View style={styles.planActions}>
-        <Button
-          label={showAddForm ? 'Close' : 'Add to itinerary'}
-          variant="secondary"
-          onPress={() => setShowAddForm(!showAddForm)}
-        />
-        <Button label="Discover places" variant="secondary" onPress={() => setShowDiscover(true)} />
+        <Button label="Add to itinerary" onPress={() => setEditing('new')} style={{ flex: 1 }} />
+        <Button label="Discover places" variant="secondary" onPress={() => setShowDiscover(true)} style={{ flex: 1 }} />
       </View>
+
+      {days.length === 0 ? (
+        <View>
+          <View style={styles.noDates}>
+            <CalendarBlank size={22} color={colors.route} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.noDatesTitle}>Add your travel dates</Text>
+              <Text style={styles.noDatesText}>Then everything you add lands on the right day.</Text>
+            </View>
+            <Button label="Set dates" variant="secondary" size="sm" onPress={onEditDates} />
+          </View>
+          {places.length === 0 ? (
+            <Text style={styles.empty}>Nothing planned yet. Add a stop, a hotel or a flight to start.</Text>
+          ) : (
+            <View style={styles.dayCard}>{renderRows(places)}</View>
+          )}
+        </View>
+      ) : (
+        <View>
+          {days.map((day, i) => {
+            const dayPlaces = byDay.get(day) ?? [];
+            return (
+              <View key={day} style={styles.day}>
+                <View style={styles.dayHead}>
+                  <Text style={styles.dayNumber}>Day {i + 1}</Text>
+                  <Text style={styles.dayDate}>{formatDayLong(day)}</Text>
+                  <View style={{ flex: 1 }} />
+                  <DayWeather forecast={weather.get(day)} />
+                </View>
+                {dayPlaces.length === 0 ? (
+                  <Text style={styles.dayEmpty}>Nothing planned yet</Text>
+                ) : (
+                  <View style={styles.dayCard}>{renderRows(dayPlaces, day)}</View>
+                )}
+              </View>
+            );
+          })}
+
+          {unscheduled.length > 0 && (
+            <View style={styles.day}>
+              <View style={styles.dayHead}>
+                <Text style={styles.dayDate}>Unscheduled</Text>
+              </View>
+              <View style={styles.dayCard}>{renderRows(unscheduled)}</View>
+            </View>
+          )}
+        </View>
+      )}
+
+      <Modal
+        visible={editing !== null}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setEditing(null)}
+      >
+        {editing !== null && (
+          <PlaceEditor
+            key={editing === 'new' ? 'new' : editing.id}
+            tripId={tripId}
+            initial={editing === 'new' ? undefined : editing}
+            defaultDay={days[0]}
+            onCancel={() => setEditing(null)}
+            onSaved={() => {
+              setEditing(null);
+              setExpandedId(null);
+              onChange();
+            }}
+          />
+        )}
+      </Modal>
+
       <DiscoverSheet
         visible={showDiscover}
         tripId={tripId}
@@ -546,106 +625,99 @@ export function ItineraryTab({
         onAdded={onChange}
         onClose={() => setShowDiscover(false)}
       />
-
-      {showAddForm && (
-        <PlaceEditor
-          tripId={tripId}
-          onCancel={() => setShowAddForm(false)}
-          onSaved={() => {
-            setShowAddForm(false);
-            onChange();
-          }}
-        />
-      )}
-
-      {days.length === 0 ? (
-        places.length === 0 ? (
-          <Text style={styles.empty}>No stops yet. Set trip dates to plan day by day.</Text>
-        ) : (
-          places.map((place, index) => renderRow(place, { index }))
-        )
-      ) : (
-        <View>
-          {days.map((day) => (
-            <View key={day} style={{ marginBottom: 20 }}>
-              <Text style={styles.dayHeader}>
-                {formatDay(day)} <DayWeather forecast={weather.get(day)} compact />
-              </Text>
-              {(byDay.get(day) ?? []).length === 0 ? (
-                <Text style={styles.empty}>No stops planned.</Text>
-              ) : (
-                (byDay.get(day) ?? []).map((place) => renderRow(place, { day }))
-              )}
-            </View>
-          ))}
-
-          {unscheduled.length > 0 && (
-            <View style={{ marginBottom: 20 }}>
-              <Text style={[styles.dayHeader, { color: colors.inkSoft }]}>Unscheduled</Text>
-              {unscheduled.map((place) => renderRow(place))}
-            </View>
-          )}
-        </View>
-      )}
     </View>
   );
 }
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
-    planActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
-    dateForm: { flexDirection: 'row', gap: 8, marginBottom: 16 },
-    empty: { color: colors.inkSoft, paddingVertical: 16 },
-    dayHeader: { fontSize: typeScale.subhead, fontWeight: '600', color: colors.ink, marginBottom: 8 },
-    row: {
+    planActions: { flexDirection: 'row', gap: 10, marginTop: 4, marginBottom: 24 },
+    error: { color: colors.owe, fontSize: typeScale.footnote, marginBottom: 12 },
+    empty: { fontSize: typeScale.subhead, lineHeight: 21, color: colors.inkSoft, paddingVertical: 8 },
+
+    noDates: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 14,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.rule,
-      gap: 8,
-    },
-    stopIndex: { color: colors.inkSoft, fontSize: typeScale.caption, width: 18 },
-    rowTitle: { fontSize: typeScale.subhead, fontWeight: '500', color: colors.ink },
-    rowSub: { fontSize: typeScale.caption, color: colors.inkSoft, marginTop: 2 },
-    rowActions: { flexDirection: 'row', gap: 16, paddingVertical: 8, paddingLeft: 12 },
-    input: {
-      borderWidth: 1,
-      borderColor: colors.rule,
-      borderRadius: radius.sm,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      backgroundColor: colors.surface,
-      color: colors.ink,
-      marginBottom: 8,
-    },
-    editor: {
-      borderWidth: 1,
-      borderColor: colors.rule,
-      borderRadius: radius.sm,
-      padding: 12,
+      gap: 12,
+      padding: 14,
+      borderRadius: radius.md,
+      backgroundColor: colors.routeSoft,
       marginBottom: 16,
+    },
+    noDatesTitle: { fontSize: typeScale.subhead, fontWeight: '600', color: colors.ink },
+    noDatesText: { fontSize: typeScale.footnote, color: colors.inkSoft, marginTop: 2 },
+
+    day: { marginBottom: 22 },
+    dayHead: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 8, paddingHorizontal: 2 },
+    dayNumber: {
+      fontSize: typeScale.caption,
+      fontWeight: '700',
+      letterSpacing: 0.6,
+      textTransform: 'uppercase',
+      color: colors.route,
+    },
+    dayDate: { fontSize: typeScale.body, fontWeight: '600', letterSpacing: -0.2, color: colors.ink },
+    dayEmpty: {
+      fontSize: typeScale.footnote,
+      color: colors.inkSoft,
+      paddingVertical: 14,
+      paddingHorizontal: 14,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderStyle: 'dashed',
+      borderColor: colors.rule,
+    },
+    dayCard: { borderRadius: radius.md, backgroundColor: colors.surface, overflow: 'hidden' },
+
+    rowWrap: { paddingHorizontal: 14 },
+    rowDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.rule },
+    row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 13 },
+    badge: {
+      width: 30,
+      height: 30,
+      borderRadius: radius.sm + 1,
+      backgroundColor: colors.route,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    badgeMuted: { backgroundColor: colors.routeSoft },
+    badgeNumber: { fontSize: typeScale.footnote, fontWeight: '700', color: colors.onRoute, fontVariant: ['tabular-nums'] },
+    rowTitle: { fontSize: typeScale.subhead, fontWeight: '600', color: colors.ink },
+    rowSub: { fontSize: typeScale.footnote, color: colors.inkSoft, marginTop: 2 },
+    rowSubStrong: { fontWeight: '600', color: colors.route },
+    rowActions: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingBottom: 12, paddingLeft: 42 },
+
+    sheet: { flex: 1, backgroundColor: colors.bg },
+    sheetHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
       backgroundColor: colors.surface,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.rule,
     },
-    typeRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
-    typeButton: {
-      borderWidth: 1,
-      borderColor: colors.rule,
+    sheetTitle: { fontSize: typeScale.body, fontWeight: '600', color: colors.ink },
+    sheetBody: { padding: 20 },
+    segmented: {
+      flexDirection: 'row',
+      padding: 3,
+      borderRadius: radius.sm + 3,
+      backgroundColor: colors.rule,
+      marginBottom: 20,
+    },
+    segment: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      minHeight: 38,
       borderRadius: radius.sm,
-      paddingHorizontal: 12,
-      paddingVertical: 6,
     },
-    typeButtonActive: { backgroundColor: colors.route, borderColor: colors.route },
-    typeButtonText: { fontSize: typeScale.caption, color: colors.ink },
-    typeButtonTextActive: { color: colors.onRoute },
-    hint: { fontSize: typeScale.caption, color: colors.inkSoft, marginTop: -4, marginBottom: 8 },
-    resultRow: {
-      borderWidth: 1,
-      borderColor: colors.rule,
-      borderTopWidth: 0,
-      paddingHorizontal: 10,
-      paddingVertical: 8,
-    },
-    resultText: { fontSize: typeScale.footnote, color: colors.ink },
+    segmentSelected: { backgroundColor: colors.surface, boxShadow: '0 1px 3px rgba(0, 0, 0, 0.12)' },
+    segmentLabel: { fontSize: typeScale.footnote, fontWeight: '500', color: colors.inkSoft },
+    segmentLabelSelected: { fontWeight: '600', color: colors.ink },
   });
 }

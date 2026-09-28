@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import type { TripDetail } from '../api';
 import { api } from '../api';
+import { initials } from '../initials';
 import { radius, typeScale, useTheme, type ThemeColors } from '../theme';
 import { Button } from './Button';
+import { TextField } from './Field';
 
 export function MembersTab({
   tripId,
@@ -22,9 +24,13 @@ export function MembersTab({
   const [email, setEmail] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
 
   const handleAddMember = async () => {
-    if (!name.trim()) return;
+    if (!name.trim()) {
+      setNameError('Enter their name.');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -48,104 +54,102 @@ export function MembersTab({
     }
   };
 
+  const rows = trip.members.length + trip.invites.length;
+
   return (
     <View>
-      {trip.members.map((m) => (
-        <View style={styles.row} key={m.userId}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.rowTitle}>{m.user.name}</Text>
-            {!m.user.isPlaceholder && <Text style={styles.rowSub}>{m.user.email}</Text>}
-          </View>
-          <View style={{ flexDirection: 'row', gap: 6 }}>
-            {m.role === 'owner' && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>owner</Text>
-              </View>
-            )}
-            {m.user.isPlaceholder && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>not registered</Text>
-              </View>
-            )}
-          </View>
-        </View>
-      ))}
-
-      {trip.invites.map((invite) => (
-        <View style={styles.row} key={invite.id}>
-          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text style={styles.rowTitle}>{invite.email}</Text>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>pending</Text>
+      <Text style={styles.heading}>
+        {trip.members.length} {trip.members.length === 1 ? 'traveler' : 'travelers'}
+        {trip.invites.length > 0 ? ` · ${trip.invites.length} invited` : ''}
+      </Text>
+      <View style={styles.card}>
+        {trip.members.map((m, i) => (
+          <View style={[styles.row, i < rows - 1 && styles.divider]} key={m.userId}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{initials(m.user.name)}</Text>
             </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.rowTitle}>{m.user.name}</Text>
+              <Text style={styles.rowSub} numberOfLines={1}>
+                {m.user.isPlaceholder ? 'Added by name, no account yet' : m.user.email}
+              </Text>
+            </View>
+            {m.role === 'owner' && <Text style={styles.tag}>Organizer</Text>}
           </View>
-          {isOwner && (
-            <Button label="Cancel" variant="text" tone="danger" onPress={() => handleCancelInvite(invite.id)} />
-          )}
-        </View>
-      ))}
+        ))}
+
+        {trip.invites.map((invite, i) => (
+          <View style={[styles.row, trip.members.length + i < rows - 1 && styles.divider]} key={invite.id}>
+            <View style={[styles.avatar, styles.avatarPending]}>
+              <Text style={[styles.avatarText, { color: colors.inkSoft }]}>@</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.rowTitle} numberOfLines={1}>
+                {invite.email}
+              </Text>
+              <Text style={styles.rowSub}>Invite sent, not joined yet</Text>
+            </View>
+            {isOwner && (
+              <Button label="Cancel" variant="text" tone="danger" onPress={() => handleCancelInvite(invite.id)} />
+            )}
+          </View>
+        ))}
+      </View>
 
       {isOwner && (
-        <View>
-          <View style={styles.form}>
-            <TextInput
-              style={[styles.input, { flex: 1 }]}
-              placeholder="Name"
-              placeholderTextColor={colors.inkSoft}
-              value={name}
-              onChangeText={setName}
-            />
-            <TextInput
-              style={[styles.input, { flex: 1 }]}
-              placeholder="Email (optional)"
-              placeholderTextColor={colors.inkSoft}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              value={email}
-              onChangeText={setEmail}
-            />
-          </View>
-          <Button
-            label={saving ? 'Adding…' : 'Add member'}
-            onPress={handleAddMember}
-            disabled={saving}
-            style={{ marginTop: 8 }}
+        <View style={styles.addCard}>
+          <Text style={styles.addTitle}>Add someone</Text>
+          <Text style={styles.addText}>
+            Add them by name to split costs straight away. With an email, they can also sign in and see the trip.
+          </Text>
+          <TextField
+            label="Name"
+            value={name}
+            onChangeText={(v) => {
+              setName(v);
+              if (nameError) setNameError(null);
+            }}
+            error={nameError}
           />
+          <TextField
+            label="Email"
+            placeholder="Optional"
+            autoCapitalize="none"
+            keyboardType="email-address"
+            value={email}
+            onChangeText={setEmail}
+          />
+          {error && <Text style={styles.error}>{error}</Text>}
+          <Button label={saving ? 'Adding…' : 'Add to trip'} onPress={handleAddMember} disabled={saving} />
         </View>
       )}
-      {error && <Text style={{ color: colors.owe, marginTop: 8 }}>{error}</Text>}
+      {!isOwner && error && <Text style={styles.error}>{error}</Text>}
     </View>
   );
 }
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.rule,
-  },
-  rowTitle: { fontSize: typeScale.subhead, fontWeight: '500', color: colors.ink },
-  rowSub: { fontSize: typeScale.caption, color: colors.inkSoft, marginTop: 2 },
-  badge: {
-    backgroundColor: colors.ledgerSoft,
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  badgeText: { fontSize: typeScale.caption, color: colors.inkSoft },
-  form: { flexDirection: 'row', gap: 8, marginTop: 16 },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.rule,
-    borderRadius: radius.sm,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: colors.surface,
-    color: colors.ink,
-  },
+    heading: { fontSize: typeScale.footnote, fontWeight: '600', color: colors.inkSoft, marginBottom: 8 },
+    card: { borderRadius: radius.md, backgroundColor: colors.surface, paddingHorizontal: 14 },
+    row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
+    divider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.rule },
+    avatar: {
+      width: 36,
+      height: 36,
+      borderRadius: radius.sm + 3,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.routeSoft,
+    },
+    avatarPending: { backgroundColor: colors.bg, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.rule },
+    avatarText: { fontSize: typeScale.footnote, fontWeight: '700', color: colors.route },
+    rowTitle: { fontSize: typeScale.subhead, fontWeight: '600', color: colors.ink },
+    rowSub: { fontSize: typeScale.footnote, color: colors.inkSoft, marginTop: 1 },
+    tag: { fontSize: typeScale.caption, fontWeight: '600', color: colors.ledger },
+    addCard: { marginTop: 24, padding: 16, borderRadius: radius.md, backgroundColor: colors.surface },
+    addTitle: { fontSize: typeScale.body, fontWeight: '600', color: colors.ink },
+    addText: { fontSize: typeScale.footnote, lineHeight: 18, color: colors.inkSoft, marginTop: 4, marginBottom: 16 },
+    error: { fontSize: typeScale.footnote, color: colors.owe, marginBottom: 10 },
   });
 }

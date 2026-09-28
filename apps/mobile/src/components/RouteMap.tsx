@@ -5,6 +5,7 @@ import { hueForIndex, NEUTRAL_HUE } from '../palette';
 import { LEAFLET_CSS, LEAFLET_JS } from '../vendor/leaflet';
 import { radius, typeScale, useTheme, type ThemeColors } from '../theme';
 import { Tappable } from './Tappable';
+import { ArrowSquareOut } from '../icons';
 
 export interface RouteStop {
   id: string;
@@ -153,7 +154,10 @@ export function RouteMap({ stops }: { stops: RouteStop[] }) {
       )}
       {stops.length > 1 && (
         <Tappable onPress={() => Linking.openURL(googleMapsRouteUrl(stops)).catch(() => {})}>
-          <Text style={styles.link}>Open full route in Google Maps ↗</Text>
+          <View style={styles.linkRow}>
+            <Text style={styles.link}>Open full route in Google Maps</Text>
+            <ArrowSquareOut size={12} color={colors.route} />
+          </View>
         </Tappable>
       )}
     </View>
@@ -164,6 +168,7 @@ function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     container: { marginVertical: 8 },
     map: { height: MAP_HEIGHT, width: '100%', borderRadius: radius.sm, borderWidth: 1, borderColor: colors.rule },
-    link: { color: colors.route, fontSize: typeScale.footnote, marginTop: 6, textAlign: 'center' },
+    linkRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 6 },
+    link: { color: colors.route, fontSize: typeScale.footnote, fontWeight: '500' },
   });
 }

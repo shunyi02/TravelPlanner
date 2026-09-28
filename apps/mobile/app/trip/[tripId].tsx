@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router';
 import { api, type TripDetail, type Expense } from '../../src/api';
 import { useAuth } from '../../src/authContext';
@@ -9,9 +9,11 @@ import { ExpensesTab } from '../../src/components/ExpensesTab';
 import { BalancesTab } from '../../src/components/BalancesTab';
 import { MembersTab } from '../../src/components/MembersTab';
 import { ReportTab } from '../../src/components/ReportTab';
+import { TripDatesSheet } from '../../src/components/TripDatesSheet';
 import { TripHero } from '../../src/components/TripHero';
 import { radius, typeScale, useTheme, type ThemeColors } from '../../src/theme';
 import { Button } from '../../src/components/Button';
+import { TextField } from '../../src/components/Field';
 
 /** Three top-level groups; the ones holding more than one view get a segmented control. */
 const GROUPS = {
@@ -48,6 +50,7 @@ export default function TripDetailScreen() {
     people: 'members',
   });
   const [error, setError] = useState<string | null>(null);
+  const [editingDates, setEditingDates] = useState(false);
   const [currencyInput, setCurrencyInput] = useState('');
   const [currencyError, setCurrencyError] = useState<string | null>(null);
 
@@ -112,7 +115,7 @@ export default function TripDetailScreen() {
   return (
     // Child 1 (the group bar) pins under the navigation header once the hero scrolls away.
     <ScrollView style={styles.container} stickyHeaderIndices={[1]}>
-      <TripHero trip={trip} />
+      <TripHero trip={trip} onEditDates={() => setEditingDates(true)} />
 
       <View style={styles.groupBar} accessibilityRole="tablist">
         {(Object.keys(GROUPS) as Group[]).map((g) => {
@@ -156,7 +159,15 @@ export default function TripDetailScreen() {
           </View>
         )}
 
-        {view === 'itinerary' && <ItineraryTab tripId={tripId} trip={trip} places={trip.places} onChange={load} />}
+        {view === 'itinerary' && (
+          <ItineraryTab
+            tripId={tripId}
+            trip={trip}
+            places={trip.places}
+            onChange={load}
+            onEditDates={() => setEditingDates(true)}
+          />
+        )}
         {view === 'bookings' && <BookingsTab places={trip.places} memberNames={memberNames} />}
         {view === 'expenses' && (
           <ExpensesTab
@@ -168,7 +179,14 @@ export default function TripDetailScreen() {
             onChange={load}
           />
         )}
-        {view === 'balances' && <BalancesTab tripId={tripId} memberNames={memberNames} />}
+        {view === 'balances' && (
+          <BalancesTab
+            tripId={tripId}
+            memberNames={memberNames}
+            currency={trip.currency}
+            currentUserId={currentUser?.id}
+          />
+        )}
         {view === 'report' && (
           <ReportTab
             tripId={tripId}
@@ -189,31 +207,40 @@ export default function TripDetailScreen() {
             {isOwner && (
               <View style={styles.settings}>
                 <Text style={styles.sectionLabel}>Trip settings</Text>
-                <Text style={styles.fieldLabel}>Currency</Text>
                 <View style={styles.currencyRow}>
-                  <TextInput
-                    style={styles.currencyInput}
-                    placeholder="USD"
-                    placeholderTextColor={colors.inkSoft}
-                    autoCapitalize="characters"
-                    maxLength={3}
-                    value={currencyInput}
-                    onChangeText={(v) => setCurrencyInput(v.toUpperCase())}
-                    accessibilityLabel="Trip currency"
-                  />
+                  <View style={{ width: 120 }}>
+                    <TextField
+                      label="Currency"
+                      placeholder="USD"
+                      autoCapitalize="characters"
+                      maxLength={3}
+                      value={currencyInput}
+                      onChangeText={(v) => setCurrencyInput(v.toUpperCase())}
+                      error={currencyError}
+                    />
+                  </View>
                   <Button
                     label="Save"
                     variant="secondary"
                     onPress={handleSaveCurrency}
                     disabled={currencyInput.trim() === trip.currency}
+                    style={styles.currencySave}
                   />
                 </View>
-                {currencyError && <Text style={styles.error}>{currencyError}</Text>}
+                <Text style={styles.settingsNote}>Expenses and the report are shown in this currency.</Text>
               </View>
             )}
           </>
         )}
       </View>
+      <TripDatesSheet
+        // Remount when the saved dates change, so the fields start from them.
+        key={`${trip.startDate}-${trip.endDate}`}
+        trip={trip}
+        visible={editingDates}
+        onClose={() => setEditingDates(false)}
+        onSaved={load}
+      />
     </ScrollView>
   );
 }
@@ -256,26 +283,11 @@ function createStyles(colors: ThemeColors) {
     segmentLabel: { fontSize: typeScale.footnote, fontWeight: '500', color: colors.inkSoft },
     segmentLabelActive: { color: colors.ink, fontWeight: '600' },
 
-    settings: {
-      marginTop: 32,
-      paddingTop: 20,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.rule,
-    },
+    settings: { marginTop: 24, padding: 16, borderRadius: radius.md, backgroundColor: colors.surface },
     sectionLabel: { fontSize: typeScale.body, fontWeight: '600', color: colors.ink, marginBottom: 12 },
-    fieldLabel: { fontSize: typeScale.footnote, color: colors.inkSoft, marginBottom: 6 },
-    currencyRow: { flexDirection: 'row', gap: 8 },
-    currencyInput: {
-      borderWidth: 1,
-      borderColor: colors.rule,
-      borderRadius: radius.sm,
-      paddingHorizontal: 12,
-      minHeight: 44,
-      backgroundColor: colors.surface,
-      color: colors.ink,
-      width: 90,
-      fontVariant: ['tabular-nums'],
-    },
-    error: { color: colors.owe, marginTop: 8 },
+    currencyRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+    // Lines the button up with the input, below the field's label.
+    currencySave: { marginTop: 22 },
+    settingsNote: { fontSize: typeScale.footnote, color: colors.inkSoft },
   });
 }

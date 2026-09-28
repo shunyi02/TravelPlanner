@@ -14,6 +14,7 @@ import { radius, typeScale, useTheme, type ThemeColors } from '../theme';
 import { Button } from './Button';
 import { LocationSearchField } from './LocationSearchField';
 import { Tappable } from './Tappable';
+import { ArrowSquareOut, Check, MapPin } from '../icons';
 
 interface Area {
   id: string;
@@ -284,7 +285,7 @@ export function DiscoverSheet({
                         </Tappable>
                       ) : (
                         <View style={[styles.photo, styles.photoEmpty]}>
-                          <Text style={styles.photoEmptyGlyph}>📍</Text>
+                          <MapPin size={26} color={colors.route} weight="duotone" />
                         </View>
                       )}
                       <View style={styles.cardBody}>
@@ -295,12 +296,18 @@ export function DiscoverSheet({
                           {s.kind} · {formatDistance(distanceKm(area.lat, area.lng, s.lat, s.lng))}
                         </Text>
                         <Tappable onPress={() => Linking.openURL(s.url)} accessibilityRole="link" hitSlop={6}>
-                          <Text style={styles.link}>Wikipedia ↗</Text>
+                          <View style={styles.linkRow}>
+                            <Text style={styles.link}>Wikipedia</Text>
+                            <ArrowSquareOut size={12} color={colors.route} />
+                          </View>
                         </Tappable>
                         <View style={styles.actions}>
                           {done ? (
                             <>
-                              <Text style={styles.added}>✓ {addedLabel(done.day)}</Text>
+                              <View style={styles.linkRow}>
+                                <Check size={14} color={colors.route} weight="bold" />
+                                <Text style={styles.added}>{addedLabel(done.day)}</Text>
+                              </View>
                               <Button
                                 label="Undo"
                                 variant="text"
@@ -422,11 +429,11 @@ function createStyles(colors: ThemeColors) {
     cardAdded: { backgroundColor: colors.routeSoft },
     photo: { width: 88, height: 88, borderRadius: radius.sm, backgroundColor: colors.rule },
     photoEmpty: { alignItems: 'center', justifyContent: 'center', backgroundColor: colors.routeSoft },
-    photoEmptyGlyph: { fontSize: 26 },
     cardBody: { flex: 1 },
     name: { fontSize: typeScale.subhead, fontWeight: '600', color: colors.ink },
     meta: { fontSize: typeScale.footnote, color: colors.inkSoft, marginTop: 2 },
-    link: { fontSize: typeScale.footnote, fontWeight: '500', color: colors.route, marginTop: 4 },
+    linkRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+    link: { fontSize: typeScale.footnote, fontWeight: '500', color: colors.route },
     actions: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 10, flexWrap: 'wrap' },
     added: { fontSize: typeScale.footnote, fontWeight: '600', color: colors.route },
     note: { fontSize: typeScale.footnote, color: colors.inkSoft },

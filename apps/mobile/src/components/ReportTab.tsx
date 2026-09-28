@@ -376,7 +376,7 @@ export function ReportTab({
       <View style={styles.card}>
         <View style={styles.cardHead}>
           <Text style={styles.heading}>Paid vs. used</Text>
-          <Button label="See who owes whom →" variant="text" onPress={onGoToBalances} />
+          <Button label="See who owes whom" variant="text" onPress={onGoToBalances} />
         </View>
         <Text style={[styles.note, { marginBottom: 12 }]}>
           What each person paid for, next to their share of what was spent. The difference is what the Balances tab

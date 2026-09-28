@@ -12,6 +12,7 @@ import { AddTripModal } from '../src/components/AddTripModal';
 import { BrandMark } from '../src/components/BrandMark';
 import { Button } from '../src/components/Button';
 import { useDialog } from '../src/components/Dialog';
+import { DotsThree } from '../src/icons';
 
 export default function TripListScreen() {
   const colors = useTheme();
@@ -221,7 +222,7 @@ function TripCard({
         hitSlop={10}
         style={({ pressed }) => [styles.moreButton, pressed && { opacity: 0.55 }]}
       >
-        <Text style={styles.moreGlyph}>⋯</Text>
+        <DotsThree size={22} color={colors.inkSoft} weight="bold" />
       </Pressable>
     </View>
   );
@@ -309,7 +310,6 @@ function createStyles(colors: ThemeColors) {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    moreGlyph: { fontSize: 20, lineHeight: 22, color: colors.inkSoft },
     skeletonLine: { height: 11, borderRadius: 4, backgroundColor: colors.rule },
 
     state: { flex: 1, justifyContent: 'center', paddingHorizontal: 32, paddingBottom: 48 },

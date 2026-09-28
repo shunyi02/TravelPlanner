@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { api } from '../src/api';
 import { useAuth } from '../src/authContext';
 import { radius, typeScale, useTheme, type ThemeColors } from '../src/theme';
 import { initials } from '../src/initials';
 import { Button } from '../src/components/Button';
+import { CaretRight } from '../src/icons';
+import { TextField } from '../src/components/Field';
+import { Tappable } from '../src/components/Tappable';
 
 export default function ProfileScreen() {
   const colors = useTheme();
@@ -58,40 +61,46 @@ export default function ProfileScreen() {
   if (!currentUser) return null;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ padding: 20 }}>
-      <View style={styles.avatarRow}>
-        {avatarUrl ? (
-          <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
-        ) : (
-          <View style={styles.avatarPlaceholder}>
-            <Text style={styles.avatarInitials}>{initials(name || currentUser.name)}</Text>
-          </View>
-        )}
-        <Button label={avatarUrl ? 'Change photo' : 'Add photo'} variant="secondary" size="sm" onPress={pickImage} />
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.identity}>
+        <Tappable onPress={pickImage} accessibilityRole="button" accessibilityLabel={avatarUrl ? 'Change photo' : 'Add photo'}>
+          {avatarUrl ? (
+            <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+          ) : (
+            <View style={styles.avatarPlaceholder}>
+              <Text style={styles.avatarInitials}>{initials(name || currentUser.name)}</Text>
+            </View>
+          )}
+        </Tappable>
+        <Button label={avatarUrl ? 'Change photo' : 'Add photo'} variant="text" onPress={pickImage} />
       </View>
 
-      <Text style={styles.label}>Name</Text>
-      <TextInput style={styles.input} value={name} onChangeText={setName} placeholderTextColor={colors.inkSoft} />
-
-      <Text style={styles.label}>Email</Text>
-      <Text style={styles.readOnly}>{currentUser.email}</Text>
-
-      {error ? <Text style={{ color: colors.owe, marginTop: 8 }}>{error}</Text> : null}
-      {saved ? <Text style={{ color: colors.route, marginTop: 8 }}>Saved.</Text> : null}
-
-      <Button label={saving ? 'Saving…' : 'Save'} onPress={handleSave} disabled={saving} style={{ marginTop: 16 }} />
-
-      <View style={styles.section}>
-        <Pressable
-          onPress={() => router.push('/settings')}
-          accessibilityRole="button"
-          style={({ pressed }) => [styles.linkRow, pressed && { opacity: 0.6 }]}
-        >
-          <Text style={styles.linkRowText}>Settings</Text>
-          <Text style={styles.linkRowChevron}>›</Text>
-        </Pressable>
-        <Button label="Log out" variant="text" tone="danger" onPress={logout} style={styles.logout} />
+      <View style={styles.card}>
+        <TextField
+          label="Name"
+          value={name}
+          onChangeText={(v) => {
+            setName(v);
+            setSaved(false);
+          }}
+          error={name.trim() ? error : "Your name can't be empty."}
+        />
+        <Text style={styles.label}>Email</Text>
+        <Text style={styles.readOnly}>{currentUser.email}</Text>
+        <View style={styles.saveRow}>
+          {saved ? <Text style={styles.saved}>Saved</Text> : <View />}
+          <Button label={saving ? 'Saving…' : 'Save'} size="sm" onPress={handleSave} disabled={saving || !name.trim()} />
+        </View>
       </View>
+
+      <View style={styles.card}>
+        <Tappable onPress={() => router.push('/settings')} accessibilityRole="button" style={styles.linkRow}>
+          <Text style={styles.linkRowText}>Appearance and theme</Text>
+          <CaretRight size={16} color={colors.inkSoft} />
+        </Tappable>
+      </View>
+
+      <Button label="Log out" variant="secondary" tone="danger" onPress={logout} style={styles.logout} />
     </ScrollView>
   );
 }
@@ -99,39 +108,25 @@ export default function ProfileScreen() {
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.bg },
-    avatarRow: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 24 },
-    avatarImage: { width: 72, height: 72, borderRadius: 36 },
+    content: { padding: 20, paddingBottom: 48, width: '100%', maxWidth: 560, alignSelf: 'center' },
+    identity: { alignItems: 'center', gap: 4, marginBottom: 20 },
+    avatarImage: { width: 88, height: 88, borderRadius: radius.lg + 8 },
     avatarPlaceholder: {
-      width: 72,
-      height: 72,
-      borderRadius: 36,
+      width: 88,
+      height: 88,
+      borderRadius: radius.lg + 8,
       backgroundColor: colors.routeSoft,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    avatarInitials: { fontSize: typeScale.title2, fontWeight: '700', color: colors.route },
-    label: { fontSize: typeScale.caption, color: colors.inkSoft, marginTop: 16, marginBottom: 6 },
-    input: {
-      borderWidth: 1,
-      borderColor: colors.rule,
-      borderRadius: radius.sm,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      backgroundColor: colors.surface,
-      color: colors.ink,
-    },
-    readOnly: { color: colors.inkSoft, paddingVertical: 10 },
-    section: { marginTop: 36, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.rule },
-    linkRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      minHeight: 52,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.rule,
-    },
-    linkRowText: { fontSize: typeScale.body, color: colors.ink },
-    linkRowChevron: { fontSize: typeScale.title2, color: colors.inkSoft },
-    logout: { alignSelf: 'flex-start', marginTop: 20 },
+    avatarInitials: { fontSize: typeScale.title1, fontWeight: '700', color: colors.route },
+    card: { padding: 16, borderRadius: radius.md, backgroundColor: colors.surface, marginBottom: 16 },
+    label: { fontSize: typeScale.footnote, fontWeight: '600', color: colors.inkSoft, marginBottom: 4 },
+    readOnly: { fontSize: typeScale.subhead, color: colors.ink },
+    saveRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 },
+    saved: { fontSize: typeScale.footnote, fontWeight: '600', color: colors.route },
+    linkRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 28 },
+    linkRowText: { fontSize: typeScale.subhead, color: colors.ink },
+    logout: { marginTop: 8 },
   });
 }
