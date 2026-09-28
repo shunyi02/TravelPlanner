@@ -58,13 +58,30 @@ async function parseOrThrow<T>(res: Response): Promise<T> {
   return res.json();
 }
 
+/** The refresh in flight, shared by every request that hits a 401 meanwhile. The backend
+ *  rotates refresh tokens, so a second refresh with the same token is rejected as revoked
+ *  and would log the user out. */
+let refreshing: Promise<void> | null = null;
+
+function refreshOnce(): Promise<void> {
+  if (!refreshing) {
+    refreshing = refreshTokens(refreshToken!)
+      .then(persistTokens)
+      .finally(() => {
+        refreshing = null;
+      });
+  }
+  return refreshing;
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  let res = await rawRequest<T>(path, options, accessToken);
+  const sentWith = accessToken;
+  let res = await rawRequest<T>(path, options, sentWith);
 
   if (res.status === 401 && refreshToken) {
     try {
-      const refreshed = await refreshTokens(refreshToken);
-      await persistTokens(refreshed);
+      // Another request may already have refreshed while this one was out; then just retry.
+      if (accessToken === sentWith) await refreshOnce();
       res = await rawRequest<T>(path, options, accessToken);
     } catch {
       await clearTokens();

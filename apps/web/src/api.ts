@@ -66,16 +66,33 @@ async function refreshTokens(currentRefreshToken: string) {
   return parseOrThrow<{ accessToken: string; refreshToken: string }>(res);
 }
 
+/** The refresh in flight, shared by every request that hits a 401 meanwhile. The backend
+ *  rotates refresh tokens, so a second refresh with the same token is rejected as revoked
+ *  and would log the user out. */
+let refreshing: Promise<void> | null = null;
+
+function refreshOnce(refresh: string): Promise<void> {
+  if (!refreshing) {
+    refreshing = refreshTokens(refresh)
+      .then(persistTokens)
+      .finally(() => {
+        refreshing = null;
+      });
+  }
+  return refreshing;
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  let res = await rawRequest(path, options, getAccessToken());
+  const sentWith = getAccessToken();
+  let res = await rawRequest(path, options, sentWith);
 
   if (res.status === 401) {
     const refresh = getRefreshToken();
     if (refresh) {
       try {
-        const tokens = await refreshTokens(refresh);
-        persistTokens(tokens);
-        res = await rawRequest(path, options, tokens.accessToken);
+        // Another request may already have refreshed while this one was out; then just retry.
+        if (getAccessToken() === sentWith) await refreshOnce(refresh);
+        res = await rawRequest(path, options, getAccessToken());
       } catch {
         clearTokens();
         sessionExpiredHandler?.();
