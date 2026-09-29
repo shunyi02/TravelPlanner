@@ -1,4 +1,5 @@
 import type { Balance, Settlement } from '@travel-planner/shared';
+import { ApiError, NETWORK_ERROR_MESSAGE, toApiError } from '@travel-planner/shared';
 
 const BASE_URL = '/api';
 const ACCESS_TOKEN_KEY = 'accessToken';
@@ -37,21 +38,28 @@ export function getResetToken(): string | null {
   return new URLSearchParams(window.location.search).get('token');
 }
 
+const SESSION_EXPIRED_MESSAGE = 'Your session has ended. Log in again.';
+
 async function rawRequest(path: string, options: RequestInit, token: string | null): Promise<Response> {
-  return fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-  });
+  try {
+    return await fetch(`${BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers,
+      },
+    });
+  } catch {
+    // fetch rejects only when no response arrived (offline, server down, CORS).
+    throw new ApiError(NETWORK_ERROR_MESSAGE, 0);
+  }
 }
 
+/** Throws an ApiError with a message fit for the UI; the raw body is never shown. */
 async function parseOrThrow<T>(res: Response): Promise<T> {
   if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`${res.status} ${res.statusText}: ${body}`);
+    throw toApiError(res.status, await res.text().catch(() => ''));
   }
   if (res.status === 204) return undefined as T;
   return res.json();
@@ -96,19 +104,19 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       } catch {
         clearTokens();
         sessionExpiredHandler?.();
-        throw new Error('Session expired, please log in again');
+        throw new ApiError(SESSION_EXPIRED_MESSAGE, 401);
       }
     } else {
       clearTokens();
       sessionExpiredHandler?.();
-      throw new Error('Session expired, please log in again');
+      throw new ApiError(SESSION_EXPIRED_MESSAGE, 401);
     }
   }
 
   if (res.status === 401) {
     clearTokens();
     sessionExpiredHandler?.();
-    throw new Error('Session expired, please log in again');
+    throw new ApiError(SESSION_EXPIRED_MESSAGE, 401);
   }
 
   return parseOrThrow<T>(res);
@@ -256,13 +264,16 @@ export const api = {
     return tokens;
   },
   logout: () => clearTokens(),
-  forgotPassword: (email: string) =>
-    request<{ message: string }>('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
-  resetPassword: (token: string, newPassword: string) =>
-    request<{ message: string }>('/auth/reset-password', {
-      method: 'POST',
-      body: JSON.stringify({ token, newPassword }),
-    }),
+  // Signed-out calls: sent without a token and never through request(), whose
+  // 401 handling would treat a bad reset link as an expired session.
+  forgotPassword: async (email: string) =>
+    parseOrThrow<{ message: string }>(
+      await rawRequest('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }, null),
+    ),
+  resetPassword: async (token: string, newPassword: string) =>
+    parseOrThrow<{ message: string }>(
+      await rawRequest('/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, newPassword }) }, null),
+    ),
   getMe: () => request<CurrentUser>('/auth/me'),
   updateProfile: (data: ProfileUpdate) =>
     request<CurrentUser>('/auth/me', { method: 'PATCH', body: JSON.stringify(data) }),

@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MIN_SIGNUP_AGE, isOldEnoughToSignUp } from '@travel-planner/shared';
+import { ApiError, MIN_SIGNUP_AGE, isOldEnoughToSignUp } from '@travel-planner/shared';
 import { api } from '../api';
 import { radius, typeScale, useTheme, type ThemeColors } from '../theme';
 import { BrandMark } from './BrandMark';
@@ -163,6 +163,7 @@ export function AuthScreen({ onAuthed }: { onAuthed: () => void }) {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
+  const passwordRef = useRef<TextInput>(null);
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -182,7 +183,15 @@ export function AuthScreen({ onAuthed }: { onAuthed: () => void }) {
       }
       onAuthed();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong. Try again.');
+      if (isLogin && err instanceof ApiError && err.status === 401) {
+        // Same message for an unknown email and a wrong password, so the form
+        // doesn't reveal which emails have accounts. Keep the email, retry the password.
+        setError('Email or password is incorrect.');
+        setPassword('');
+        passwordRef.current?.focus();
+      } else {
+        setError(err instanceof Error ? err.message : 'Something went wrong. Try again.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -207,6 +216,7 @@ export function AuthScreen({ onAuthed }: { onAuthed: () => void }) {
         onChangeText={setEmail}
       />
       <TextField
+        ref={passwordRef}
         label="Password"
         hint={isLogin ? undefined : 'At least 8 characters.'}
         secureTextEntry

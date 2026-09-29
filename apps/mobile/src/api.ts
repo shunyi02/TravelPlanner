@@ -1,4 +1,5 @@
 import type { Balance, Settlement } from '@travel-planner/shared';
+import { ApiError, NETWORK_ERROR_MESSAGE, toApiError } from '@travel-planner/shared';
 import { storage as tokenStorage } from './storage';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
@@ -38,21 +39,28 @@ export function isLoggedIn(): boolean {
   return accessToken !== null;
 }
 
-async function rawRequest<T>(path: string, options: RequestInit, token: string | null): Promise<Response> {
-  return fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-  });
+const SESSION_EXPIRED_MESSAGE = 'Your session has ended. Log in again.';
+
+async function rawRequest(path: string, options: RequestInit, token: string | null): Promise<Response> {
+  try {
+    return await fetch(`${BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers,
+      },
+    });
+  } catch {
+    // fetch rejects only when no response arrived (offline, server down, CORS).
+    throw new ApiError(NETWORK_ERROR_MESSAGE, 0);
+  }
 }
 
+/** Throws an ApiError with a message fit for the UI; the raw body is never shown. */
 async function parseOrThrow<T>(res: Response): Promise<T> {
   if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`${res.status} ${res.statusText}: ${body}`);
+    throw toApiError(res.status, await res.text().catch(() => ''));
   }
   if (res.status === 204) return undefined as T;
   return res.json();
@@ -76,31 +84,31 @@ function refreshOnce(): Promise<void> {
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const sentWith = accessToken;
-  let res = await rawRequest<T>(path, options, sentWith);
+  let res = await rawRequest(path, options, sentWith);
 
   if (res.status === 401 && refreshToken) {
     try {
       // Another request may already have refreshed while this one was out; then just retry.
       if (accessToken === sentWith) await refreshOnce();
-      res = await rawRequest<T>(path, options, accessToken);
+      res = await rawRequest(path, options, accessToken);
     } catch {
       await clearTokens();
       sessionExpiredHandler?.();
-      throw new Error('Session expired, please log in again');
+      throw new ApiError(SESSION_EXPIRED_MESSAGE, 401);
     }
   }
 
   if (res.status === 401) {
     await clearTokens();
     sessionExpiredHandler?.();
-    throw new Error('Session expired, please log in again');
+    throw new ApiError(SESSION_EXPIRED_MESSAGE, 401);
   }
 
   return parseOrThrow<T>(res);
 }
 
 async function refreshTokens(currentRefreshToken: string) {
-  const res = await rawRequest<{ accessToken: string; refreshToken: string }>(
+  const res = await rawRequest(
     '/auth/refresh',
     { method: 'POST', body: JSON.stringify({ refreshToken: currentRefreshToken }) },
     null,
@@ -232,7 +240,7 @@ export interface Expense {
 
 export const api = {
   register: async (data: { email: string; name: string; password: string; dateOfBirth: string }) => {
-    const res = await rawRequest<{ accessToken: string; refreshToken: string }>(
+    const res = await rawRequest(
       '/auth/register',
       { method: 'POST', body: JSON.stringify(data) },
       null,
@@ -242,7 +250,7 @@ export const api = {
     return tokens;
   },
   login: async (data: { email: string; password: string }) => {
-    const res = await rawRequest<{ accessToken: string; refreshToken: string }>(
+    const res = await rawRequest(
       '/auth/login',
       { method: 'POST', body: JSON.stringify(data) },
       null,
@@ -254,13 +262,16 @@ export const api = {
   logout: async () => {
     await clearTokens();
   },
-  forgotPassword: (email: string) =>
-    request<{ message: string }>('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
-  resetPassword: (token: string, newPassword: string) =>
-    request<{ message: string }>('/auth/reset-password', {
-      method: 'POST',
-      body: JSON.stringify({ token, newPassword }),
-    }),
+  // Signed-out calls: sent without a token and never through request(), whose
+  // 401 handling would treat a bad reset link as an expired session.
+  forgotPassword: async (email: string) =>
+    parseOrThrow<{ message: string }>(
+      await rawRequest('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }, null),
+    ),
+  resetPassword: async (token: string, newPassword: string) =>
+    parseOrThrow<{ message: string }>(
+      await rawRequest('/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, newPassword }) }, null),
+    ),
   getMe: () => request<CurrentUser>('/auth/me'),
   updateProfile: (data: ProfileUpdate) =>
     request<CurrentUser>('/auth/me', { method: 'PATCH', body: JSON.stringify(data) }),

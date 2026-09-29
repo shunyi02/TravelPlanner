@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { MIN_SIGNUP_AGE, isOldEnoughToSignUp } from '@travel-planner/shared';
+import { useRef, useState } from 'react';
+import { ApiError, MIN_SIGNUP_AGE, isOldEnoughToSignUp } from '@travel-planner/shared';
 import { api, getResetToken } from '../api';
 
 /** Read once at module load — the value doesn't change during the page's life. */
@@ -77,6 +77,7 @@ export function AuthPage({
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
+  const passwordRef = useRef<HTMLInputElement>(null);
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [error, setError] = useState<string | null>(null);
   /** Non-error feedback, e.g. "check your inbox" after a reset request. */
@@ -114,7 +115,15 @@ export function AuthPage({
       }
       onAuthed();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
+      if (mode === 'login' && err instanceof ApiError && err.status === 401) {
+        // Same message for an unknown email and a wrong password, so the form
+        // doesn't reveal which emails have accounts. Keep the email, retry the password.
+        setError('Email or password is incorrect.');
+        setPassword('');
+        passwordRef.current?.focus();
+      } else {
+        setError(err instanceof Error ? err.message : 'Something went wrong. Try again.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -153,6 +162,7 @@ export function AuthPage({
         <label className="auth-field">
           <span>Password</span>
           <input
+            ref={passwordRef}
             type="password"
             autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
             value={password}

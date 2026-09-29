@@ -4,7 +4,7 @@ import { COUNTRIES } from '@travel-planner/shared';
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const PHONE = /^\+?[\d\s()-]{6,20}$/;
-const PHONE_MESSAGE = 'must be a phone number: digits, spaces, ( ) - and an optional leading +';
+const PHONE_MESSAGE = 'must be 6 to 20 digits, spaces, brackets or dashes, with an optional leading +';
 
 /**
  * A partial profile edit. Omitted fields stay as they are; null clears one
@@ -23,7 +23,7 @@ export class UpdateProfileDto {
 
   /** "YYYY-MM-DD". AuthService.updateProfile also applies the signup age floor. */
   @IsOptional()
-  @Matches(DAY, { message: 'dateOfBirth must be YYYY-MM-DD' })
+  @Matches(DAY, { message: 'dateOfBirth must be a valid date' })
   dateOfBirth?: string | null;
 
   @IsOptional()
@@ -31,7 +31,7 @@ export class UpdateProfileDto {
   phone?: string | null;
 
   @IsOptional()
-  @IsIn(COUNTRIES.map((c) => c.code), { message: 'nationality must be an ISO 3166-1 alpha-2 country code' })
+  @IsIn(COUNTRIES.map((c) => c.code), { message: 'nationality must be a country from the list' })
   nationality?: string | null;
 
   /** Normalised to upper case without spaces, then encrypted before storage. */
@@ -41,7 +41,7 @@ export class UpdateProfileDto {
   passportNumber?: string | null;
 
   @IsOptional()
-  @Matches(DAY, { message: 'passportExpiry must be YYYY-MM-DD' })
+  @Matches(DAY, { message: 'passportExpiry must be a valid date' })
   passportExpiry?: string | null;
 
   @IsOptional()

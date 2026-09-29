@@ -6,7 +6,7 @@ export class RefreshDto {
 }
 
 export class ForgotPasswordDto {
-  @IsEmail()
+  @IsEmail({}, { message: 'email must be a valid email address' })
   email!: string;
 }
 
@@ -15,6 +15,6 @@ export class ResetPasswordDto {
   token!: string;
 
   @IsString()
-  @MinLength(8)
+  @MinLength(8, { message: 'newPassword must be at least 8 characters' })
   newPassword!: string;
 }

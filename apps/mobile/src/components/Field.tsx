@@ -32,14 +32,16 @@ export function TextField({
   hint,
   error,
   style,
+  ref,
   ...inputProps
-}: TextInputProps & { label: string; hint?: string; error?: string | null }) {
+}: TextInputProps & { label: string; hint?: string; error?: string | null; ref?: React.Ref<TextInput> }) {
   const colors = useTheme();
   const styles = fieldStyles(colors);
   const [focused, setFocused] = useState(false);
   return (
     <Field label={label} hint={hint} error={error}>
       <TextInput
+        ref={ref}
         placeholderTextColor={colors.inkSoft}
         accessibilityLabel={label}
         {...inputProps}
