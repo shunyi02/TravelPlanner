@@ -10,6 +10,9 @@
   "scripts": {
     "dev:backend": "npm run start:dev --workspace=apps/backend",
     "dev:web": "npm run dev --workspace=apps/web",
+    "build:web": "npm run build -w packages/shared && npm run build -w apps/web",
+    "build:backend": "npm run build -w packages/shared && npm run build:prod -w apps/backend",
+    "start:backend": "npm run start:prod -w apps/backend",
     "build": "npm run build --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present"
@@ -19,5 +22,8 @@
   },
   "dependencies": {
     "expo-image-picker": "~57.0.18"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

@@ -89,6 +89,39 @@ Run from the repo root:
 | `npm run dev:web` | Start the web app dev server |
 | `npm run build` | Build every workspace that has a build script |
 | `npm test` | Run tests in every workspace that has them |
+| `npm run build:backend` | Production build of the API (shared package, Prisma client, Nest) |
+| `npm run start:backend` | Apply pending migrations, then start the built API |
+| `npm run build:web` | Production build of the web app into `apps/web/dist` |
+
+## Deploying the web app
+
+The API and the web app deploy separately: the API as a Node service, the
+web app as static files. Both build from the repo root.
+
+**API** (e.g. a Render web service)
+
+- Build: `npm ci && npm run build:backend`
+- Start: `npm run start:backend` (runs `prisma migrate deploy` first)
+- Keep dev dependencies installed (don't set `NODE_ENV=production` for the
+  install step): the build uses the Nest CLI and `start` uses the Prisma CLI.
+- Environment:
+  - `DATABASE_URL`: a hosted Postgres (e.g. Neon)
+  - `JWT_SECRET` and `FIELD_ENCRYPTION_KEY`: each from `openssl rand -base64 32`.
+    Back up `FIELD_ENCRYPTION_KEY`: saved passport numbers can't be
+    decrypted without it.
+  - `FRONTEND_URL`: the web app's URL, used in email links
+  - `CORS_ORIGINS`: the web app's URL
+  - `TRUST_PROXY`: the number of proxies in front of the API (`1` on Render),
+    so the login rate limit sees each visitor's IP
+  - `SMTP_*`: optional, for sending password-reset and invite emails
+
+**Web app** (e.g. Cloudflare Pages)
+
+- Build: `npm ci && npm run build:web`
+- Output directory: `apps/web/dist`
+- Environment: `VITE_API_URL` set to the API's URL (read at build time)
+- Serve `index.html` for unknown paths, so links like `/profile` load the app.
+  Cloudflare Pages does this by default for a single-page app with no `404.html`.
 
 ## Tech stack
 

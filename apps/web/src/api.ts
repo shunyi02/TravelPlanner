@@ -1,7 +1,9 @@
 import type { Balance, Settlement } from '@travel-planner/shared';
 import { ApiError, NETWORK_ERROR_MESSAGE, toApiError } from '@travel-planner/shared';
 
-const BASE_URL = '/api';
+// The backend's URL. Unset in dev, where Vite proxies /api to localhost:3000
+// (see vite.config.ts); set VITE_API_URL at build time for a deployed site.
+const BASE_URL = import.meta.env.VITE_API_URL?.replace(/\/+$/, '') || '/api';
 const ACCESS_TOKEN_KEY = 'accessToken';
 const REFRESH_TOKEN_KEY = 'refreshToken';
 
