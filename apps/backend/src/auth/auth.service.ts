@@ -3,7 +3,7 @@ import { MIN_SIGNUP_AGE, isOldEnoughToSignUp } from '@travel-planner/shared';
 import { JwtService } from '@nestjs/jwt';
 import { randomBytes, createHash } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
-import { UsersService } from '../users/users.service';
+import { UsersService, type ProfileUpdate } from '../users/users.service';
 import { MailerService } from '../mailer/mailer.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -44,8 +44,17 @@ export class AuthService {
     // same id, so their existing trip memberships and expense splits carry
     // over untouched.
     const user = existing
-      ? await this.usersService.claimPlaceholder(existing.id, { name: dto.name, password: dto.password })
-      : await this.usersService.create({ email: dto.email, name: dto.name, password: dto.password });
+      ? await this.usersService.claimPlaceholder(existing.id, {
+          name: dto.name,
+          password: dto.password,
+          dateOfBirth: dto.dateOfBirth,
+        })
+      : await this.usersService.create({
+          email: dto.email,
+          name: dto.name,
+          password: dto.password,
+          dateOfBirth: dto.dateOfBirth,
+        });
 
     await this.consumePendingInvites(user.id, user.email);
     return this.issueTokenPair(user.id, user.email);
@@ -143,12 +152,21 @@ export class AuthService {
   async me(userId: string) {
     const user = await this.usersService.findById(userId);
     if (!user) throw new UnauthorizedException('Not authenticated');
-    return { id: user.id, email: user.email, name: user.name, avatarUrl: user.avatarUrl };
+    return this.usersService.toProfile(user);
   }
 
-  async updateProfile(userId: string, data: { name?: string; avatarUrl?: string }) {
+  async updateProfile(userId: string, data: ProfileUpdate) {
+    // Same age floor as signup, so an edit can't store a birth date signup
+    // would have refused. This also rejects future and impossible dates.
+    if (data.dateOfBirth && !isOldEnoughToSignUp(data.dateOfBirth)) {
+      throw new BadRequestException(`Date of birth must make you at least ${MIN_SIGNUP_AGE}.`);
+    }
     const user = await this.usersService.updateProfile(userId, data);
-    return { id: user.id, email: user.email, name: user.name, avatarUrl: user.avatarUrl };
+    return this.usersService.toProfile(user);
+  }
+
+  async passportNumber(userId: string) {
+    return { passportNumber: await this.usersService.getPassportNumber(userId) };
   }
 
   private async issueTokenPair(userId: string, email: string) {

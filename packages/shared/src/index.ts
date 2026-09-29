@@ -9,3 +9,5 @@ export * from './discoverPlaces';
 export * from './palette';
 export * from './itineraryDates';
 export * from './itinerarySheet';
+export * from './countries';
+export * from './passport';

@@ -1,5 +1,5 @@
 import { PrismaService } from '../prisma/prisma.service';
-import { UsersService } from '../users/users.service';
+import { MEMBER_USER_SELECT, UsersService } from '../users/users.service';
 import { MailerService } from '../mailer/mailer.service';
 import { CreateTripDto } from './dto/create-trip.dto';
 import { CreatePlaceDto } from './dto/create-place.dto';
@@ -79,7 +79,7 @@ export class TripsService {
     const trip = await this.prisma.trip.findUnique({
       where: { id: tripId },
       include: {
-        members: { include: { user: true } },
+        members: { include: { user: { select: MEMBER_USER_SELECT } } },
         places: { orderBy: { order: 'asc' }, include: { assignments: true } },
         accommodations: { orderBy: { checkInDate: 'asc' } },
         invites: { orderBy: { createdAt: 'asc' } },
@@ -245,7 +245,7 @@ export class TripsService {
 
     return this.prisma.tripMember.create({
       data: { tripId, userId: user.id, role: 'member' },
-      include: { user: true },
+      include: { user: { select: MEMBER_USER_SELECT } },
     });
   }
 

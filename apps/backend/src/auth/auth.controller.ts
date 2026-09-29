@@ -17,6 +17,14 @@ export class AuthController {
     return this.authService.me(userId);
   }
 
+  /** The full passport number, fetched only when the owner taps "Show".
+   *  GET /auth/me returns just the last four characters. */
+  @UseGuards(JwtAuthGuard)
+  @Get('me/passport')
+  passportNumber(@CurrentUser() userId: string) {
+    return this.authService.passportNumber(userId);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Patch('me')
   updateProfile(@CurrentUser() userId: string, @Body() dto: UpdateProfileDto) {

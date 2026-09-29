@@ -1,6 +1,7 @@
 import { jest } from '@jest/globals';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { TripsService } from './trips.service';
+import { MEMBER_USER_SELECT } from '../users/users.service';
 
 // See expenses.service.spec.ts for why plain `any` mocks are used instead of
 // `@jest/globals`' strictly-inferred `jest.fn()`.
@@ -59,7 +60,7 @@ describe('TripsService.addManualMember', () => {
     expect(usersService.createPlaceholder).toHaveBeenCalledWith({ name: 'Bob' });
     expect(prisma.tripMember.create).toHaveBeenCalledWith({
       data: { tripId: TRIP_ID, userId: 'placeholder-1', role: 'member' },
-      include: { user: true },
+      include: { user: { select: MEMBER_USER_SELECT } },
     });
     expect(member.userId).toBe('placeholder-1');
   });
@@ -76,7 +77,7 @@ describe('TripsService.addManualMember', () => {
     expect(usersService.createPlaceholder).not.toHaveBeenCalled();
     expect(prisma.tripMember.create).toHaveBeenCalledWith({
       data: { tripId: TRIP_ID, userId: 'real-user', role: 'member' },
-      include: { user: true },
+      include: { user: { select: MEMBER_USER_SELECT } },
     });
   });
 
@@ -92,7 +93,7 @@ describe('TripsService.addManualMember', () => {
     expect(usersService.createPlaceholder).not.toHaveBeenCalled();
     expect(prisma.tripMember.create).toHaveBeenCalledWith({
       data: { tripId: TRIP_ID, userId: 'placeholder-existing', role: 'member' },
-      include: { user: true },
+      include: { user: { select: MEMBER_USER_SELECT } },
     });
   });
 
@@ -493,5 +494,11 @@ describe('TripsService.update', () => {
       service.update(TRIP_ID, OWNER_ID, { startDate: '2026-11-19', endDate: '2026-11-10', shiftItineraryDays: 7 }),
     ).rejects.toThrow(BadRequestException);
     expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+});
+
+describe('MEMBER_USER_SELECT', () => {
+  it('never exposes the password hash or private profile fields to other members', () => {
+    expect(Object.keys(MEMBER_USER_SELECT).sort()).toEqual(['avatarUrl', 'email', 'id', 'isPlaceholder', 'name']);
   });
 });

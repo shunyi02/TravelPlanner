@@ -13,6 +13,16 @@ model User {
   name          String
   avatarUrl     String?
   passwordHash  String
+  dateOfBirth   DateTime?           @db.Date
+  phone         String?
+  nationality   String? // ISO 3166-1 alpha-2 code
+  /** AES-256-GCM ciphertext, never plaintext — see FieldCipherService. */
+  passportNumberEncrypted String?
+  passportExpiry DateTime?          @db.Date
+  homeCurrency  String?
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  dietaryNotes  String? // dietary or medical notes, for group planning
   /** A member added by name (optionally email) without registering. Can log
    *  in normally once someone registers with this user's email — see
    *  AuthService.register. */

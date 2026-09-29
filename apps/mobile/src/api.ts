@@ -180,6 +180,31 @@ export interface CurrentUser {
   email: string;
   name: string;
   avatarUrl: string | null;
+  dateOfBirth: string | null; // "YYYY-MM-DD"
+  phone: string | null;
+  nationality: string | null; // ISO 3166-1 alpha-2
+  /** Only the last four characters; the full number comes from getPassportNumber. */
+  passportNumberLast4: string | null;
+  passportExpiry: string | null; // "YYYY-MM-DD"
+  homeCurrency: string | null;
+  emergencyContactName: string | null;
+  emergencyContactPhone: string | null;
+  dietaryNotes: string | null;
+}
+
+/** A profile edit. Omitted fields stay as they are; null clears one. */
+export interface ProfileUpdate {
+  name?: string;
+  avatarUrl?: string | null;
+  dateOfBirth?: string | null;
+  phone?: string | null;
+  nationality?: string | null;
+  passportNumber?: string | null;
+  passportExpiry?: string | null;
+  homeCurrency?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  dietaryNotes?: string | null;
 }
 
 export interface ExpenseSplit {
@@ -237,8 +262,9 @@ export const api = {
       body: JSON.stringify({ token, newPassword }),
     }),
   getMe: () => request<CurrentUser>('/auth/me'),
-  updateProfile: (data: { name?: string; avatarUrl?: string }) =>
+  updateProfile: (data: ProfileUpdate) =>
     request<CurrentUser>('/auth/me', { method: 'PATCH', body: JSON.stringify(data) }),
+  getPassportNumber: () => request<{ passportNumber: string | null }>('/auth/me/passport'),
   listTrips: () => request<Trip[]>('/trips'),
   createTrip: (data: {
     name: string;

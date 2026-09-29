@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { COMMON_CURRENCIES } from '@travel-planner/shared';
 import { api } from '../api';
+import { useAuth } from '../authContext';
 import { LocationSearchField } from './LocationSearchField';
 
 export function AddTripModal({
@@ -14,7 +15,8 @@ export function AddTripModal({
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [coverPhoto, setCoverPhoto] = useState<string | null>(null);
-  const [currency, setCurrency] = useState('USD');
+  const { currentUser } = useAuth();
+  const [currency, setCurrency] = useState(currentUser?.homeCurrency ?? 'USD');
   const [destinationQuery, setDestinationQuery] = useState('');
   const [destinationName, setDestinationName] = useState<string | undefined>();
   const [destinationLat, setDestinationLat] = useState<number | undefined>();
@@ -131,6 +133,9 @@ export function AddTripModal({
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
             >
+              {(COMMON_CURRENCIES as readonly string[]).includes(currency) ? null : (
+                <option value={currency}>{currency}</option>
+              )}
               {COMMON_CURRENCIES.map((c) => (
                 <option key={c} value={c}>{c}</option>
               ))}

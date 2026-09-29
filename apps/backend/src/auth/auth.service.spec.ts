@@ -36,6 +36,8 @@ function makeDeps(overrides: {
     create: mockFn().mockResolvedValue({ id: USER_ID, email: EMAIL, name: 'Alice' }),
     claimPlaceholder: mockFn().mockResolvedValue({ id: USER_ID, email: EMAIL, name: 'Alice', isPlaceholder: false }),
     verifyPassword: mockFn().mockResolvedValue(true),
+    updateProfile: mockFn().mockResolvedValue({}),
+    toProfile: mockFn().mockReturnValue({}),
     ...overrides.usersService,
   };
   const jwtService = {
@@ -67,7 +69,7 @@ describe('AuthService.register', () => {
 
     const tokens = await service.register({ email: EMAIL, name: 'Alice', password: 'password123', dateOfBirth: ADULT_DOB } as any);
 
-    expect(usersService.create).toHaveBeenCalledWith({ email: EMAIL, name: 'Alice', password: 'password123' });
+    expect(usersService.create).toHaveBeenCalledWith({ email: EMAIL, name: 'Alice', password: 'password123', dateOfBirth: ADULT_DOB });
     expect(jwtService.sign).toHaveBeenCalledWith({ sub: USER_ID, email: EMAIL }, { expiresIn: '15m' });
     expect(prisma.refreshToken.create).toHaveBeenCalled();
     expect(tokens).toEqual({ accessToken: 'signed-jwt', refreshToken: expect.any(String) });
@@ -99,6 +101,7 @@ describe('AuthService.register', () => {
     expect(usersService.claimPlaceholder).toHaveBeenCalledWith(USER_ID, {
       name: 'Alice Real Name',
       password: 'password123',
+      dateOfBirth: ADULT_DOB,
     });
     expect(jwtService.sign).toHaveBeenCalledWith({ sub: USER_ID, email: EMAIL }, { expiresIn: '15m' });
     expect(tokens.accessToken).toBe('signed-jwt');
@@ -134,6 +137,8 @@ describe('AuthService.login', () => {
       usersService: {
         findByEmail: mockFn().mockResolvedValue({ id: USER_ID, email: EMAIL, passwordHash: 'hash' }),
         verifyPassword: mockFn().mockResolvedValue(true),
+    updateProfile: mockFn().mockResolvedValue({}),
+    toProfile: mockFn().mockReturnValue({}),
       },
     });
 
@@ -214,5 +219,42 @@ describe('AuthService.refresh', () => {
     });
 
     await expect(service.refresh('expired')).rejects.toThrow(UnauthorizedException);
+  });
+});
+
+describe('AuthService.updateProfile', () => {
+  it('saves the edit and returns the mapped profile', async () => {
+    const saved = { id: USER_ID, email: EMAIL, name: 'Alice' };
+    const profile = { id: USER_ID, email: EMAIL, name: 'Alice', passportNumberLast4: '567X' };
+    const { service, usersService } = makeDeps({
+      usersService: {
+        updateProfile: mockFn().mockResolvedValue(saved),
+        toProfile: mockFn().mockReturnValue(profile),
+      },
+    });
+
+    const result = await service.updateProfile(USER_ID, { dateOfBirth: ADULT_DOB, passportNumber: 'E1234567X' });
+
+    expect(usersService.updateProfile).toHaveBeenCalledWith(USER_ID, { dateOfBirth: ADULT_DOB, passportNumber: 'E1234567X' });
+    expect(usersService.toProfile).toHaveBeenCalledWith(saved);
+    expect(result).toBe(profile);
+  });
+
+  it('rejects a birth date under the signup age, or in the future, without saving', async () => {
+    const { service, usersService } = makeDeps({ usersService: { updateProfile: mockFn() } });
+    const nextYear = `${new Date().getFullYear() + 1}-01-01`;
+
+    await expect(service.updateProfile(USER_ID, { dateOfBirth: nextYear })).rejects.toBeInstanceOf(BadRequestException);
+    expect(usersService.updateProfile).not.toHaveBeenCalled();
+  });
+
+  it('allows clearing the birth date', async () => {
+    const { service, usersService } = makeDeps({
+      usersService: { updateProfile: mockFn().mockResolvedValue({}), toProfile: mockFn().mockReturnValue({}) },
+    });
+
+    await service.updateProfile(USER_ID, { dateOfBirth: null });
+
+    expect(usersService.updateProfile).toHaveBeenCalledWith(USER_ID, { dateOfBirth: null });
   });
 });

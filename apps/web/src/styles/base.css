@@ -110,7 +110,9 @@ button {
   cursor: pointer;
 }
 
-input {
+input,
+select,
+textarea {
   font-family: inherit;
   font-size: inherit;
 }
@@ -378,7 +380,7 @@ h1.page-title {
 
 .field-hint {
   margin: 4px 0 0;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ink-soft);
 }
 

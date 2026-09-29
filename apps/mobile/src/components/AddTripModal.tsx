@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Image, Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import Svg, { Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../api';
+import { useAuth } from '../authContext';
 import { radius, typeScale, useTheme, type ThemeColors } from '../theme';
 import { Button } from './Button';
 import { DateField } from './DateField';
@@ -27,10 +28,18 @@ export function AddTripModal({
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [coverPhoto, setCoverPhoto] = useState<string | null>(null);
-  const [currency, setCurrency] = useState('USD');
+  const { currentUser } = useAuth();
+  const defaultCurrency = currentUser?.homeCurrency ?? 'USD';
+  const [currency, setCurrency] = useState(defaultCurrency);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
+
+  // The sheet stays mounted, so currentUser may have loaded (or the home
+  // currency changed) since first render: start a fresh draft in it on open.
+  useEffect(() => {
+    if (visible && !name) setCurrency(defaultCurrency);
+  }, [visible, defaultCurrency]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const backwards = Boolean(startDate && endDate && endDate < startDate);
 
@@ -51,7 +60,7 @@ export function AddTripModal({
     setStartDate('');
     setEndDate('');
     setCoverPhoto(null);
-    setCurrency('USD');
+    setCurrency(defaultCurrency);
     setError(null);
     setNameError(null);
   };
