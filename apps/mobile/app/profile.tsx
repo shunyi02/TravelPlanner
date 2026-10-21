@@ -6,6 +6,7 @@ import * as ImagePicker from 'expo-image-picker';
 import {
   MIN_SIGNUP_AGE,
   PASSPORT_MIN_VALID_MONTHS,
+  initials,
   isOldEnoughToSignUp,
   maskPassportNumber,
   passportExpiryStatus,
@@ -13,7 +14,6 @@ import {
 import { api, type CurrentUser, type ProfileUpdate } from '../src/api';
 import { useAuth } from '../src/authContext';
 import { radius, typeScale, useTheme, type ThemeColors } from '../src/theme';
-import { initials } from '../src/initials';
 import { Button } from '../src/components/Button';
 import { CaretRight } from '../src/icons';
 import { CountryField } from '../src/components/CountryField';

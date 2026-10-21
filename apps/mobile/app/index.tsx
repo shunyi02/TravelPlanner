@@ -7,7 +7,7 @@ import { api, type Trip } from '../src/api';
 import { radius, typeScale, useTheme, type ThemeColors } from '../src/theme';
 import { useAuth } from '../src/authContext';
 import { formatShort, tripStatus } from '../src/tripDates';
-import { initials } from '../src/initials';
+import { initials } from '@travel-planner/shared';
 import { AddTripModal } from '../src/components/AddTripModal';
 import { BrandMark } from '../src/components/BrandMark';
 import { Button } from '../src/components/Button';

@@ -12,3 +12,4 @@ export * from './itinerarySheet';
 export * from './countries';
 export * from './passport';
 export * from './apiError';
+export * from './initials';

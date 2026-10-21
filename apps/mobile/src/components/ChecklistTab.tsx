@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { CHECKLIST_CATEGORIES, CHECKLIST_STARTERS } from '@travel-planner/shared';
+import { CHECKLIST_CATEGORIES, CHECKLIST_STARTERS, initials } from '@travel-planner/shared';
 import { api, type ChecklistItem } from '../api';
 import {
   BatteryCharging,
@@ -16,7 +16,6 @@ import {
   Tent,
   TShirt,
 } from '../icons';
-import { initials } from '../initials';
 import { radius, typeScale, useTheme, type ThemeColors } from '../theme';
 import { Button } from './Button';
 

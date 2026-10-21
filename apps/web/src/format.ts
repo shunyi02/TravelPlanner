@@ -1,7 +1,4 @@
-export function initials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase();
-}
+export { initials } from '@travel-planner/shared';
 
 /** An ISO datetime string -> the value a `<input type="datetime-local">`
  *  expects ("yyyy-MM-ddTHH:mm"), in the viewer's local time. */

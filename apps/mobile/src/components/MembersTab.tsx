@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { TripDetail } from '../api';
 import { api } from '../api';
-import { initials } from '../initials';
+import { initials } from '@travel-planner/shared';
 import { radius, typeScale, useTheme, type ThemeColors } from '../theme';
 import { Button } from './Button';
 import { TextField } from './Field';
