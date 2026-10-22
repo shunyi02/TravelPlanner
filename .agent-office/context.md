@@ -37,8 +37,13 @@ npm install
 ## How to test
 
 ```bash
+npm run build -w packages/shared
+npm run prisma:generate -w apps/backend
 npm test
 ```
+
+- On a fresh clone the first two commands are required; otherwise 5 backend suites fail
+  with "Cannot find module".
 
 - Jest runs in `packages/shared` and `apps/backend`. Backend service specs mock Prisma,
   so no database is needed.
