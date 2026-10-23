@@ -160,6 +160,12 @@
   color: var(--ink);
 }
 
+.auth-subtitle {
+  margin: -12px 0 20px;
+  text-align: center;
+  color: var(--ink-soft);
+}
+
 .top-bar-account {
   margin-left: auto;
   display: flex;
