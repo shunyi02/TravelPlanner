@@ -142,6 +142,7 @@ export function AuthPage({
         <span className="top-bar-logo" />
         <span className="auth-brand-name">Cuti</span>
       </div>
+      <p className="auth-subtitle">The trip plan everyone can actually follow.</p>
       <form onSubmit={handleSubmit} className="auth-form">
         {mode === 'register' && (
           <label className="auth-field">
